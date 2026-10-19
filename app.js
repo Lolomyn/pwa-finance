@@ -12,6 +12,15 @@ const PERIOD_DAYS = {
   year: 365
 };
 
+const MONTHS_SHORT = [
+  'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+  'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'
+];
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const CHART_FONT_SIZE = 9;
+const CHART_LABEL_GAP = 6;
+
 const form = document.getElementById('expense-form');
 const amountInput = document.getElementById('amount');
 const categoryInput = document.getElementById('category');
@@ -25,6 +34,7 @@ const errorMessage = document.getElementById('app-error');
 const periodTabs = document.getElementById('period-tabs');
 const statsTotal = document.getElementById('stats-total');
 const statsAvg = document.getElementById('stats-avg');
+const statsChart = document.getElementById('stats-chart');
 const statsCategories = document.getElementById('stats-categories');
 const statsEmpty = document.getElementById('stats-empty');
 
@@ -42,6 +52,7 @@ let db = null;
 let expenses = [];
 let currentPeriod = 'month';
 let statsRequestId = 0;
+let lastChartData = null;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -331,26 +342,90 @@ function getPeriodRange(period, items = expenses) {
   return { start, end: today };
 }
 
+function formatDayLabel(date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+
+  return `${day}.${month}`;
+}
+
+function formatMonthLabel(date, includeYear) {
+  const month = MONTHS_SHORT[date.getMonth()];
+
+  if (!includeYear) {
+    return month;
+  }
+
+  return `${month} ${String(date.getFullYear()).slice(-2)}`;
+}
+
+function buildDayChartData(start, end, totalsByDate) {
+  const chartData = [];
+  const cursor = startOfDay(start);
+  const lastDay = startOfDay(end);
+
+  while (cursor <= lastDay) {
+    const isoDate = formatISODate(cursor);
+
+    chartData.push({
+      label: formatDayLabel(cursor),
+      value: roundCurrency(totalsByDate[isoDate] || 0)
+    });
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return chartData;
+}
+
+function buildMonthChartData(startMonth, endMonth, totalsByMonth) {
+  const months = [];
+  const cursor = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
+  const lastMonth = new Date(endMonth.getFullYear(), endMonth.getMonth(), 1);
+
+  while (cursor <= lastMonth) {
+    months.push(new Date(cursor));
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const includeYear = months.length > 12;
+
+  return months.map((date) => {
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      label: formatMonthLabel(date, includeYear),
+      value: roundCurrency(totalsByMonth[monthKey] || 0)
+    };
+  });
+}
+
 function aggregate(items, period) {
   const range = getPeriodRange(period, items);
   const startIso = formatISODate(range.start);
   const endIso = formatISODate(range.end);
 
-  const filtered = items.filter((expense) => {
+  const filtered = [];
+  const rawByCategory = {};
+  const totalsByDate = {};
+  const totalsByMonth = {};
+  let rawTotal = 0;
+
+  items.forEach((expense) => {
     const date = parseISODate(expense.date);
 
     if (!date) {
-      return false;
+      return;
     }
 
     const expenseIso = formatISODate(date);
-    return expenseIso >= startIso && expenseIso <= endIso;
-  });
 
-  let rawTotal = 0;
-  const rawByCategory = {};
+    if (expenseIso < startIso || expenseIso > endIso) {
+      return;
+    }
 
-  filtered.forEach((expense) => {
+    filtered.push(expense);
+
     const amount = Number(expense.amount);
 
     if (!Number.isFinite(amount)) {
@@ -360,9 +435,12 @@ function aggregate(items, period) {
     const category = typeof expense.category === 'string' && expense.category
       ? expense.category
       : 'Другое';
+    const monthKey = expenseIso.slice(0, 7);
 
     rawTotal += amount;
     rawByCategory[category] = (rawByCategory[category] || 0) + amount;
+    totalsByDate[expenseIso] = (totalsByDate[expenseIso] || 0) + amount;
+    totalsByMonth[monthKey] = (totalsByMonth[monthKey] || 0) + amount;
   });
 
   const total = roundCurrency(rawTotal);
@@ -372,13 +450,30 @@ function aggregate(items, period) {
     byCategory[category] = roundCurrency(rawByCategory[category]);
   });
 
+  let chartData = [];
+
+  if (period === 'week' || period === 'month') {
+    chartData = buildDayChartData(range.start, range.end, totalsByDate);
+  } else if (period === 'year') {
+    const endMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
+    const startMonth = new Date(endMonth.getFullYear(), endMonth.getMonth() - 11, 1);
+
+    chartData = buildMonthChartData(startMonth, endMonth, totalsByMonth);
+  } else if (period === 'all' && filtered.length > 0) {
+    const startMonth = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+    const endMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
+
+    chartData = buildMonthChartData(startMonth, endMonth, totalsByMonth);
+  }
+
   const daysInPeriod = countCalendarDays(range.start, range.end);
 
   return {
     filtered,
     total,
     byCategory,
-    avgPerDay: total / Math.max(1, daysInPeriod)
+    avgPerDay: total / Math.max(1, daysInPeriod),
+    chartData
   };
 }
 
@@ -455,6 +550,166 @@ function updateTotal(items) {
   totalAmount.textContent = formatAmount(roundCurrency(total));
 }
 
+function estimateChartLabelWidth(label) {
+  return String(label).length * CHART_FONT_SIZE * 0.55;
+}
+
+function getChartLabelIndices(chartData, period, plotWidth) {
+  const count = chartData.length;
+
+  if (count === 0) {
+    return [];
+  }
+
+  if (count === 1) {
+    return [0];
+  }
+
+  const maxLabelWidth = chartData.reduce((maxWidth, point) => {
+    return Math.max(maxWidth, estimateChartLabelWidth(point.label));
+  }, 0);
+
+  const maxByWidth = Math.max(
+    2,
+    Math.floor(plotWidth / (maxLabelWidth + CHART_LABEL_GAP)) + 1
+  );
+
+  let maxLabels;
+
+  if (period === 'week') {
+    maxLabels = count;
+  } else if (period === 'month') {
+    maxLabels = Math.min(8, count);
+  } else {
+    maxLabels = count <= 12 ? count : 12;
+  }
+
+  maxLabels = Math.max(2, Math.min(maxLabels, maxByWidth, count));
+
+  if (maxLabels >= count) {
+    return chartData.map((_, index) => index);
+  }
+
+  const indices = [];
+
+  for (let index = 0; index < maxLabels; index += 1) {
+    indices.push(Math.round((index * (count - 1)) / (maxLabels - 1)));
+  }
+
+  return [...new Set(indices)];
+}
+
+function renderBarChart(container, chartData, period) {
+  container.replaceChildren();
+
+  const points = Array.isArray(chartData) ? chartData : [];
+  const hasValues = points.some((point) => {
+    const value = Number(point.value);
+    return Number.isFinite(value) && value > 0;
+  });
+
+  if (points.length === 0 || !hasValues) {
+    const message = document.createElement('p');
+    message.className = 'stats-chart-empty';
+    message.textContent = 'Нет данных за период';
+    container.append(message);
+    return;
+  }
+
+  const width = Math.max(1, Math.round(container.clientWidth || 320));
+  const height = Math.max(1, Math.round(container.clientHeight || 160));
+  const chartLeft = 8;
+  const chartRight = width - 8;
+  const chartTop = 8;
+  const chartBottom = height - 28;
+  const plotWidth = Math.max(1, chartRight - chartLeft);
+  const plotHeight = Math.max(1, chartBottom - chartTop);
+
+  const maxValue = points.reduce((max, point) => {
+    const value = Number(point.value);
+    return Number.isFinite(value) && value > max ? value : max;
+  }, 0);
+
+  const slotWidth = plotWidth / points.length;
+  const gap = Math.max(1, Math.min(6, slotWidth * 0.25));
+  const barWidth = Math.min(56, Math.max(2, slotWidth - gap));
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'График расходов за период');
+
+  points.forEach((point, index) => {
+    const value = Number(point.value);
+    const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
+    const barHeight = (safeValue / maxValue) * plotHeight;
+    const x = chartLeft + slotWidth * index + (slotWidth - barWidth) / 2;
+    const y = chartBottom - barHeight;
+
+    const rect = document.createElementNS(SVG_NS, 'rect');
+    rect.setAttribute('x', x.toFixed(2));
+    rect.setAttribute('y', y.toFixed(2));
+    rect.setAttribute('width', barWidth.toFixed(2));
+    rect.setAttribute('height', Math.max(0, barHeight).toFixed(2));
+    rect.setAttribute('fill', '#2c3e50');
+    rect.setAttribute('rx', '1');
+    rect.classList.add('bar-chart-bar');
+
+    const title = document.createElementNS(SVG_NS, 'title');
+    title.textContent = `${point.label}: ${formatAmount(safeValue)}`;
+    rect.append(title);
+
+    svg.append(rect);
+  });
+
+  const labelIndices = getChartLabelIndices(points, period, plotWidth);
+
+  labelIndices.forEach((index) => {
+    const point = points[index];
+    const x = chartLeft + slotWidth * (index + 0.5);
+    const text = document.createElementNS(SVG_NS, 'text');
+
+    text.setAttribute('x', x.toFixed(2));
+    text.setAttribute('y', (height - 8).toFixed(2));
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', '#666666');
+    text.setAttribute('font-size', String(CHART_FONT_SIZE));
+    text.classList.add('bar-chart-label');
+    text.textContent = point.label;
+    svg.append(text);
+  });
+
+  container.append(svg);
+
+  const labelElements = Array.from(svg.querySelectorAll('.bar-chart-label'));
+  const containerRect = container.getBoundingClientRect();
+  const leftLimit = containerRect.left + chartLeft;
+  const rightLimit = containerRect.left + chartRight;
+
+  labelElements.forEach((label) => {
+    const rect = label.getBoundingClientRect();
+
+    if (rect.left < leftLimit) {
+      label.setAttribute('text-anchor', 'start');
+      label.setAttribute('x', chartLeft.toFixed(2));
+    } else if (rect.right > rightLimit) {
+      label.setAttribute('text-anchor', 'end');
+      label.setAttribute('x', chartRight.toFixed(2));
+    }
+  });
+
+  for (let index = labelElements.length - 2; index >= 1; index -= 1) {
+    const currentRect = labelElements[index].getBoundingClientRect();
+    const nextRect = labelElements[index + 1].getBoundingClientRect();
+
+    if (currentRect.right + 2 > nextRect.left) {
+      labelElements[index].remove();
+      labelElements.splice(index, 1);
+    }
+  }
+}
+
 function renderStats(result) {
   statsTotal.textContent = formatAmount(result.total);
   statsAvg.textContent = formatAmount(result.avgPerDay);
@@ -489,6 +744,9 @@ function renderStats(result) {
   statsCategories.replaceChildren(fragment);
   statsCategories.hidden = entries.length === 0;
   statsEmpty.hidden = entries.length > 0;
+
+  lastChartData = result.chartData;
+  renderBarChart(statsChart, result.chartData, currentPeriod);
 }
 
 function updatePeriodTabs() {
@@ -668,6 +926,12 @@ async function init() {
   form.addEventListener('submit', handleSubmit);
   expenseList.addEventListener('click', handleExpenseListClick);
   initPeriodTabs();
+
+  window.addEventListener('resize', () => {
+    if (lastChartData) {
+      renderBarChart(statsChart, lastChartData, currentPeriod);
+    }
+  });
 
   try {
     db = await openDB();
