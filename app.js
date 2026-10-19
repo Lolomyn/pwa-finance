@@ -1,9 +1,14 @@
 'use strict';
 
 const DB_NAME = 'expense-tracker-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'expenses';
-const CATEGORIES = ['Еда', 'Транспорт', 'Жильё', 'Развлечения', 'Другое'];
+const SETTINGS_STORE = 'settings';
+const INITIAL_BALANCE_KEY = 'initialBalance';
+
+const EXPENSE_CATEGORIES = ['Еда', 'Транспорт', 'Жильё', 'Развлечения', 'Другое'];
+const INCOME_CATEGORIES = ['Зарплата', 'Фриланс', 'Подарок', 'Инвестиции', 'Другое'];
+const TRANSACTION_TYPES = ['expense', 'income'];
 
 const PERIODS = ['week', 'month', 'year', 'all'];
 const PERIOD_DAYS = {
@@ -27,15 +32,27 @@ const categoryInput = document.getElementById('category');
 const dateInput = document.getElementById('date');
 const noteInput = document.getElementById('note');
 const submitButton = form.querySelector('button[type="submit"]');
+const typeTabs = document.getElementById('type-tabs');
 const expenseList = document.getElementById('expense-list');
 const emptyState = document.getElementById('empty-state');
-const totalAmount = document.getElementById('total-amount');
+const balanceValue = document.getElementById('balance-value');
+const initialBalanceValue = document.getElementById('initial-balance-value');
+const balanceHint = document.getElementById('balance-hint');
+const editBalanceButton = document.getElementById('edit-balance');
+const totalExpense = document.getElementById('total-expense');
+const totalIncome = document.getElementById('total-income');
+const totalNet = document.getElementById('total-net');
 const errorMessage = document.getElementById('app-error');
 const periodTabs = document.getElementById('period-tabs');
-const statsTotal = document.getElementById('stats-total');
+const statsExpense = document.getElementById('stats-expense');
+const statsIncome = document.getElementById('stats-income');
+const statsNet = document.getElementById('stats-net');
 const statsAvg = document.getElementById('stats-avg');
 const statsChart = document.getElementById('stats-chart');
-const statsCategories = document.getElementById('stats-categories');
+const statsExpenseGroup = document.getElementById('stats-expense-group');
+const statsExpenseCategories = document.getElementById('stats-expense-categories');
+const statsIncomeGroup = document.getElementById('stats-income-group');
+const statsIncomeCategories = document.getElementById('stats-income-categories');
 const statsEmpty = document.getElementById('stats-empty');
 const categoryFilter = document.getElementById('category-filter');
 const exportJsonButton = document.getElementById('export-json');
@@ -55,8 +72,11 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
 
 let db = null;
 let expenses = [];
+let currentType = 'expense';
 let currentPeriod = 'month';
 let currentFilter = '';
+let initialBalance = 0;
+let initialBalanceExists = false;
 let statsRequestId = 0;
 let lastChartData = null;
 
@@ -85,6 +105,12 @@ function openDB() {
           autoIncrement: true
         });
       }
+
+      if (!database.objectStoreNames.contains(SETTINGS_STORE)) {
+        database.createObjectStore(SETTINGS_STORE, {
+          keyPath: 'key'
+        });
+      }
     };
 
     request.onsuccess = () => {
@@ -108,6 +134,116 @@ function openDB() {
     request.onblocked = () => {
       reject(new Error('База данных занята другой вкладкой.'));
     };
+  });
+}
+
+function normalizeTransaction(transaction) {
+  const record = transaction && typeof transaction === 'object' ? transaction : {};
+
+  return {
+    ...record,
+    type: record.type === 'income' ? 'income' : 'expense'
+  };
+}
+
+function getInitialBalance() {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(SETTINGS_STORE, 'readonly');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(SETTINGS_STORE);
+    const request = store.get(INITIAL_BALANCE_KEY);
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось прочитать начальный баланс.'));
+    };
+
+    request.onsuccess = () => {
+      if (settled) {
+        return;
+      }
+
+      const record = request.result;
+      const value = record ? Number(record.value) : 0;
+
+      initialBalanceExists = Boolean(record);
+      settled = true;
+      resolve(Number.isFinite(value) ? value : 0);
+    };
+
+    request.onerror = () => fail(request.error);
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+function setInitialBalance(value) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(SETTINGS_STORE, 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(SETTINGS_STORE);
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось сохранить начальный баланс.'));
+    };
+
+    try {
+      store.put({
+        key: INITIAL_BALANCE_KEY,
+        value
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      initialBalanceExists = true;
+      settled = true;
+      resolve();
+    };
+
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
   });
 }
 
@@ -146,7 +282,7 @@ function getAllExpenses() {
       }
 
       settled = true;
-      resolve(request.result || []);
+      resolve((request.result || []).map(normalizeTransaction));
     };
 
     request.onerror = () => fail(request.error);
@@ -259,7 +395,7 @@ function deleteExpense(id) {
   });
 }
 
-function replaceAllExpenses(items) {
+function replaceAllData(items, balance) {
   return new Promise((resolve, reject) => {
     if (!db) {
       reject(new Error('База данных не открыта.'));
@@ -269,13 +405,14 @@ function replaceAllExpenses(items) {
     let transaction;
 
     try {
-      transaction = db.transaction(STORE_NAME, 'readwrite');
+      transaction = db.transaction([STORE_NAME, SETTINGS_STORE], 'readwrite');
     } catch (error) {
       reject(error);
       return;
     }
 
     const store = transaction.objectStore(STORE_NAME);
+    const settingsStore = transaction.objectStore(SETTINGS_STORE);
     const fallbackCreatedAt = new Date().toISOString();
     let settled = false;
 
@@ -285,7 +422,7 @@ function replaceAllExpenses(items) {
       }
 
       settled = true;
-      reject(error || new Error('Не удалось импортировать траты.'));
+      reject(error || new Error('Не удалось импортировать данные.'));
     };
 
     try {
@@ -299,8 +436,14 @@ function replaceAllExpenses(items) {
           date: item.date,
           createdAt: typeof item.createdAt === 'string'
             ? item.createdAt
-            : fallbackCreatedAt
+            : fallbackCreatedAt,
+          type: item.type
         });
+      });
+
+      settingsStore.put({
+        key: INITIAL_BALANCE_KEY,
+        value: balance
       });
     } catch (error) {
       reject(error);
@@ -336,6 +479,25 @@ function roundCurrency(value) {
 function formatAmount(amount) {
   const value = Number(amount);
   return `${amountFormatter.format(Number.isFinite(value) ? value : 0)} ₽`;
+}
+
+function formatSignedAmount(amount, type) {
+  const sign = type === 'income' ? '+' : '−';
+  return `${sign} ${formatAmount(Math.abs(Number(amount) || 0))}`;
+}
+
+function formatNetAmount(value) {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount) || amount === 0) {
+    return formatAmount(0);
+  }
+
+  return `${amount > 0 ? '+' : '−'} ${formatAmount(Math.abs(amount))}`;
+}
+
+function getTransactionType(transaction) {
+  return transaction && transaction.type === 'income' ? 'income' : 'expense';
 }
 
 function formatISODate(date) {
@@ -427,7 +589,7 @@ function formatMonthLabel(date, includeYear) {
   return `${month} ${String(date.getFullYear()).slice(-2)}`;
 }
 
-function buildDayChartData(start, end, totalsByDate) {
+function buildDayChartData(start, end, incomeByDate, expenseByDate) {
   const chartData = [];
   const cursor = startOfDay(start);
   const lastDay = startOfDay(end);
@@ -437,7 +599,8 @@ function buildDayChartData(start, end, totalsByDate) {
 
     chartData.push({
       label: formatDayLabel(cursor),
-      value: roundCurrency(totalsByDate[isoDate] || 0)
+      income: roundCurrency(incomeByDate[isoDate] || 0),
+      expense: roundCurrency(expenseByDate[isoDate] || 0)
     });
 
     cursor.setDate(cursor.getDate() + 1);
@@ -446,7 +609,7 @@ function buildDayChartData(start, end, totalsByDate) {
   return chartData;
 }
 
-function buildMonthChartData(startMonth, endMonth, totalsByMonth) {
+function buildMonthChartData(startMonth, endMonth, incomeByMonth, expenseByMonth) {
   const months = [];
   const cursor = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
   const lastMonth = new Date(endMonth.getFullYear(), endMonth.getMonth(), 1);
@@ -463,9 +626,20 @@ function buildMonthChartData(startMonth, endMonth, totalsByMonth) {
 
     return {
       label: formatMonthLabel(date, includeYear),
-      value: roundCurrency(totalsByMonth[monthKey] || 0)
+      income: roundCurrency(incomeByMonth[monthKey] || 0),
+      expense: roundCurrency(expenseByMonth[monthKey] || 0)
     };
   });
+}
+
+function roundCategoryTotals(totals) {
+  const result = {};
+
+  Object.keys(totals).forEach((category) => {
+    result[category] = roundCurrency(totals[category]);
+  });
+
+  return result;
 }
 
 function aggregate(items, period) {
@@ -474,10 +648,14 @@ function aggregate(items, period) {
   const endIso = formatISODate(range.end);
 
   const filtered = [];
-  const rawByCategory = {};
-  const totalsByDate = {};
-  const totalsByMonth = {};
-  let rawTotal = 0;
+  const rawExpenseByCategory = {};
+  const rawIncomeByCategory = {};
+  const expenseByDate = {};
+  const incomeByDate = {};
+  const expenseByMonth = {};
+  const incomeByMonth = {};
+  let rawExpenseTotal = 0;
+  let rawIncomeTotal = 0;
 
   items.forEach((expense) => {
     const date = parseISODate(expense.date);
@@ -504,43 +682,66 @@ function aggregate(items, period) {
       ? expense.category
       : 'Другое';
     const monthKey = expenseIso.slice(0, 7);
+    const type = getTransactionType(expense);
 
-    rawTotal += amount;
-    rawByCategory[category] = (rawByCategory[category] || 0) + amount;
-    totalsByDate[expenseIso] = (totalsByDate[expenseIso] || 0) + amount;
-    totalsByMonth[monthKey] = (totalsByMonth[monthKey] || 0) + amount;
+    if (type === 'income') {
+      rawIncomeTotal += amount;
+      rawIncomeByCategory[category] = (rawIncomeByCategory[category] || 0) + amount;
+      incomeByDate[expenseIso] = (incomeByDate[expenseIso] || 0) + amount;
+      incomeByMonth[monthKey] = (incomeByMonth[monthKey] || 0) + amount;
+    } else {
+      rawExpenseTotal += amount;
+      rawExpenseByCategory[category] = (rawExpenseByCategory[category] || 0) + amount;
+      expenseByDate[expenseIso] = (expenseByDate[expenseIso] || 0) + amount;
+      expenseByMonth[monthKey] = (expenseByMonth[monthKey] || 0) + amount;
+    }
   });
 
-  const total = roundCurrency(rawTotal);
-  const byCategory = {};
-
-  Object.keys(rawByCategory).forEach((category) => {
-    byCategory[category] = roundCurrency(rawByCategory[category]);
-  });
+  const expenseTotal = roundCurrency(rawExpenseTotal);
+  const incomeTotal = roundCurrency(rawIncomeTotal);
+  const netFlow = roundCurrency(rawIncomeTotal - rawExpenseTotal);
 
   let chartData = [];
 
   if (period === 'week' || period === 'month') {
-    chartData = buildDayChartData(range.start, range.end, totalsByDate);
+    chartData = buildDayChartData(
+      range.start,
+      range.end,
+      incomeByDate,
+      expenseByDate
+    );
   } else if (period === 'year') {
     const endMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
     const startMonth = new Date(endMonth.getFullYear(), endMonth.getMonth() - 11, 1);
 
-    chartData = buildMonthChartData(startMonth, endMonth, totalsByMonth);
+    chartData = buildMonthChartData(
+      startMonth,
+      endMonth,
+      incomeByMonth,
+      expenseByMonth
+    );
   } else if (period === 'all' && filtered.length > 0) {
     const startMonth = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
     const endMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
 
-    chartData = buildMonthChartData(startMonth, endMonth, totalsByMonth);
+    chartData = buildMonthChartData(
+      startMonth,
+      endMonth,
+      incomeByMonth,
+      expenseByMonth
+    );
   }
 
   const daysInPeriod = countCalendarDays(range.start, range.end);
 
   return {
     filtered,
-    total,
-    byCategory,
-    avgPerDay: total / Math.max(1, daysInPeriod),
+    expenseTotal,
+    incomeTotal,
+    netFlow,
+    expenseByCategory: roundCategoryTotals(rawExpenseByCategory),
+    incomeByCategory: roundCategoryTotals(rawIncomeByCategory),
+    avgPerDay: expenseTotal / Math.max(1, daysInPeriod),
     chartData
   };
 }
@@ -568,9 +769,12 @@ function createExpenseElement(expense) {
   const info = document.createElement('div');
   info.className = 'expense-info';
 
+  const type = getTransactionType(expense);
   const amount = document.createElement('span');
-  amount.className = 'expense-amount';
-  amount.textContent = formatAmount(expense.amount);
+  amount.className = type === 'income'
+    ? 'expense-amount is-income'
+    : 'expense-amount';
+  amount.textContent = formatSignedAmount(expense.amount, type);
 
   const meta = document.createElement('div');
   meta.className = 'expense-meta';
@@ -609,13 +813,53 @@ function createExpenseElement(expense) {
   return item;
 }
 
-function updateTotal(items) {
-  const total = items.reduce((sum, expense) => {
-    const amount = Number(expense.amount);
-    return sum + (Number.isFinite(amount) ? amount : 0);
-  }, 0);
+function calculateTotals(items) {
+  let expenseTotal = 0;
+  let incomeTotal = 0;
 
-  totalAmount.textContent = formatAmount(roundCurrency(total));
+  items.forEach((expense) => {
+    const amount = Number(expense.amount);
+
+    if (!Number.isFinite(amount)) {
+      return;
+    }
+
+    if (getTransactionType(expense) === 'income') {
+      incomeTotal += amount;
+    } else {
+      expenseTotal += amount;
+    }
+  });
+
+  return {
+    expenseTotal: roundCurrency(expenseTotal),
+    incomeTotal: roundCurrency(incomeTotal),
+    netFlow: roundCurrency(incomeTotal - expenseTotal)
+  };
+}
+
+function updateBalance(totals) {
+  const balance = roundCurrency(
+    initialBalance + totals.incomeTotal - totals.expenseTotal
+  );
+
+  balanceValue.textContent = formatAmount(balance);
+  balanceValue.classList.toggle('is-negative', balance < 0);
+  initialBalanceValue.textContent = formatAmount(initialBalance);
+  balanceHint.hidden = initialBalanceExists;
+}
+
+function updateTotal(items) {
+  const totals = calculateTotals(items);
+  const netFlow = totals.netFlow;
+
+  totalExpense.textContent = formatAmount(totals.expenseTotal);
+  totalIncome.textContent = formatAmount(totals.incomeTotal);
+  totalNet.textContent = formatNetAmount(netFlow);
+  totalNet.classList.toggle('is-income', netFlow >= 0);
+  totalNet.classList.toggle('is-expense', netFlow < 0);
+
+  updateBalance(totals);
 }
 
 function estimateChartLabelWidth(label) {
@@ -667,13 +911,57 @@ function getChartLabelIndices(chartData, period, plotWidth) {
   return [...new Set(indices)];
 }
 
+function createChartBar(x, y, width, height, type, label, value) {
+  const color = type === 'income' ? '#27ae60' : '#e74c3c';
+  let shape;
+
+  if (height > 0) {
+    const radius = Math.min(2, width / 2, height);
+    const bottom = y + height;
+    const right = x + width;
+
+    shape = document.createElementNS(SVG_NS, 'path');
+    shape.setAttribute('d', [
+      `M ${x.toFixed(2)} ${bottom.toFixed(2)}`,
+      `L ${x.toFixed(2)} ${(y + radius).toFixed(2)}`,
+      `Q ${x.toFixed(2)} ${y.toFixed(2)} ${(x + radius).toFixed(2)} ${y.toFixed(2)}`,
+      `L ${(right - radius).toFixed(2)} ${y.toFixed(2)}`,
+      `Q ${right.toFixed(2)} ${y.toFixed(2)} ${right.toFixed(2)} ${(y + radius).toFixed(2)}`,
+      `L ${right.toFixed(2)} ${bottom.toFixed(2)}`,
+      'Z'
+    ].join(' '));
+  } else {
+    shape = document.createElementNS(SVG_NS, 'rect');
+    shape.setAttribute('x', x.toFixed(2));
+    shape.setAttribute('y', y.toFixed(2));
+    shape.setAttribute('width', width.toFixed(2));
+    shape.setAttribute('height', '0');
+  }
+
+  shape.setAttribute('fill', color);
+  shape.classList.add('bar-chart-bar', `bar-chart-bar--${type}`);
+  shape.dataset.type = type;
+  shape.dataset.value = String(value);
+
+  const title = document.createElementNS(SVG_NS, 'title');
+  title.textContent = `${label}: ${type === 'income' ? 'доход' : 'расход'} ${formatAmount(value)}`;
+  shape.append(title);
+
+  return shape;
+}
+
 function renderBarChart(container, chartData, period) {
   container.replaceChildren();
 
   const points = Array.isArray(chartData) ? chartData : [];
   const hasValues = points.some((point) => {
-    const value = Number(point.value);
-    return Number.isFinite(value) && value > 0;
+    const income = Number(point.income);
+    const expense = Number(point.expense);
+
+    return (
+      (Number.isFinite(income) && income > 0) ||
+      (Number.isFinite(expense) && expense > 0)
+    );
   });
 
   if (points.length === 0 || !hasValues) {
@@ -694,41 +982,56 @@ function renderBarChart(container, chartData, period) {
   const plotHeight = Math.max(1, chartBottom - chartTop);
 
   const maxValue = points.reduce((max, point) => {
-    const value = Number(point.value);
-    return Number.isFinite(value) && value > max ? value : max;
+    const income = Number(point.income);
+    const expense = Number(point.expense);
+    const safeIncome = Number.isFinite(income) && income > 0 ? income : 0;
+    const safeExpense = Number.isFinite(expense) && expense > 0 ? expense : 0;
+
+    return Math.max(max, safeIncome, safeExpense);
   }, 0);
 
   const slotWidth = plotWidth / points.length;
-  const gap = Math.max(1, Math.min(6, slotWidth * 0.25));
-  const barWidth = Math.min(56, Math.max(2, slotWidth - gap));
+  const barWidth = Math.max(0.5, slotWidth * 0.4);
+  const barGap = Math.max(0.25, slotWidth * 0.08);
+  const pairWidth = barWidth * 2 + barGap;
 
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('preserveAspectRatio', 'none');
   svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', 'График расходов за период');
+  svg.setAttribute('aria-label', 'График доходов и расходов за период');
 
   points.forEach((point, index) => {
-    const value = Number(point.value);
-    const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
-    const barHeight = (safeValue / maxValue) * plotHeight;
-    const x = chartLeft + slotWidth * index + (slotWidth - barWidth) / 2;
-    const y = chartBottom - barHeight;
+    const incomeValue = Number(point.income);
+    const expenseValue = Number(point.expense);
+    const safeIncome = Number.isFinite(incomeValue) && incomeValue > 0 ? incomeValue : 0;
+    const safeExpense = Number.isFinite(expenseValue) && expenseValue > 0 ? expenseValue : 0;
+    const incomeHeight = (safeIncome / maxValue) * plotHeight;
+    const expenseHeight = (safeExpense / maxValue) * plotHeight;
+    const pairLeft = chartLeft + slotWidth * index + (slotWidth - pairWidth) / 2;
+    const incomeX = pairLeft;
+    const expenseX = pairLeft + barWidth + barGap;
 
-    const rect = document.createElementNS(SVG_NS, 'rect');
-    rect.setAttribute('x', x.toFixed(2));
-    rect.setAttribute('y', y.toFixed(2));
-    rect.setAttribute('width', barWidth.toFixed(2));
-    rect.setAttribute('height', Math.max(0, barHeight).toFixed(2));
-    rect.setAttribute('fill', '#2c3e50');
-    rect.setAttribute('rx', '1');
-    rect.classList.add('bar-chart-bar');
-
-    const title = document.createElementNS(SVG_NS, 'title');
-    title.textContent = `${point.label}: ${formatAmount(safeValue)}`;
-    rect.append(title);
-
-    svg.append(rect);
+    svg.append(
+      createChartBar(
+        incomeX,
+        chartBottom - incomeHeight,
+        barWidth,
+        incomeHeight,
+        'income',
+        point.label,
+        safeIncome
+      ),
+      createChartBar(
+        expenseX,
+        chartBottom - expenseHeight,
+        barWidth,
+        expenseHeight,
+        'expense',
+        point.label,
+        safeExpense
+      )
+    );
   });
 
   const labelIndices = getChartLabelIndices(points, period, plotWidth);
@@ -778,14 +1081,10 @@ function renderBarChart(container, chartData, period) {
   }
 }
 
-function renderStats(result) {
-  statsTotal.textContent = formatAmount(result.total);
-  statsAvg.textContent = formatAmount(result.avgPerDay);
-
-  const entries = Object.entries(result.byCategory)
-    .filter(([, sum]) => Number.isFinite(sum) && sum !== 0)
+function renderCategoryBreakdown(container, list, categories, total) {
+  const entries = Object.entries(categories)
+    .filter(([, sum]) => Number.isFinite(sum) && sum > 0)
     .sort((a, b) => b[1] - a[1]);
-
   const fragment = document.createDocumentFragment();
 
   entries.forEach(([category, sum]) => {
@@ -799,8 +1098,8 @@ function renderStats(result) {
     const value = document.createElement('span');
     value.className = 'stats-category-value';
 
-    const percent = result.total > 0
-      ? Math.round((sum / result.total) * 100)
+    const percent = total > 0
+      ? Math.round((sum / total) * 100)
       : 0;
 
     value.textContent = `${formatAmount(sum)} (${percent}%)`;
@@ -809,9 +1108,37 @@ function renderStats(result) {
     fragment.append(item);
   });
 
-  statsCategories.replaceChildren(fragment);
-  statsCategories.hidden = entries.length === 0;
-  statsEmpty.hidden = entries.length > 0;
+  list.replaceChildren(fragment);
+  list.hidden = entries.length === 0;
+  container.hidden = entries.length === 0;
+
+  return entries.length;
+}
+
+function renderStats(result) {
+  const netFlow = result.netFlow;
+
+  statsExpense.textContent = formatAmount(result.expenseTotal);
+  statsIncome.textContent = formatAmount(result.incomeTotal);
+  statsNet.textContent = formatNetAmount(netFlow);
+  statsNet.classList.toggle('is-income', netFlow >= 0);
+  statsNet.classList.toggle('is-expense', netFlow < 0);
+  statsAvg.textContent = formatAmount(result.avgPerDay);
+
+  const expenseCount = renderCategoryBreakdown(
+    statsExpenseGroup,
+    statsExpenseCategories,
+    result.expenseByCategory,
+    result.expenseTotal
+  );
+  const incomeCount = renderCategoryBreakdown(
+    statsIncomeGroup,
+    statsIncomeCategories,
+    result.incomeByCategory,
+    result.incomeTotal
+  );
+
+  statsEmpty.hidden = expenseCount + incomeCount > 0;
 
   lastChartData = result.chartData;
   renderBarChart(statsChart, result.chartData, currentPeriod);
@@ -874,7 +1201,21 @@ function initPeriodTabs() {
   });
 }
 
+function getAllCategories() {
+  return [...new Set([...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES])];
+}
+
 function initCategoryFilter() {
+  const fragment = document.createDocumentFragment();
+
+  getAllCategories().forEach((category) => {
+    const option = document.createElement('option');
+    option.value = category;
+    option.textContent = category;
+    fragment.append(option);
+  });
+
+  categoryFilter.append(fragment);
   categoryFilter.value = currentFilter;
 
   categoryFilter.addEventListener('change', () => {
@@ -935,13 +1276,14 @@ function escapeCsvValue(value) {
 }
 
 function buildCsv(items) {
-  const rows = [['date', 'amount', 'category', 'note']];
+  const rows = [['date', 'type', 'amount', 'category', 'note']];
 
   [...items]
     .sort(compareExpensesByDateAscending)
     .forEach((expense) => {
       rows.push([
         expense.date,
+        getTransactionType(expense),
         String(expense.amount),
         expense.category,
         expense.note == null ? '' : expense.note
@@ -976,8 +1318,15 @@ async function handleExportJson() {
   exportJsonButton.disabled = true;
 
   try {
-    const items = await getAllExpenses();
-    const content = JSON.stringify(items, null, 2);
+    const [items, balance] = await Promise.all([
+      getAllExpenses(),
+      getInitialBalance()
+    ]);
+    const content = JSON.stringify({
+      initialBalance: balance,
+      exportedAt: new Date().toISOString(),
+      transactions: items
+    }, null, 2);
 
     downloadFile(
       content,
@@ -1017,6 +1366,16 @@ function validateImportItem(item, index) {
     throw new Error(`${label}: ожидается объект.`);
   }
 
+  let type = 'expense';
+
+  if (Object.prototype.hasOwnProperty.call(item, 'type')) {
+    if (item.type !== 'expense' && item.type !== 'income') {
+      throw new Error(`${label}: поле "type" должно быть "expense" или "income".`);
+    }
+
+    type = item.type;
+  }
+
   if (typeof item.amount !== 'number' || !Number.isFinite(item.amount) || item.amount <= 0) {
     throw new Error(`${label}: поле "amount" должно быть числом больше 0.`);
   }
@@ -1050,7 +1409,8 @@ function validateImportItem(item, index) {
     date: item.date,
     createdAt: Object.prototype.hasOwnProperty.call(item, 'createdAt')
       ? item.createdAt
-      : null
+      : null,
+    type
   };
 }
 
@@ -1063,11 +1423,33 @@ function parseImportJson(text) {
     throw new Error('файл содержит некорректный JSON.');
   }
 
-  if (!Array.isArray(data)) {
-    throw new Error('корневой элемент должен быть массивом записей.');
+  let initialBalance = 0;
+  let items;
+
+  if (Array.isArray(data)) {
+    items = data;
+  } else if (data !== null && typeof data === 'object') {
+    if (Object.prototype.hasOwnProperty.call(data, 'initialBalance')) {
+      if (typeof data.initialBalance !== 'number' || !Number.isFinite(data.initialBalance)) {
+        throw new Error('поле "initialBalance" должно быть числом.');
+      }
+
+      initialBalance = data.initialBalance;
+    }
+
+    if (!Array.isArray(data.transactions)) {
+      throw new Error('поле "transactions" должно быть массивом записей.');
+    }
+
+    items = data.transactions;
+  } else {
+    throw new Error('ожидается массив записей или объект с полем "transactions".');
   }
 
-  return data.map(validateImportItem);
+  return {
+    initialBalance,
+    items: items.map(validateImportItem)
+  };
 }
 
 function handleImportClick() {
@@ -1097,10 +1479,10 @@ async function handleImportFileChange(event) {
       return;
     }
 
-    let importedItems;
+    let importedData;
 
     try {
-      importedItems = parseImportJson(text.replace(/^\uFEFF/, ''));
+      importedData = parseImportJson(text.replace(/^\uFEFF/, ''));
     } catch (error) {
       alert(`Импорт отменён: ${error.message}`);
       return;
@@ -1110,8 +1492,10 @@ async function handleImportFileChange(event) {
       return;
     }
 
-    await replaceAllExpenses(importedItems);
+    await replaceAllData(importedData.items, importedData.initialBalance);
 
+    initialBalance = importedData.initialBalance;
+    initialBalanceExists = true;
     expenses = await getAllExpenses();
     await render(expenses);
   } catch (error) {
@@ -1119,6 +1503,123 @@ async function handleImportFileChange(event) {
   } finally {
     importJsonButton.disabled = false;
     input.value = '';
+  }
+}
+
+function getCategoriesForType(type) {
+  return type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+}
+
+function updateTypeControls() {
+  const isIncome = currentType === 'income';
+
+  typeTabs.querySelectorAll('[data-type]').forEach((tab) => {
+    const isActive = tab.dataset.type === currentType;
+
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', String(isActive));
+  });
+
+  submitButton.textContent = isIncome ? 'Добавить доход' : 'Добавить расход';
+}
+
+function renderFormCategories() {
+  const categories = getCategoriesForType(currentType);
+  const fragment = document.createDocumentFragment();
+
+  categories.forEach((category) => {
+    const option = document.createElement('option');
+    option.value = category;
+    option.textContent = category;
+    fragment.append(option);
+  });
+
+  categoryInput.replaceChildren(fragment);
+  categoryInput.value = categories[0];
+}
+
+function setTransactionType(type) {
+  if (!TRANSACTION_TYPES.includes(type) || type === currentType) {
+    return;
+  }
+
+  currentType = type;
+  updateTypeControls();
+  renderFormCategories();
+}
+
+function initTypeTabs() {
+  updateTypeControls();
+  renderFormCategories();
+
+  typeTabs.addEventListener('click', (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const tab = target.closest('[data-type]');
+
+    if (!tab || !typeTabs.contains(tab)) {
+      return;
+    }
+
+    setTransactionType(tab.dataset.type);
+  });
+}
+
+function parseBalanceInput(raw) {
+  if (typeof raw !== 'string') {
+    return null;
+  }
+
+  const normalized = raw.trim().replace(/\s/g, '').replace(',', '.');
+
+  if (!normalized) {
+    return null;
+  }
+
+  const value = Number(normalized);
+
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
+  const rounded = roundCurrency(value);
+  return Object.is(rounded, -0) ? 0 : rounded;
+}
+
+async function handleEditBalance() {
+  clearError();
+
+  const raw = window.prompt(
+    'Введите начальный баланс в рублях (число может быть отрицательным):',
+    String(initialBalance)
+  );
+
+  if (raw === null) {
+    return;
+  }
+
+  const value = parseBalanceInput(raw);
+
+  if (value === null) {
+    alert('Введите корректное число для начального баланса.');
+    return;
+  }
+
+  editBalanceButton.disabled = true;
+
+  try {
+    await setInitialBalance(value);
+
+    initialBalance = value;
+    updateBalance(calculateTotals(expenses));
+  } catch (error) {
+    showError('Не удалось сохранить начальный баланс. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    editBalanceButton.disabled = false;
   }
 }
 
@@ -1137,13 +1638,13 @@ async function handleSubmit(event) {
   }
 
   if (!dateInput.value || !isValidDate(dateInput.value)) {
-    alert('Выберите корректную дату траты.');
+    alert('Выберите корректную дату операции.');
     dateInput.focus();
     return;
   }
 
-  if (!CATEGORIES.includes(categoryInput.value)) {
-    alert('Выберите категорию траты.');
+  if (!getCategoriesForType(currentType).includes(categoryInput.value)) {
+    alert('Выберите категорию.');
     categoryInput.focus();
     return;
   }
@@ -1153,7 +1654,8 @@ async function handleSubmit(event) {
     note: noteInput.value.trim(),
     category: categoryInput.value,
     date: dateInput.value,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    type: currentType
   };
 
   submitButton.disabled = true;
@@ -1168,7 +1670,7 @@ async function handleSubmit(event) {
     dateInput.value = getTodayISO();
     amountInput.focus();
   } catch (error) {
-    showError('Не удалось сохранить трату. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+    showError('Не удалось сохранить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
     submitButton.disabled = false;
   }
@@ -1193,7 +1695,7 @@ async function handleExpenseListClick(event) {
     return;
   }
 
-  if (!confirm('Удалить эту трату?')) {
+  if (!confirm('Удалить эту операцию?')) {
     return;
   }
 
@@ -1206,7 +1708,7 @@ async function handleExpenseListClick(event) {
     await render(expenses);
   } catch (error) {
     button.disabled = false;
-    showError('Не удалось удалить трату. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+    showError('Не удалось удалить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   }
 }
 
@@ -1215,10 +1717,12 @@ async function init() {
 
   form.addEventListener('submit', handleSubmit);
   expenseList.addEventListener('click', handleExpenseListClick);
+  editBalanceButton.addEventListener('click', handleEditBalance);
   exportJsonButton.addEventListener('click', handleExportJson);
   exportCsvButton.addEventListener('click', handleExportCsv);
   importJsonButton.addEventListener('click', handleImportClick);
   importFileInput.addEventListener('change', handleImportFileChange);
+  initTypeTabs();
   initPeriodTabs();
   initCategoryFilter();
 
@@ -1230,10 +1734,17 @@ async function init() {
 
   try {
     db = await openDB();
-    expenses = await getAllExpenses();
+
+    const [loadedExpenses, balance] = await Promise.all([
+      getAllExpenses(),
+      getInitialBalance()
+    ]);
+
+    expenses = loadedExpenses;
+    initialBalance = balance;
     await render(expenses);
   } catch (error) {
-    showError('Не удалось загрузить траты. Проверьте настройки браузера и перезагрузите страницу.');
+    showError('Не удалось загрузить операции. Проверьте настройки браузера и перезагрузите страницу.');
   }
 }
 

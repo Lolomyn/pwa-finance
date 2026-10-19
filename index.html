@@ -20,10 +20,37 @@
 
     <p id="app-error" class="app-error" role="alert" hidden></p>
 
+    <section class="balance" aria-labelledby="balance-title" aria-live="polite">
+      <div class="balance-info">
+        <span id="balance-title" class="balance-label">Баланс:</span>
+        <strong id="balance-value" class="balance-value">0 ₽</strong>
+        <p id="balance-hint" class="balance-hint">Задайте начальный баланс</p>
+        <p class="balance-initial">Начальный баланс: <span id="initial-balance-value">0 ₽</span></p>
+      </div>
+      <button id="edit-balance" class="balance-edit-button" type="button">Изменить</button>
+    </section>
+
     <section class="panel" aria-labelledby="form-title">
-      <h2 id="form-title">Новая трата</h2>
+      <h2 id="form-title">Новая операция</h2>
 
       <form id="expense-form" novalidate>
+        <div id="type-tabs" class="type-switch" role="tablist" aria-label="Тип операции">
+          <button
+            type="button"
+            class="type-button is-active"
+            data-type="expense"
+            role="tab"
+            aria-selected="true"
+          >Расход</button>
+          <button
+            type="button"
+            class="type-button"
+            data-type="income"
+            role="tab"
+            aria-selected="false"
+          >Доход</button>
+        </div>
+
         <div class="field">
           <label for="amount">Сумма</label>
           <input
@@ -50,7 +77,7 @@
         </div>
 
         <div class="field">
-          <label for="date">Дата траты</label>
+          <label for="date">Дата операции</label>
           <input id="date" name="date" type="date" required>
         </div>
 
@@ -64,13 +91,27 @@
           >
         </div>
 
-        <button class="submit-button" type="submit">Добавить трату</button>
+        <button class="submit-button" type="submit">Добавить расход</button>
       </form>
     </section>
 
     <div class="total" aria-live="polite">
-      <span class="total-label">Итого за всё время:</span>
-      <strong id="total-amount" class="total-value">0 ₽</strong>
+      <span class="total-title">Итого за всё время:</span>
+
+      <div class="total-row">
+        <span class="total-label">Всего расходов:</span>
+        <strong id="total-expense" class="total-row-value is-expense">0 ₽</strong>
+      </div>
+
+      <div class="total-row">
+        <span class="total-label">Всего доходов:</span>
+        <strong id="total-income" class="total-row-value is-income">0 ₽</strong>
+      </div>
+
+      <div class="total-row">
+        <span class="total-label">Чистый поток:</span>
+        <strong id="total-net" class="total-row-value is-income">0 ₽</strong>
+      </div>
     </div>
 
     <section class="stats" aria-labelledby="stats-title">
@@ -114,8 +155,20 @@
       <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
         <div class="stats-cards">
           <div class="stats-card">
-            <span class="stats-label">Итого за период:</span>
-            <strong id="stats-total" class="stats-value">0 ₽</strong>
+            <div class="stats-row">
+              <span class="stats-label stats-label--inline">Расходы:</span>
+              <strong id="stats-expense" class="stats-flow-value is-expense">0 ₽</strong>
+            </div>
+
+            <div class="stats-row">
+              <span class="stats-label stats-label--inline">Доходы:</span>
+              <strong id="stats-income" class="stats-flow-value is-income">0 ₽</strong>
+            </div>
+
+            <div class="stats-row">
+              <span class="stats-label stats-label--inline">Чистый поток:</span>
+              <strong id="stats-net" class="stats-flow-value is-income">0 ₽</strong>
+            </div>
           </div>
 
           <div class="stats-card">
@@ -127,11 +180,29 @@
         <div class="stats-card stats-card--chart">
           <span class="stats-label">Динамика:</span>
           <div id="stats-chart" class="stats-chart"></div>
+          <div class="chart-legend" aria-label="Легенда графика">
+            <span class="chart-legend-item">
+              <span class="chart-legend-swatch chart-legend-swatch--income" aria-hidden="true"></span>
+              Доход
+            </span>
+            <span class="chart-legend-item">
+              <span class="chart-legend-swatch chart-legend-swatch--expense" aria-hidden="true"></span>
+              Расход
+            </span>
+          </div>
         </div>
 
         <div class="stats-card stats-card--categories">
-          <span class="stats-label">По категориям:</span>
-          <ul id="stats-categories" class="stats-categories" hidden></ul>
+          <div id="stats-expense-group" class="stats-category-group" hidden>
+            <span class="stats-label stats-label--expense">Расходы по категориям:</span>
+            <ul id="stats-expense-categories" class="stats-categories"></ul>
+          </div>
+
+          <div id="stats-income-group" class="stats-category-group" hidden>
+            <span class="stats-label stats-label--income">Доходы по категориям:</span>
+            <ul id="stats-income-categories" class="stats-categories"></ul>
+          </div>
+
           <p id="stats-empty" class="stats-empty">Нет данных за период</p>
         </div>
       </div>
@@ -157,21 +228,16 @@
     </section>
 
     <section class="expenses" aria-labelledby="expenses-title">
-      <h2 id="expenses-title">Траты</h2>
+      <h2 id="expenses-title">Операции</h2>
 
       <div class="field expenses-filter">
         <label for="category-filter">Фильтр по категории</label>
         <select id="category-filter">
           <option value="">Все категории</option>
-          <option value="Еда">Еда</option>
-          <option value="Транспорт">Транспорт</option>
-          <option value="Жильё">Жильё</option>
-          <option value="Развлечения">Развлечения</option>
-          <option value="Другое">Другое</option>
         </select>
       </div>
 
-      <p id="empty-state" class="empty-state">Пока нет трат</p>
+      <p id="empty-state" class="empty-state">Пока нет операций</p>
       <ul id="expense-list" class="expense-list"></ul>
     </section>
   </main>
