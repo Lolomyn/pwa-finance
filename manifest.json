@@ -1,0 +1,19 @@
+{
+  "name": "Мои Расходы",
+  "short_name": "Расходы",
+  "description": "Личный офлайн-трекер трат",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2c3e50",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

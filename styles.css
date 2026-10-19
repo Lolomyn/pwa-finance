@@ -1,0 +1,279 @@
+:root {
+  --bg: #f1f4f8;
+  --surface: #ffffff;
+  --text: #1f2a37;
+  --muted: #667085;
+  --border: #d6dee8;
+  --primary: #2c3e50;
+  --primary-hover: #1e2c3a;
+  --danger: #c0392b;
+  --danger-hover: #a93226;
+  --soft: #e9eff5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  line-height: 1.45;
+}
+
+.app {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+.app-header {
+  margin-bottom: 18px;
+}
+
+h1,
+h2 {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin-bottom: 14px;
+  font-size: 18px;
+}
+
+.panel {
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(44, 62, 80, 0.06);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.field label {
+  color: #344054;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+input,
+select,
+button {
+  font-family: inherit;
+  font-size: 16px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+input,
+select {
+  width: 100%;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+input::placeholder {
+  color: #98a2b3;
+}
+
+input:focus,
+select:focus {
+  outline: 3px solid rgba(44, 62, 80, 0.16);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+
+button {
+  color: #ffffff;
+  background: var(--primary);
+  border: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+button:hover {
+  background: var(--primary-hover);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: default;
+  transform: none;
+}
+
+.submit-button {
+  width: 100%;
+  margin-top: 2px;
+  font-weight: 700;
+}
+
+.total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 16px 0 24px;
+  padding: 16px;
+  background: var(--soft);
+  border-left: 4px solid var(--primary);
+  border-radius: 10px;
+}
+
+.total-label {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.total-value {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.app-error {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  color: #8e2a21;
+  font-size: 14px;
+  background: #fdecea;
+  border: 1px solid #f5c2bd;
+  border-radius: 10px;
+}
+
+.empty-state {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--muted);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px dashed #c6d0dc;
+  border-radius: 12px;
+}
+
+.expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.expense-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.expense-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.expense-amount {
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.expense-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.expense-category {
+  color: #475467;
+  font-weight: 600;
+}
+
+.expense-separator {
+  color: #98a2b3;
+}
+
+.expense-date {
+  font-variant-numeric: tabular-nums;
+}
+
+.expense-note {
+  margin: 2px 0 0;
+  color: #475467;
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.delete-button {
+  flex-shrink: 0;
+  background: var(--danger);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.delete-button:hover {
+  background: var(--danger-hover);
+}
+
+@media (max-width: 380px) {
+  h1 {
+    font-size: 25px;
+  }
+
+  .panel {
+    padding: 16px;
+  }
+
+  .total-value {
+    font-size: 22px;
+  }
+
+  .expense-item {
+    align-items: flex-start;
+    padding: 12px;
+  }
+}
