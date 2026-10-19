@@ -137,8 +137,40 @@
       </div>
     </section>
 
+    <section class="backup" aria-labelledby="backup-title">
+      <h2 id="backup-title">Резервная копия</h2>
+
+      <div class="backup-actions">
+        <button id="export-json" class="secondary-button" type="button">Экспорт в JSON</button>
+        <button id="export-csv" class="secondary-button" type="button">Экспорт в CSV</button>
+        <button id="import-json" class="secondary-button" type="button">Импорт из JSON</button>
+      </div>
+
+      <input
+        id="import-file"
+        type="file"
+        accept="application/json,.json"
+        hidden
+      >
+
+      <p class="backup-hint">Импорт заменяет все текущие данные.</p>
+    </section>
+
     <section class="expenses" aria-labelledby="expenses-title">
       <h2 id="expenses-title">Траты</h2>
+
+      <div class="field expenses-filter">
+        <label for="category-filter">Фильтр по категории</label>
+        <select id="category-filter">
+          <option value="">Все категории</option>
+          <option value="Еда">Еда</option>
+          <option value="Транспорт">Транспорт</option>
+          <option value="Жильё">Жильё</option>
+          <option value="Развлечения">Развлечения</option>
+          <option value="Другое">Другое</option>
+        </select>
+      </div>
+
       <p id="empty-state" class="empty-state">Пока нет трат</p>
       <ul id="expense-list" class="expense-list"></ul>
     </section>

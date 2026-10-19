@@ -132,6 +132,11 @@ button:disabled {
   transform: none;
 }
 
+button:focus-visible {
+  outline: 3px solid rgba(44, 62, 80, 0.35);
+  outline-offset: 2px;
+}
+
 .submit-button {
   width: 100%;
   margin-top: 2px;
@@ -311,6 +316,34 @@ button:disabled {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 14px;
+}
+
+.backup {
+  margin-bottom: 24px;
+}
+
+.backup-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.secondary-button {
+  color: #344054;
+  font-size: 15px;
+  font-weight: 600;
+  background: #e4eaf0;
+  border: 1px solid transparent;
+}
+
+.secondary-button:hover {
+  background: #d6dee8;
+}
+
+.backup-hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .app-error {

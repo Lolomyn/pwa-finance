@@ -37,6 +37,11 @@ const statsAvg = document.getElementById('stats-avg');
 const statsChart = document.getElementById('stats-chart');
 const statsCategories = document.getElementById('stats-categories');
 const statsEmpty = document.getElementById('stats-empty');
+const categoryFilter = document.getElementById('category-filter');
+const exportJsonButton = document.getElementById('export-json');
+const exportCsvButton = document.getElementById('export-csv');
+const importJsonButton = document.getElementById('import-json');
+const importFileInput = document.getElementById('import-file');
 
 const amountFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2
@@ -51,6 +56,7 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
 let db = null;
 let expenses = [];
 let currentPeriod = 'month';
+let currentFilter = '';
 let statsRequestId = 0;
 let lastChartData = null;
 
@@ -238,6 +244,68 @@ function deleteExpense(id) {
       settled = true;
       reject(error || new Error('Не удалось удалить трату.'));
     };
+
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve();
+    };
+
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+function replaceAllExpenses(items) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(STORE_NAME, 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(STORE_NAME);
+    const fallbackCreatedAt = new Date().toISOString();
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось импортировать траты.'));
+    };
+
+    try {
+      store.clear();
+
+      items.forEach((item) => {
+        store.add({
+          amount: item.amount,
+          note: item.note,
+          category: item.category,
+          date: item.date,
+          createdAt: typeof item.createdAt === 'string'
+            ? item.createdAt
+            : fallbackCreatedAt
+        });
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
 
     transaction.oncomplete = () => {
       if (settled) {
@@ -806,8 +874,20 @@ function initPeriodTabs() {
   });
 }
 
-async function render(items) {
-  const sortedExpenses = [...items].sort(compareExpenses);
+function initCategoryFilter() {
+  categoryFilter.value = currentFilter;
+
+  categoryFilter.addEventListener('change', () => {
+    currentFilter = categoryFilter.value;
+    renderExpenseList(expenses);
+  });
+}
+
+function renderExpenseList(items) {
+  const visibleExpenses = currentFilter
+    ? items.filter((expense) => expense.category === currentFilter)
+    : items;
+  const sortedExpenses = [...visibleExpenses].sort(compareExpenses);
   const fragment = document.createDocumentFragment();
 
   sortedExpenses.forEach((expense) => {
@@ -816,7 +896,11 @@ async function render(items) {
 
   expenseList.replaceChildren(fragment);
   emptyState.hidden = sortedExpenses.length > 0;
-  updateTotal(sortedExpenses);
+}
+
+async function render(items) {
+  renderExpenseList(items);
+  updateTotal(items);
 
   await refreshStats();
 }
@@ -830,6 +914,212 @@ function showError(message) {
 function clearError() {
   errorMessage.textContent = '';
   errorMessage.hidden = true;
+}
+
+function compareExpensesByDateAscending(a, b) {
+  if (a.date !== b.date) {
+    return a.date < b.date ? -1 : 1;
+  }
+
+  return Number(a.id) - Number(b.id);
+}
+
+function escapeCsvValue(value) {
+  const text = value === null || value === undefined ? '' : String(value);
+
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  return text;
+}
+
+function buildCsv(items) {
+  const rows = [['date', 'amount', 'category', 'note']];
+
+  [...items]
+    .sort(compareExpensesByDateAscending)
+    .forEach((expense) => {
+      rows.push([
+        expense.date,
+        String(expense.amount),
+        expense.category,
+        expense.note == null ? '' : expense.note
+      ]);
+    });
+
+  const body = rows
+    .map((row) => row.map(escapeCsvValue).join(','))
+    .join('\r\n');
+
+  return `\uFEFF${body}`;
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
+async function handleExportJson() {
+  clearError();
+  exportJsonButton.disabled = true;
+
+  try {
+    const items = await getAllExpenses();
+    const content = JSON.stringify(items, null, 2);
+
+    downloadFile(
+      content,
+      `expenses-backup-${getTodayISO()}.json`,
+      'application/json;charset=utf-8'
+    );
+  } catch (error) {
+    showError('Не удалось экспортировать данные. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    exportJsonButton.disabled = false;
+  }
+}
+
+async function handleExportCsv() {
+  clearError();
+  exportCsvButton.disabled = true;
+
+  try {
+    const items = await getAllExpenses();
+
+    downloadFile(
+      buildCsv(items),
+      `expenses-${getTodayISO()}.csv`,
+      'text/csv;charset=utf-8'
+    );
+  } catch (error) {
+    showError('Не удалось экспортировать данные. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    exportCsvButton.disabled = false;
+  }
+}
+
+function validateImportItem(item, index) {
+  const label = `запись №${index + 1}`;
+
+  if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+    throw new Error(`${label}: ожидается объект.`);
+  }
+
+  if (typeof item.amount !== 'number' || !Number.isFinite(item.amount) || item.amount <= 0) {
+    throw new Error(`${label}: поле "amount" должно быть числом больше 0.`);
+  }
+
+  if (typeof item.category !== 'string') {
+    throw new Error(`${label}: поле "category" должно быть строкой.`);
+  }
+
+  if (typeof item.date !== 'string' || !isValidDate(item.date)) {
+    throw new Error(`${label}: поле "date" должно быть датой в формате ГГГГ-ММ-ДД.`);
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(item, 'note') &&
+    typeof item.note !== 'string'
+  ) {
+    throw new Error(`${label}: поле "note" должно быть строкой.`);
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(item, 'createdAt') &&
+    typeof item.createdAt !== 'string'
+  ) {
+    throw new Error(`${label}: поле "createdAt" должно быть строкой.`);
+  }
+
+  return {
+    amount: item.amount,
+    note: Object.prototype.hasOwnProperty.call(item, 'note') ? item.note : '',
+    category: item.category,
+    date: item.date,
+    createdAt: Object.prototype.hasOwnProperty.call(item, 'createdAt')
+      ? item.createdAt
+      : null
+  };
+}
+
+function parseImportJson(text) {
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch (error) {
+    throw new Error('файл содержит некорректный JSON.');
+  }
+
+  if (!Array.isArray(data)) {
+    throw new Error('корневой элемент должен быть массивом записей.');
+  }
+
+  return data.map(validateImportItem);
+}
+
+function handleImportClick() {
+  importFileInput.value = '';
+  importFileInput.click();
+}
+
+async function handleImportFileChange(event) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+
+  if (!file) {
+    input.value = '';
+    return;
+  }
+
+  clearError();
+  importJsonButton.disabled = true;
+
+  try {
+    let text;
+
+    try {
+      text = await file.text();
+    } catch (error) {
+      alert('Не удалось прочитать файл. Выберите другой файл и попробуйте ещё раз.');
+      return;
+    }
+
+    let importedItems;
+
+    try {
+      importedItems = parseImportJson(text.replace(/^\uFEFF/, ''));
+    } catch (error) {
+      alert(`Импорт отменён: ${error.message}`);
+      return;
+    }
+
+    if (!confirm('Импорт заменит все текущие данные. Продолжить?')) {
+      return;
+    }
+
+    await replaceAllExpenses(importedItems);
+
+    expenses = await getAllExpenses();
+    await render(expenses);
+  } catch (error) {
+    showError('Не удалось импортировать данные. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    importJsonButton.disabled = false;
+    input.value = '';
+  }
 }
 
 async function handleSubmit(event) {
@@ -925,7 +1215,12 @@ async function init() {
 
   form.addEventListener('submit', handleSubmit);
   expenseList.addEventListener('click', handleExpenseListClick);
+  exportJsonButton.addEventListener('click', handleExportJson);
+  exportCsvButton.addEventListener('click', handleExportCsv);
+  importJsonButton.addEventListener('click', handleImportClick);
+  importFileInput.addEventListener('change', handleImportFileChange);
   initPeriodTabs();
+  initCategoryFilter();
 
   window.addEventListener('resize', () => {
     if (lastChartData) {
