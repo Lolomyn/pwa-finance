@@ -69,9 +69,68 @@
     </section>
 
     <div class="total" aria-live="polite">
-      <span class="total-label">Итого:</span>
+      <span class="total-label">Итого за всё время:</span>
       <strong id="total-amount" class="total-value">0 ₽</strong>
     </div>
+
+    <section class="stats" aria-labelledby="stats-title">
+      <h2 id="stats-title">Статистика</h2>
+
+      <div id="period-tabs" class="period-tabs" role="tablist" aria-label="Период статистики">
+        <button
+          type="button"
+          class="period-tab"
+          data-period="week"
+          role="tab"
+          aria-selected="false"
+          aria-controls="stats-panel"
+        >Неделя</button>
+        <button
+          type="button"
+          class="period-tab is-active"
+          data-period="month"
+          role="tab"
+          aria-selected="true"
+          aria-controls="stats-panel"
+        >Месяц</button>
+        <button
+          type="button"
+          class="period-tab"
+          data-period="year"
+          role="tab"
+          aria-selected="false"
+          aria-controls="stats-panel"
+        >Год</button>
+        <button
+          type="button"
+          class="period-tab"
+          data-period="all"
+          role="tab"
+          aria-selected="false"
+          aria-controls="stats-panel"
+        >Всё</button>
+      </div>
+
+      <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
+        <div class="stats-cards">
+          <div class="stats-card">
+            <span class="stats-label">Итого за период:</span>
+            <strong id="stats-total" class="stats-value">0 ₽</strong>
+          </div>
+
+          <div class="stats-card">
+            <span class="stats-label">Средний расход в день:</span>
+            <strong id="stats-avg" class="stats-value">0 ₽</strong>
+          </div>
+        </div>
+
+        <div class="stats-card stats-card--categories">
+          <span class="stats-label">По категориям:</span>
+          <ul id="stats-categories" class="stats-categories" hidden></ul>
+          <p id="stats-empty" class="stats-empty">Нет данных за период</p>
+        </div>
+      </div>
+    </section>
 
     <section class="expenses" aria-labelledby="expenses-title">
       <h2 id="expenses-title">Траты</h2>

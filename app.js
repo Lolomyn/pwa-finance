@@ -5,6 +5,13 @@ const DB_VERSION = 1;
 const STORE_NAME = 'expenses';
 const CATEGORIES = ['Еда', 'Транспорт', 'Жильё', 'Развлечения', 'Другое'];
 
+const PERIODS = ['week', 'month', 'year', 'all'];
+const PERIOD_DAYS = {
+  week: 7,
+  month: 30,
+  year: 365
+};
+
 const form = document.getElementById('expense-form');
 const amountInput = document.getElementById('amount');
 const categoryInput = document.getElementById('category');
@@ -15,6 +22,11 @@ const expenseList = document.getElementById('expense-list');
 const emptyState = document.getElementById('empty-state');
 const totalAmount = document.getElementById('total-amount');
 const errorMessage = document.getElementById('app-error');
+const periodTabs = document.getElementById('period-tabs');
+const statsTotal = document.getElementById('stats-total');
+const statsAvg = document.getElementById('stats-avg');
+const statsCategories = document.getElementById('stats-categories');
+const statsEmpty = document.getElementById('stats-empty');
 
 const amountFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2
@@ -28,6 +40,8 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
 
 let db = null;
 let expenses = [];
+let currentPeriod = 'month';
+let statsRequestId = 0;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -236,9 +250,136 @@ function compareExpenses(a, b) {
   return Number(b.id) - Number(a.id);
 }
 
+function roundCurrency(value) {
+  return Math.round(value * 100) / 100;
+}
+
 function formatAmount(amount) {
   const value = Number(amount);
   return `${amountFormatter.format(Number.isFinite(value) ? value : 0)} ₽`;
+}
+
+function formatISODate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayISO() {
+  return formatISODate(new Date());
+}
+
+function parseISODate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function isValidDate(value) {
+  return parseISODate(value) !== null;
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function countCalendarDays(start, end) {
+  const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+
+  return Math.max(1, Math.round((endUtc - startUtc) / 86400000) + 1);
+}
+
+function getPeriodRange(period, items = expenses) {
+  const today = startOfDay(new Date());
+
+  if (period === 'all') {
+    const dates = items
+      .map((expense) => parseISODate(expense.date))
+      .filter((date) => date !== null)
+      .sort((a, b) => a - b);
+
+    if (dates.length === 0) {
+      return { start: today, end: today };
+    }
+
+    const earliest = dates[0];
+    const start = earliest <= today ? earliest : today;
+
+    return { start, end: today };
+  }
+
+  const days = PERIOD_DAYS[period] || PERIOD_DAYS.month;
+  const start = new Date(today);
+  start.setDate(start.getDate() - (days - 1));
+
+  return { start, end: today };
+}
+
+function aggregate(items, period) {
+  const range = getPeriodRange(period, items);
+  const startIso = formatISODate(range.start);
+  const endIso = formatISODate(range.end);
+
+  const filtered = items.filter((expense) => {
+    const date = parseISODate(expense.date);
+
+    if (!date) {
+      return false;
+    }
+
+    const expenseIso = formatISODate(date);
+    return expenseIso >= startIso && expenseIso <= endIso;
+  });
+
+  let rawTotal = 0;
+  const rawByCategory = {};
+
+  filtered.forEach((expense) => {
+    const amount = Number(expense.amount);
+
+    if (!Number.isFinite(amount)) {
+      return;
+    }
+
+    const category = typeof expense.category === 'string' && expense.category
+      ? expense.category
+      : 'Другое';
+
+    rawTotal += amount;
+    rawByCategory[category] = (rawByCategory[category] || 0) + amount;
+  });
+
+  const total = roundCurrency(rawTotal);
+  const byCategory = {};
+
+  Object.keys(rawByCategory).forEach((category) => {
+    byCategory[category] = roundCurrency(rawByCategory[category]);
+  });
+
+  const daysInPeriod = countCalendarDays(range.start, range.end);
+
+  return {
+    filtered,
+    total,
+    byCategory,
+    avgPerDay: total / Math.max(1, daysInPeriod)
+  };
 }
 
 function formatDate(isoDate) {
@@ -311,10 +452,103 @@ function updateTotal(items) {
     return sum + (Number.isFinite(amount) ? amount : 0);
   }, 0);
 
-  totalAmount.textContent = formatAmount(Math.round(total * 100) / 100);
+  totalAmount.textContent = formatAmount(roundCurrency(total));
 }
 
-function render(items) {
+function renderStats(result) {
+  statsTotal.textContent = formatAmount(result.total);
+  statsAvg.textContent = formatAmount(result.avgPerDay);
+
+  const entries = Object.entries(result.byCategory)
+    .filter(([, sum]) => Number.isFinite(sum) && sum !== 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  const fragment = document.createDocumentFragment();
+
+  entries.forEach(([category, sum]) => {
+    const item = document.createElement('li');
+    item.className = 'stats-category';
+
+    const name = document.createElement('span');
+    name.className = 'stats-category-name';
+    name.textContent = `${category} —`;
+
+    const value = document.createElement('span');
+    value.className = 'stats-category-value';
+
+    const percent = result.total > 0
+      ? Math.round((sum / result.total) * 100)
+      : 0;
+
+    value.textContent = `${formatAmount(sum)} (${percent}%)`;
+
+    item.append(name, value);
+    fragment.append(item);
+  });
+
+  statsCategories.replaceChildren(fragment);
+  statsCategories.hidden = entries.length === 0;
+  statsEmpty.hidden = entries.length > 0;
+}
+
+function updatePeriodTabs() {
+  periodTabs.querySelectorAll('[data-period]').forEach((tab) => {
+    const isActive = tab.dataset.period === currentPeriod;
+
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', String(isActive));
+  });
+}
+
+async function refreshStats() {
+  const requestId = ++statsRequestId;
+
+  try {
+    const allExpenses = await getAllExpenses();
+
+    if (requestId !== statsRequestId) {
+      return;
+    }
+
+    renderStats(aggregate(allExpenses, currentPeriod));
+  } catch (error) {
+    if (requestId === statsRequestId) {
+      showError('Не удалось обновить статистику. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+    }
+  }
+}
+
+function setPeriod(period) {
+  if (!PERIODS.includes(period)) {
+    return;
+  }
+
+  currentPeriod = period;
+  updatePeriodTabs();
+  return refreshStats();
+}
+
+function initPeriodTabs() {
+  updatePeriodTabs();
+
+  periodTabs.addEventListener('click', (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const tab = target.closest('[data-period]');
+
+    if (!tab || !periodTabs.contains(tab)) {
+      return;
+    }
+
+    setPeriod(tab.dataset.period);
+  });
+}
+
+async function render(items) {
   const sortedExpenses = [...items].sort(compareExpenses);
   const fragment = document.createDocumentFragment();
 
@@ -325,6 +559,8 @@ function render(items) {
   expenseList.replaceChildren(fragment);
   emptyState.hidden = sortedExpenses.length > 0;
   updateTotal(sortedExpenses);
+
+  await refreshStats();
 }
 
 function showError(message) {
@@ -336,30 +572,6 @@ function showError(message) {
 function clearError() {
   errorMessage.textContent = '';
   errorMessage.hidden = true;
-}
-
-function getTodayISO() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
-
-function isValidDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
-  );
 }
 
 async function handleSubmit(event) {
@@ -402,7 +614,7 @@ async function handleSubmit(event) {
     const id = await addExpense(expense);
 
     expenses.push({ id, ...expense });
-    render(expenses);
+    await render(expenses);
 
     form.reset();
     dateInput.value = getTodayISO();
@@ -443,7 +655,7 @@ async function handleExpenseListClick(event) {
   try {
     await deleteExpense(id);
     expenses = expenses.filter((expense) => expense.id !== id);
-    render(expenses);
+    await render(expenses);
   } catch (error) {
     button.disabled = false;
     showError('Не удалось удалить трату. Проверьте доступ к хранилищу и попробуйте ещё раз.');
@@ -455,11 +667,12 @@ async function init() {
 
   form.addEventListener('submit', handleSubmit);
   expenseList.addEventListener('click', handleExpenseListClick);
+  initPeriodTabs();
 
   try {
     db = await openDB();
     expenses = await getAllExpenses();
-    render(expenses);
+    await render(expenses);
   } catch (error) {
     showError('Не удалось загрузить траты. Проверьте настройки браузера и перезагрузите страницу.');
   }
