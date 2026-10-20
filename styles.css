@@ -517,6 +517,10 @@ button:focus-visible {
   overflow: hidden;
 }
 
+.stats-chart--balance {
+  height: 180px;
+}
+
 .stats-chart svg {
   display: block;
   width: 100%;
@@ -579,6 +583,84 @@ button:focus-visible {
 
 .chart-legend-swatch--expense {
   background: var(--expense);
+}
+
+.stats-card--comparison {
+  margin-bottom: 10px;
+}
+
+.comparison-title {
+  margin-bottom: 8px;
+}
+
+.comparison-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.comparison-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+  padding: 7px 0;
+  font-size: 14px;
+  border-top: 1px solid #eef2f6;
+}
+
+.comparison-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.comparison-row:last-child {
+  padding-bottom: 0;
+}
+
+.comparison-label {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.comparison-values {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px 8px;
+  margin-left: auto;
+}
+
+.comparison-current {
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-change {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-arrow {
+  font-weight: 700;
+}
+
+.comparison-arrow--good {
+  color: var(--income);
+}
+
+.comparison-arrow--bad {
+  color: var(--expense);
+}
+
+.comparison-arrow--neutral {
+  color: var(--muted);
 }
 
 .stats-categories {

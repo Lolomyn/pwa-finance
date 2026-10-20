@@ -79,6 +79,9 @@ const statsIncome = document.getElementById('stats-income');
 const statsNet = document.getElementById('stats-net');
 const statsAvg = document.getElementById('stats-avg');
 const statsChart = document.getElementById('stats-chart');
+const balanceChartTitle = document.getElementById('balance-chart-title');
+const statsBalanceChart = document.getElementById('stats-balance-chart');
+const statsComparison = document.getElementById('stats-comparison');
 const statsExpenseGroup = document.getElementById('stats-expense-group');
 const statsExpenseCategories = document.getElementById('stats-expense-categories');
 const statsIncomeGroup = document.getElementById('stats-income-group');
@@ -154,6 +157,8 @@ let initialBalanceExists = false;
 let statsRequestId = 0;
 let lastChartData = null;
 let lastChartPeriod = 'month';
+let lastBalanceSeries = null;
+let lastBalancePeriod = 'month';
 let categoryModalType = 'expense';
 let editingExpenseId = null;
 let pendingDelete = null;
@@ -1666,6 +1671,125 @@ function buildMonthChartData(startMonth, endMonth, incomeByMonth, expenseByMonth
   });
 }
 
+function getSignedTransactionAmount(expense) {
+  const amount = Number(expense.amount);
+
+  if (!Number.isFinite(amount)) {
+    return 0;
+  }
+
+  return getTransactionType(expense) === 'income' ? amount : -amount;
+}
+
+function getOpeningBalance(items, startIso) {
+  let netBeforePeriod = 0;
+
+  items.forEach((expense) => {
+    const date = parseISODate(expense.date);
+
+    if (!date || formatISODate(date) >= startIso) {
+      return;
+    }
+
+    netBeforePeriod += getSignedTransactionAmount(expense);
+  });
+
+  const balance = Number(initialBalance);
+  return roundCurrency((Number.isFinite(balance) ? balance : 0) + netBeforePeriod);
+}
+
+function buildBalanceSeries(chartData, openingBalance) {
+  let runningBalance = roundCurrency(openingBalance);
+
+  return chartData.map((point) => {
+    const income = Number(point.income);
+    const expense = Number(point.expense);
+    const safeIncome = Number.isFinite(income) ? income : 0;
+    const safeExpense = Number.isFinite(expense) ? expense : 0;
+
+    runningBalance = roundCurrency(runningBalance + safeIncome - safeExpense);
+
+    return {
+      label: point.label,
+      value: runningBalance
+    };
+  });
+}
+
+function getPreviousPeriodRange(range, period) {
+  if (period === 'all') {
+    return null;
+  }
+
+  const days = period === 'custom'
+    ? countCalendarDays(range.start, range.end)
+    : PERIOD_DAYS[period];
+
+  if (!days) {
+    return null;
+  }
+
+  const previousEnd = startOfDay(range.start);
+  previousEnd.setDate(previousEnd.getDate() - 1);
+
+  const previousStart = new Date(previousEnd);
+  previousStart.setDate(previousStart.getDate() - (days - 1));
+
+  return {
+    start: previousStart,
+    end: previousEnd
+  };
+}
+
+function calculateTotalsForRange(items, range) {
+  const startIso = formatISODate(range.start);
+  const endIso = formatISODate(range.end);
+  const filtered = [];
+
+  items.forEach((expense) => {
+    const date = parseISODate(expense.date);
+
+    if (!date) {
+      return;
+    }
+
+    const isoDate = formatISODate(date);
+
+    if (isoDate >= startIso && isoDate <= endIso) {
+      filtered.push(expense);
+    }
+  });
+
+  return calculateTotals(filtered);
+}
+
+function buildPeriodComparison(items, period, range, currentTotals) {
+  if (period === 'all') {
+    return null;
+  }
+
+  const previousRange = getPreviousPeriodRange(range, period);
+
+  if (!previousRange) {
+    return null;
+  }
+
+  const previousTotals = calculateTotalsForRange(items, previousRange);
+
+  return {
+    current: {
+      expense: currentTotals.expenseTotal,
+      income: currentTotals.incomeTotal,
+      net: currentTotals.netFlow
+    },
+    prev: {
+      expense: previousTotals.expenseTotal,
+      income: previousTotals.incomeTotal,
+      net: previousTotals.netFlow
+    }
+  };
+}
+
 function roundCategoryTotals(totals) {
   const result = {};
 
@@ -1680,6 +1804,7 @@ function aggregate(items, period) {
   const range = getPeriodRange(period, items);
   const startIso = formatISODate(range.start);
   const endIso = formatISODate(range.end);
+  const openingBalance = getOpeningBalance(items, startIso);
 
   const filtered = [];
   const rawExpenseByCategory = {};
@@ -1737,6 +1862,7 @@ function aggregate(items, period) {
 
   let chartData = [];
   let chartPeriod = period;
+  let chartStartMonth = null;
 
   if (period === 'week' || period === 'month') {
     chartData = buildDayChartData(
@@ -1749,6 +1875,7 @@ function aggregate(items, period) {
     const endMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
     const startMonth = new Date(endMonth.getFullYear(), endMonth.getMonth() - 11, 1);
 
+    chartStartMonth = startMonth;
     chartData = buildMonthChartData(
       startMonth,
       endMonth,
@@ -1759,6 +1886,7 @@ function aggregate(items, period) {
     const startMonth = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
     const endMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
 
+    chartStartMonth = startMonth;
     chartData = buildMonthChartData(
       startMonth,
       endMonth,
@@ -1781,6 +1909,7 @@ function aggregate(items, period) {
       const startMonth = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
       const endMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
 
+      chartStartMonth = startMonth;
       chartData = buildMonthChartData(
         startMonth,
         endMonth,
@@ -1791,6 +1920,48 @@ function aggregate(items, period) {
   }
 
   const daysInPeriod = countCalendarDays(range.start, range.end);
+  const balanceGranularity = (
+    period === 'year' ||
+    period === 'all' ||
+    chartPeriod === 'custom-months'
+  ) ? 'month' : 'day';
+
+  let balanceOpening = openingBalance;
+
+  // На месячной шкале первая точка может быть позже начала периода.
+  // Учитываем такие операции сразу, чтобы каждая точка была балансом на конец месяца.
+  if (chartStartMonth) {
+    const firstChartMonthIso = formatISODate(chartStartMonth);
+
+    filtered.forEach((expense) => {
+      const date = parseISODate(expense.date);
+
+      if (!date || formatISODate(date) >= firstChartMonthIso) {
+        return;
+      }
+
+      balanceOpening += getSignedTransactionAmount(expense);
+    });
+
+    balanceOpening = roundCurrency(balanceOpening);
+  }
+
+  let balanceSeries = buildBalanceSeries(chartData, balanceOpening);
+
+  if (balanceSeries.length === 0) {
+    balanceSeries = [{
+      label: balanceGranularity === 'month'
+        ? formatMonthLabel(range.end, false)
+        : formatDayLabel(range.end),
+      value: openingBalance
+    }];
+  }
+
+  const comparison = buildPeriodComparison(items, period, range, {
+    expenseTotal,
+    incomeTotal,
+    netFlow
+  });
 
   return {
     filtered,
@@ -1801,7 +1972,10 @@ function aggregate(items, period) {
     incomeByCategory: roundCategoryTotals(rawIncomeByCategory),
     avgPerDay: expenseTotal / Math.max(1, daysInPeriod),
     chartData,
-    chartPeriod
+    chartPeriod,
+    balanceSeries,
+    balanceGranularity,
+    comparison
   };
 }
 
@@ -2150,6 +2324,351 @@ function renderBarChart(container, chartData, period) {
   }
 }
 
+function renderBalanceChart(container, series, period = 'month') {
+  container.replaceChildren();
+
+  const points = Array.isArray(series)
+    ? series
+      .map((point) => ({
+        label: point && point.label != null ? String(point.label) : '',
+        value: Number(point && point.value)
+      }))
+      .filter((point) => Number.isFinite(point.value))
+    : [];
+  const hasValues = points.some((point) => point.value !== 0);
+
+  if (points.length === 0 || !hasValues) {
+    const message = document.createElement('p');
+    message.className = 'stats-chart-empty';
+    message.textContent = 'Нет данных за период';
+    container.append(message);
+    return;
+  }
+
+  const width = Math.max(1, Math.round(container.clientWidth || 320));
+  const height = Math.max(1, Math.round(container.clientHeight || 180));
+  const chartLeft = 62;
+  const chartRight = width - 8;
+  const chartTop = 14;
+  const chartBottom = height - 28;
+  const plotWidth = Math.max(1, chartRight - chartLeft);
+  const plotHeight = Math.max(1, chartBottom - chartTop);
+
+  const rawMin = points.reduce(
+    (min, point) => Math.min(min, point.value),
+    points[0].value
+  );
+  const rawMax = points.reduce(
+    (max, point) => Math.max(max, point.value),
+    points[0].value
+  );
+
+  let scaleMin = rawMin;
+  let scaleMax = rawMax;
+
+  if (rawMin === rawMax) {
+    const padding = Math.max(Math.abs(rawMin) * 0.1, 1);
+
+    scaleMin = rawMin - padding;
+    scaleMax = rawMax + padding;
+
+    if (rawMin < 0) {
+      scaleMax = Math.max(scaleMax, 0);
+    }
+  } else if (rawMin < 0) {
+    scaleMax = Math.max(rawMax, 0);
+  }
+
+  if (scaleMin === scaleMax) {
+    scaleMin -= 1;
+    scaleMax += 1;
+  }
+
+  const scaleSpan = scaleMax - scaleMin;
+  const yFor = (value) => (
+    chartBottom - ((value - scaleMin) / scaleSpan) * plotHeight
+  );
+  const xFor = (index) => (
+    points.length === 1
+      ? chartLeft + plotWidth / 2
+      : chartLeft + (plotWidth * index) / (points.length - 1)
+  );
+
+  const linePoints = points.length === 1
+    ? [
+      { x: chartLeft, y: yFor(points[0].value) },
+      { x: chartRight, y: yFor(points[0].value) }
+    ]
+    : points.map((point, index) => ({
+      x: xFor(index),
+      y: yFor(point.value)
+    }));
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  const chartDescription = period === 'year' ||
+    period === 'all' ||
+    period === 'custom-months'
+    ? 'по месяцам'
+    : 'по дням';
+
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '100%');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `График накопленного баланса ${chartDescription}`);
+
+  const area = document.createElementNS(SVG_NS, 'polygon');
+  const areaPoints = [
+    `${linePoints[0].x.toFixed(2)},${chartBottom.toFixed(2)}`,
+    ...linePoints.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`),
+    `${linePoints[linePoints.length - 1].x.toFixed(2)},${chartBottom.toFixed(2)}`
+  ];
+
+  area.setAttribute('points', areaPoints.join(' '));
+  area.setAttribute('fill', '#2c3e50');
+  area.setAttribute('fill-opacity', '0.12');
+  area.classList.add('balance-chart-area');
+  svg.append(area);
+
+  if (rawMin < 0) {
+    const zeroLine = document.createElementNS(SVG_NS, 'line');
+
+    zeroLine.setAttribute('x1', chartLeft.toFixed(2));
+    zeroLine.setAttribute('x2', chartRight.toFixed(2));
+    zeroLine.setAttribute('y1', yFor(0).toFixed(2));
+    zeroLine.setAttribute('y2', yFor(0).toFixed(2));
+    zeroLine.setAttribute('stroke', '#e74c3c');
+    zeroLine.setAttribute('stroke-width', '1.5');
+    zeroLine.setAttribute('stroke-dasharray', '4 3');
+    zeroLine.classList.add('balance-chart-zero-line');
+    svg.append(zeroLine);
+  }
+
+  const line = document.createElementNS(SVG_NS, 'polyline');
+
+  line.setAttribute('points', linePoints
+    .map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`)
+    .join(' '));
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', '#2c3e50');
+  line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-linejoin', 'round');
+  line.classList.add('balance-chart-line');
+  svg.append(line);
+
+  const maxLabel = document.createElementNS(SVG_NS, 'text');
+  maxLabel.setAttribute('x', '4');
+  maxLabel.setAttribute('y', (chartTop + CHART_FONT_SIZE - 1).toFixed(2));
+  maxLabel.setAttribute('text-anchor', 'start');
+  maxLabel.setAttribute('fill', '#666666');
+  maxLabel.setAttribute('font-size', String(CHART_FONT_SIZE));
+  maxLabel.classList.add('balance-chart-y-label');
+  maxLabel.textContent = amountFormatter.format(rawMax);
+  svg.append(maxLabel);
+
+  const minLabel = document.createElementNS(SVG_NS, 'text');
+  minLabel.setAttribute('x', '4');
+  minLabel.setAttribute('y', (chartBottom + CHART_FONT_SIZE - 1).toFixed(2));
+  minLabel.setAttribute('text-anchor', 'start');
+  minLabel.setAttribute('fill', '#666666');
+  minLabel.setAttribute('font-size', String(CHART_FONT_SIZE));
+  minLabel.classList.add('balance-chart-y-label');
+  minLabel.textContent = amountFormatter.format(rawMin);
+  svg.append(minLabel);
+
+  const labelIndices = getChartLabelIndices(points, period, plotWidth);
+
+  labelIndices.forEach((index) => {
+    const text = document.createElementNS(SVG_NS, 'text');
+    const x = points.length === 1
+      ? chartLeft + plotWidth / 2
+      : chartLeft + (plotWidth * index) / (points.length - 1);
+
+    text.setAttribute('x', x.toFixed(2));
+    text.setAttribute('y', (height - 8).toFixed(2));
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', '#666666');
+    text.setAttribute('font-size', String(CHART_FONT_SIZE));
+    text.classList.add('balance-chart-label');
+    text.textContent = points[index].label;
+    svg.append(text);
+  });
+
+  container.append(svg);
+
+  const labelElements = Array.from(svg.querySelectorAll('.balance-chart-label'));
+  const containerRect = container.getBoundingClientRect();
+  const leftLimit = containerRect.left + chartLeft;
+  const rightLimit = containerRect.left + chartRight;
+
+  labelElements.forEach((label) => {
+    const rect = label.getBoundingClientRect();
+
+    if (rect.left < leftLimit) {
+      label.setAttribute('text-anchor', 'start');
+      label.setAttribute('x', chartLeft.toFixed(2));
+    } else if (rect.right > rightLimit) {
+      label.setAttribute('text-anchor', 'end');
+      label.setAttribute('x', chartRight.toFixed(2));
+    }
+  });
+
+  for (let index = labelElements.length - 2; index >= 1; index -= 1) {
+    const currentRect = labelElements[index].getBoundingClientRect();
+    const nextRect = labelElements[index + 1].getBoundingClientRect();
+
+    if (currentRect.right + 2 > nextRect.left) {
+      labelElements[index].remove();
+      labelElements.splice(index, 1);
+    }
+  }
+}
+
+function formatComparisonDifference(value) {
+  const amount = roundCurrency(Number(value) || 0);
+
+  if (amount === 0) {
+    return formatAmount(0);
+  }
+
+  return `${amount > 0 ? '+' : '−'}${formatAmount(Math.abs(amount))}`;
+}
+
+function getComparisonChange(metric, current, previous) {
+  const difference = roundCurrency(current - previous);
+
+  if (previous === 0) {
+    if (current === 0) {
+      return {
+        arrow: '→',
+        tone: 'neutral',
+        text: 'без изменений'
+      };
+    }
+
+    if (current > 0) {
+      const positiveLabel = metric === 'expense'
+        ? 'новые траты'
+        : metric === 'income'
+          ? 'новые доходы'
+          : 'новый поток';
+
+      return {
+        arrow: '↑',
+        tone: metric === 'expense' ? 'bad' : 'good',
+        text: `${positiveLabel} / ${formatComparisonDifference(difference)}`
+      };
+    }
+
+    return {
+      arrow: '↓',
+      tone: 'bad',
+      text: `отрицательный поток / ${formatComparisonDifference(difference)}`
+    };
+  }
+
+  if (difference === 0) {
+    return {
+      arrow: '→',
+      tone: 'neutral',
+      text: '0% / 0 ₽'
+    };
+  }
+
+  const grew = difference > 0;
+  const tone = metric === 'expense'
+    ? (grew ? 'bad' : 'good')
+    : (grew ? 'good' : 'bad');
+  const percent = Math.abs(Math.round((difference / Math.abs(previous)) * 100));
+
+  return {
+    arrow: grew ? '↑' : '↓',
+    tone,
+    text: `${percent}% / ${formatComparisonDifference(difference)}`
+  };
+}
+
+function renderComparison(container, comparison) {
+  container.replaceChildren();
+
+  if (!comparison || !comparison.current || !comparison.prev) {
+    container.hidden = true;
+    return;
+  }
+
+  container.hidden = false;
+
+  const title = document.createElement('span');
+  title.className = 'stats-label comparison-title';
+  title.textContent = 'Сравнение с прошлым периодом';
+
+  const list = document.createElement('div');
+  list.className = 'comparison-list';
+
+  const metrics = [
+    {
+      key: 'expense',
+      label: 'Расходы:',
+      current: comparison.current.expense,
+      previous: comparison.prev.expense
+    },
+    {
+      key: 'income',
+      label: 'Доходы:',
+      current: comparison.current.income,
+      previous: comparison.prev.income
+    },
+    {
+      key: 'net',
+      label: 'Чистый поток:',
+      current: comparison.current.net,
+      previous: comparison.prev.net
+    }
+  ];
+
+  metrics.forEach((metric) => {
+    const current = Number(metric.current);
+    const previous = Number(metric.previous);
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safePrevious = Number.isFinite(previous) ? previous : 0;
+    const change = getComparisonChange(metric.key, safeCurrent, safePrevious);
+    const row = document.createElement('div');
+    const label = document.createElement('span');
+    const values = document.createElement('span');
+    const currentValue = document.createElement('strong');
+    const detail = document.createElement('span');
+    const arrow = document.createElement('span');
+
+    row.className = 'comparison-row';
+    label.className = 'comparison-label';
+    label.textContent = metric.label;
+    values.className = 'comparison-values';
+    currentValue.className = 'comparison-current';
+    currentValue.textContent = metric.key === 'net'
+      ? formatNetAmount(safeCurrent)
+      : formatAmount(safeCurrent);
+    detail.className = 'comparison-change';
+    arrow.className = `comparison-arrow comparison-arrow--${change.tone}`;
+    arrow.textContent = change.arrow;
+    detail.append(
+      document.createTextNode('('),
+      arrow,
+      document.createTextNode(` ${change.text})`)
+    );
+    values.append(currentValue, document.createTextNode(' '), detail);
+    row.append(label, document.createTextNode(' '), values);
+
+    if (list.childNodes.length > 0) {
+      list.append(document.createTextNode(' '));
+    }
+
+    list.append(row);
+  });
+
+  container.append(title, document.createTextNode(' '), list);
+}
+
 function renderCategoryBreakdown(container, list, categories, total) {
   const entries = Object.entries(categories)
     .filter(([, sum]) => Number.isFinite(sum) && sum > 0)
@@ -2212,6 +2731,15 @@ function renderStats(result) {
   lastChartData = result.chartData;
   lastChartPeriod = result.chartPeriod || currentPeriod;
   renderBarChart(statsChart, result.chartData, lastChartPeriod);
+
+  balanceChartTitle.textContent = result.balanceGranularity === 'month'
+    ? 'Баланс по месяцам'
+    : 'Баланс по дням';
+
+  lastBalanceSeries = result.balanceSeries;
+  lastBalancePeriod = result.chartPeriod || currentPeriod;
+  renderBalanceChart(statsBalanceChart, result.balanceSeries, lastBalancePeriod);
+  renderComparison(statsComparison, result.comparison);
 }
 
 function getActiveStatsPeriod() {
@@ -4398,6 +4926,10 @@ async function init() {
   window.addEventListener('resize', () => {
     if (lastChartData) {
       renderBarChart(statsChart, lastChartData, lastChartPeriod);
+    }
+
+    if (lastBalanceSeries) {
+      renderBalanceChart(statsBalanceChart, lastBalanceSeries, lastBalancePeriod);
     }
   });
 
