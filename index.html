@@ -167,6 +167,25 @@
         >Всё</button>
       </div>
 
+      <div class="period-custom" aria-label="Произвольный период статистики">
+        <label class="period-date-field">
+          <span>С</span>
+          <input id="custom-from" type="date" aria-label="Начало периода">
+        </label>
+        <span class="period-custom-dash" aria-hidden="true">—</span>
+        <label class="period-date-field">
+          <span>По</span>
+          <input id="custom-to" type="date" aria-label="Конец периода">
+        </label>
+        <div class="period-custom-actions">
+          <button id="custom-apply" class="secondary-button period-custom-button" type="button">Применить</button>
+          <button id="custom-reset" class="secondary-button period-custom-button" type="button">Сбросить</button>
+        </div>
+      </div>
+
+      <p id="custom-range-error" class="period-custom-error" role="alert" hidden></p>
+      <p id="stats-period-label" class="stats-period-label" hidden></p>
+
       <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
         <div class="stats-cards">
           <div class="stats-card">
@@ -245,15 +264,39 @@
     <section class="expenses" aria-labelledby="expenses-title">
       <h2 id="expenses-title">Операции</h2>
 
-      <div class="field expenses-filter">
-        <label for="category-filter">Фильтр по категории</label>
-        <select id="category-filter">
-          <option value="">Все категории</option>
-        </select>
+      <div class="expense-controls">
+        <div class="field expense-search-field">
+          <label for="expense-search">Поиск</label>
+          <input
+            id="expense-search"
+            type="search"
+            placeholder="Поиск по заметке, категории, сумме"
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="expense-controls-row">
+          <div class="field expenses-filter">
+            <label for="category-filter">Фильтр по категории</label>
+            <select id="category-filter">
+              <option value="">Все категории</option>
+            </select>
+          </div>
+
+          <div class="field expense-sort-field">
+            <label for="expense-sort">Сортировка</label>
+            <select id="expense-sort">
+              <option value="date-desc" selected>Сначала новые</option>
+              <option value="date-asc">Сначала старые</option>
+              <option value="amount-desc">Сумма: по убыванию</option>
+              <option value="amount-asc">Сумма: по возрастанию</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <p id="empty-state" class="empty-state">Пока нет операций</p>
-      <ul id="expense-list" class="expense-list"></ul>
+      <div id="expense-list" class="expense-list"></div>
     </section>
   </main>
 

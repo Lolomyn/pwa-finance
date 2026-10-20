@@ -26,6 +26,14 @@ const MONTHS_SHORT = [
   'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'
 ];
 
+const MONTHS_FULL = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+];
+
+const EXPENSE_SORTS = ['date-desc', 'date-asc', 'amount-desc', 'amount-asc'];
+const CUSTOM_CHART_DAY_LIMIT = 62;
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const CHART_FONT_SIZE = 9;
 const CHART_LABEL_GAP = 6;
@@ -60,6 +68,12 @@ const totalIncome = document.getElementById('total-income');
 const totalNet = document.getElementById('total-net');
 const errorMessage = document.getElementById('app-error');
 const periodTabs = document.getElementById('period-tabs');
+const customFromInput = document.getElementById('custom-from');
+const customToInput = document.getElementById('custom-to');
+const customApplyButton = document.getElementById('custom-apply');
+const customResetButton = document.getElementById('custom-reset');
+const customRangeError = document.getElementById('custom-range-error');
+const statsPeriodLabel = document.getElementById('stats-period-label');
 const statsExpense = document.getElementById('stats-expense');
 const statsIncome = document.getElementById('stats-income');
 const statsNet = document.getElementById('stats-net');
@@ -71,6 +85,8 @@ const statsIncomeGroup = document.getElementById('stats-income-group');
 const statsIncomeCategories = document.getElementById('stats-income-categories');
 const statsEmpty = document.getElementById('stats-empty');
 const categoryFilter = document.getElementById('category-filter');
+const expenseSearchInput = document.getElementById('expense-search');
+const expenseSortSelect = document.getElementById('expense-sort');
 const exportJsonButton = document.getElementById('export-json');
 const exportCsvButton = document.getElementById('export-csv');
 const importJsonButton = document.getElementById('import-json');
@@ -130,10 +146,14 @@ let expenses = [];
 let currentType = 'expense';
 let currentPeriod = 'month';
 let currentFilter = '';
+let currentSearch = '';
+let currentSort = 'date-desc';
+let customRange = null;
 let initialBalance = 0;
 let initialBalanceExists = false;
 let statsRequestId = 0;
 let lastChartData = null;
+let lastChartPeriod = 'month';
 let categoryModalType = 'expense';
 let editingExpenseId = null;
 let pendingDelete = null;
@@ -1442,6 +1462,39 @@ function compareExpenses(a, b) {
   return Number(b.id) - Number(a.id);
 }
 
+function getExpenseAmount(expense) {
+  const amount = Number(expense.amount);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function compareExpensesByAmountDescending(a, b) {
+  return getExpenseAmount(b) - getExpenseAmount(a) || compareExpenses(a, b);
+}
+
+function compareExpensesByAmountAscending(a, b) {
+  return getExpenseAmount(a) - getExpenseAmount(b) || compareExpenses(a, b);
+}
+
+function sortExpensesForList(items) {
+  const sorted = [...items];
+
+  if (currentSort === 'date-asc') {
+    sorted.sort(compareExpensesByDateAscending);
+  } else if (currentSort === 'amount-desc') {
+    sorted.sort(compareExpensesByAmountDescending);
+  } else if (currentSort === 'amount-asc') {
+    sorted.sort(compareExpensesByAmountAscending);
+  } else {
+    sorted.sort(compareExpenses);
+  }
+
+  return sorted;
+}
+
+function isAmountSort() {
+  return currentSort === 'amount-desc' || currentSort === 'amount-asc';
+}
+
 function roundCurrency(value) {
   return Math.round(value * 100) / 100;
 }
@@ -1518,6 +1571,17 @@ function countCalendarDays(start, end) {
 
 function getPeriodRange(period, items = expenses) {
   const today = startOfDay(new Date());
+
+  if (period === 'custom') {
+    const start = customRange ? parseISODate(customRange.from) : null;
+    const end = customRange ? parseISODate(customRange.to) : null;
+
+    if (!start || !end || start > end) {
+      return { start: today, end: today };
+    }
+
+    return { start, end };
+  }
 
   if (period === 'all') {
     const dates = items
@@ -1672,6 +1736,7 @@ function aggregate(items, period) {
   const netFlow = roundCurrency(rawIncomeTotal - rawExpenseTotal);
 
   let chartData = [];
+  let chartPeriod = period;
 
   if (period === 'week' || period === 'month') {
     chartData = buildDayChartData(
@@ -1700,6 +1765,29 @@ function aggregate(items, period) {
       incomeByMonth,
       expenseByMonth
     );
+  } else if (period === 'custom') {
+    const daySpan = countCalendarDays(range.start, range.end) - 1;
+
+    if (daySpan <= CUSTOM_CHART_DAY_LIMIT) {
+      chartPeriod = 'custom-days';
+      chartData = buildDayChartData(
+        range.start,
+        range.end,
+        incomeByDate,
+        expenseByDate
+      );
+    } else {
+      chartPeriod = 'custom-months';
+      const startMonth = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+      const endMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
+
+      chartData = buildMonthChartData(
+        startMonth,
+        endMonth,
+        incomeByMonth,
+        expenseByMonth
+      );
+    }
   }
 
   const daysInPeriod = countCalendarDays(range.start, range.end);
@@ -1712,7 +1800,8 @@ function aggregate(items, period) {
     expenseByCategory: roundCategoryTotals(rawExpenseByCategory),
     incomeByCategory: roundCategoryTotals(rawIncomeByCategory),
     avgPerDay: expenseTotal / Math.max(1, daysInPeriod),
-    chartData
+    chartData,
+    chartPeriod
   };
 }
 
@@ -1870,7 +1959,7 @@ function getChartLabelIndices(chartData, period, plotWidth) {
 
   if (period === 'week') {
     maxLabels = count;
-  } else if (period === 'month') {
+  } else if (period === 'month' || period === 'custom-days') {
     maxLabels = Math.min(8, count);
   } else {
     maxLabels = count <= 12 ? count : 12;
@@ -2121,16 +2210,116 @@ function renderStats(result) {
   statsEmpty.hidden = expenseCount + incomeCount > 0;
 
   lastChartData = result.chartData;
-  renderBarChart(statsChart, result.chartData, currentPeriod);
+  lastChartPeriod = result.chartPeriod || currentPeriod;
+  renderBarChart(statsChart, result.chartData, lastChartPeriod);
+}
+
+function getActiveStatsPeriod() {
+  return customRange ? 'custom' : currentPeriod;
 }
 
 function updatePeriodTabs() {
   periodTabs.querySelectorAll('[data-period]').forEach((tab) => {
-    const isActive = tab.dataset.period === currentPeriod;
+    const isActive = !customRange && tab.dataset.period === currentPeriod;
 
     tab.classList.toggle('is-active', isActive);
     tab.setAttribute('aria-selected', String(isActive));
   });
+}
+
+function updateStatsPeriodLabel() {
+  if (!customRange) {
+    statsPeriodLabel.textContent = '';
+    statsPeriodLabel.hidden = true;
+    return;
+  }
+
+  const from = parseISODate(customRange.from);
+  const to = parseISODate(customRange.to);
+
+  if (!from || !to) {
+    statsPeriodLabel.textContent = '';
+    statsPeriodLabel.hidden = true;
+    return;
+  }
+
+  statsPeriodLabel.textContent = `Период: ${dateFormatter.format(from)} — ${dateFormatter.format(to)}`;
+  statsPeriodLabel.hidden = false;
+}
+
+function clearCustomRangeError() {
+  customRangeError.textContent = '';
+  customRangeError.hidden = true;
+}
+
+function showCustomRangeError(message) {
+  customRangeError.textContent = message;
+  customRangeError.hidden = false;
+}
+
+function getCustomRangeValidationError(from, to) {
+  if (!from || !to) {
+    return 'Выберите обе даты.';
+  }
+
+  if (!isValidDate(from) || !isValidDate(to)) {
+    return 'Введите корректные даты.';
+  }
+
+  if (from > to) {
+    return 'Начальная дата не может быть позже конечной.';
+  }
+
+  return '';
+}
+
+function clearCustomRangeFields() {
+  customFromInput.value = '';
+  customToInput.value = '';
+  clearCustomRangeError();
+}
+
+function applyCustomRange() {
+  const from = customFromInput.value;
+  const to = customToInput.value;
+  const error = getCustomRangeValidationError(from, to);
+
+  if (error) {
+    showCustomRangeError(error);
+    return;
+  }
+
+  customRange = { from, to };
+  clearCustomRangeError();
+  updatePeriodTabs();
+  updateStatsPeriodLabel();
+  refreshStats();
+}
+
+function resetCustomRange() {
+  customRange = null;
+  clearCustomRangeFields();
+  updatePeriodTabs();
+  updateStatsPeriodLabel();
+  refreshStats();
+}
+
+function initCustomPeriod() {
+  customApplyButton.addEventListener('click', applyCustomRange);
+  customResetButton.addEventListener('click', resetCustomRange);
+
+  [customFromInput, customToInput].forEach((input) => {
+    input.addEventListener('input', clearCustomRangeError);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        applyCustomRange();
+      }
+    });
+  });
+
+  updatePeriodTabs();
+  updateStatsPeriodLabel();
 }
 
 async function refreshStats() {
@@ -2143,7 +2332,7 @@ async function refreshStats() {
       return;
     }
 
-    renderStats(aggregate(allExpenses, currentPeriod));
+    renderStats(aggregate(allExpenses, getActiveStatsPeriod()));
   } catch (error) {
     if (requestId === statsRequestId) {
       showError('Не удалось обновить статистику. Проверьте доступ к хранилищу и попробуйте ещё раз.');
@@ -2157,7 +2346,10 @@ function setPeriod(period) {
   }
 
   currentPeriod = period;
+  customRange = null;
+  clearCustomRangeFields();
   updatePeriodTabs();
+  updateStatsPeriodLabel();
   return refreshStats();
 }
 
@@ -2216,24 +2408,152 @@ function initCategoryFilter() {
   });
 }
 
+function matchesExpenseSearch(expense, query) {
+  if (!query) {
+    return true;
+  }
+
+  const note = expense.note == null ? '' : String(expense.note).toLowerCase();
+  const category = expense.category == null ? '' : String(expense.category).toLowerCase();
+  const amount = expense.amount == null ? '' : String(expense.amount).toLowerCase();
+
+  return note.includes(query) || category.includes(query) || amount.includes(query);
+}
+
+function getYesterdayISO() {
+  const yesterday = startOfDay(new Date());
+  yesterday.setDate(yesterday.getDate() - 1);
+  return formatISODate(yesterday);
+}
+
+function getExpenseDateGroupTitle(isoDate, todayIso, yesterdayIso) {
+  if (isoDate === todayIso) {
+    return 'Сегодня';
+  }
+
+  if (isoDate === yesterdayIso) {
+    return 'Вчера';
+  }
+
+  const date = parseISODate(isoDate);
+
+  if (!date) {
+    return String(isoDate);
+  }
+
+  return `${date.getDate()} ${MONTHS_FULL[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function createExpenseGroup(date, groupItems, todayIso, yesterdayIso) {
+  const section = document.createElement('section');
+  section.className = 'expense-group';
+
+  const title = document.createElement('h3');
+  title.className = 'expense-group-title';
+  title.textContent = getExpenseDateGroupTitle(date, todayIso, yesterdayIso);
+
+  const list = document.createElement('ul');
+  list.className = 'expense-items';
+
+  groupItems.forEach((expense) => {
+    list.append(createExpenseElement(expense));
+  });
+
+  section.append(title, list);
+  return section;
+}
+
+function createFlatExpenseList(sortedExpenses) {
+  const list = document.createElement('ul');
+  list.className = 'expense-items';
+
+  sortedExpenses.forEach((expense) => {
+    list.append(createExpenseElement(expense));
+  });
+
+  return list;
+}
+
+function updateExpenseEmptyState(items, visibleCount) {
+  if (visibleCount > 0) {
+    emptyState.hidden = true;
+    return;
+  }
+
+  const hasFilters = Boolean(currentSearch.trim() || currentFilter);
+  emptyState.textContent = items.length > 0 || hasFilters
+    ? 'Ничего не найдено'
+    : 'Пока нет операций';
+  emptyState.hidden = false;
+}
+
 function renderExpenseList(items) {
   const pendingDeleteId = pendingDelete ? pendingDelete.expense.id : null;
+  const query = currentSearch.trim().toLowerCase();
   const visibleExpenses = items.filter((expense) => {
     if (expense.id === pendingDeleteId) {
       return false;
     }
 
-    return currentFilter ? expense.category === currentFilter : true;
+    if (currentFilter && expense.category !== currentFilter) {
+      return false;
+    }
+
+    return matchesExpenseSearch(expense, query);
   });
-  const sortedExpenses = [...visibleExpenses].sort(compareExpenses);
+  const sortedExpenses = sortExpensesForList(visibleExpenses);
+
+  if (sortedExpenses.length === 0) {
+    expenseList.replaceChildren();
+    updateExpenseEmptyState(items, 0);
+    return;
+  }
+
   const fragment = document.createDocumentFragment();
 
-  sortedExpenses.forEach((expense) => {
-    fragment.append(createExpenseElement(expense));
-  });
+  if (isAmountSort()) {
+    fragment.append(createFlatExpenseList(sortedExpenses));
+  } else {
+    const todayIso = getTodayISO();
+    const yesterdayIso = getYesterdayISO();
+    const groups = new Map();
+
+    sortedExpenses.forEach((expense) => {
+      if (!groups.has(expense.date)) {
+        groups.set(expense.date, []);
+      }
+
+      groups.get(expense.date).push(expense);
+    });
+
+    groups.forEach((groupItems, date) => {
+      fragment.append(createExpenseGroup(date, groupItems, todayIso, yesterdayIso));
+    });
+  }
 
   expenseList.replaceChildren(fragment);
-  emptyState.hidden = sortedExpenses.length > 0;
+  updateExpenseEmptyState(items, sortedExpenses.length);
+}
+
+function initExpenseListControls() {
+  currentSort = EXPENSE_SORTS.includes(currentSort) ? currentSort : 'date-desc';
+  currentSearch = expenseSearchInput.value;
+  expenseSortSelect.value = currentSort;
+
+  const handleSearch = () => {
+    currentSearch = expenseSearchInput.value;
+    renderExpenseList(expenses);
+  };
+
+  expenseSearchInput.addEventListener('input', handleSearch);
+  expenseSearchInput.addEventListener('search', handleSearch);
+  expenseSortSelect.addEventListener('change', () => {
+    currentSort = EXPENSE_SORTS.includes(expenseSortSelect.value)
+      ? expenseSortSelect.value
+      : 'date-desc';
+    expenseSortSelect.value = currentSort;
+    renderExpenseList(expenses);
+  });
 }
 
 async function render(items) {
@@ -4069,13 +4389,15 @@ async function init() {
   backupBannerHideButton.addEventListener('click', handleBackupBannerHide);
   initTypeTabs();
   initPeriodTabs();
+  initCustomPeriod();
   initCategoryFilter();
+  initExpenseListControls();
   initCategoryModal();
   initSecurityUi();
 
   window.addEventListener('resize', () => {
     if (lastChartData) {
-      renderBarChart(statsChart, lastChartData, currentPeriod);
+      renderBarChart(statsChart, lastChartData, lastChartPeriod);
     }
   });
 
