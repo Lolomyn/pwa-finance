@@ -30,7 +30,15 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const CHART_FONT_SIZE = 9;
 const CHART_LABEL_GAP = 6;
 const UNDO_DELETE_TIMEOUT = 5000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const BACKUP_REMINDER_DAYS = 30;
+const APP_LOCK_TIMEOUT = 60 * 1000;
+const PIN_MIN_LENGTH = 4;
+const PIN_MAX_LENGTH = 6;
+const PIN_MAX_ATTEMPTS = 5;
+const PIN_LOCK_DURATION = 30 * 1000;
 
+const appRoot = document.querySelector('.app');
 const form = document.getElementById('expense-form');
 const formTitle = document.getElementById('form-title');
 const amountInput = document.getElementById('amount');
@@ -67,6 +75,10 @@ const exportJsonButton = document.getElementById('export-json');
 const exportCsvButton = document.getElementById('export-csv');
 const importJsonButton = document.getElementById('import-json');
 const importFileInput = document.getElementById('import-file');
+const backupBanner = document.getElementById('backup-banner');
+const backupBannerText = document.getElementById('backup-banner-text');
+const backupBannerExportButton = document.getElementById('backup-banner-export');
+const backupBannerHideButton = document.getElementById('backup-banner-hide');
 const manageCategoriesButton = document.getElementById('manage-categories');
 const categoryModal = document.getElementById('category-modal');
 const categoryModalClose = document.getElementById('category-modal-close');
@@ -76,8 +88,32 @@ const categoryModalEmpty = document.getElementById('category-modal-empty');
 const categoryAddForm = document.getElementById('category-add-form');
 const categoryNameInput = document.getElementById('category-name-input');
 const categoryModalError = document.getElementById('category-modal-error');
+const manageSecurityButton = document.getElementById('manage-security');
+const securityModal = document.getElementById('security-modal');
+const securityModalClose = document.getElementById('security-modal-close');
+const securityEnablePinSection = document.getElementById('security-enable-pin-section');
+const securityDisablePinSection = document.getElementById('security-disable-pin-section');
+const securityPinForm = document.getElementById('security-pin-form');
+const securityPinInput = document.getElementById('security-pin');
+const securityPinConfirmInput = document.getElementById('security-pin-confirm');
+const securityEnablePinButton = document.getElementById('security-enable-pin');
+const securityCurrentPinForm = document.getElementById('security-current-pin-form');
+const securityCurrentPinInput = document.getElementById('security-current-pin');
+const securityDisablePinButton = document.getElementById('security-disable-pin');
+const securityPinStatus = document.getElementById('security-pin-status');
+const securityBiometricStatus = document.getElementById('security-biometric-status');
+const securityBiometricHint = document.getElementById('security-biometric-hint');
+const securityEnableBiometricButton = document.getElementById('security-enable-biometric');
+const securityDisableBiometricButton = document.getElementById('security-disable-biometric');
+const securityModalError = document.getElementById('security-modal-error');
 const undoToast = document.getElementById('undo-toast');
 const undoToastButton = document.getElementById('undo-toast-button');
+const lockScreen = document.getElementById('lock-screen');
+const lockForm = document.getElementById('lock-form');
+const lockPinInput = document.getElementById('lock-pin');
+const lockSubmitButton = document.getElementById('lock-submit');
+const lockBiometricButton = document.getElementById('lock-biometric');
+const lockMessage = document.getElementById('lock-message');
 
 const amountFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2
@@ -102,6 +138,20 @@ let categoryModalType = 'expense';
 let editingExpenseId = null;
 let pendingDelete = null;
 let pendingDeleteCommit = null;
+let lastBackupAt = null;
+let backupBannerHiddenUntil = null;
+let securityState = {
+  pinEnabled: false,
+  pinHash: '',
+  pinSalt: '',
+  biometricEnabled: false,
+  credentialId: ''
+};
+let pinFailedAttempts = 0;
+let pinLockedUntil = 0;
+let pinLockCountdownTimer = null;
+let appHiddenAt = 0;
+let isAppLocked = false;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -907,6 +957,169 @@ function setInitialBalance(value) {
 
     transaction.onerror = () => fail(transaction.error);
     transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+function getSettings(keys) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    const requestedKeys = Array.isArray(keys) ? [...new Set(keys)] : [];
+
+    if (requestedKeys.length === 0) {
+      resolve({});
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(SETTINGS_STORE, 'readonly');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(SETTINGS_STORE);
+    const values = {};
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось прочитать настройки.'));
+    };
+
+    requestedKeys.forEach((key) => {
+      const request = store.get(key);
+
+      request.onsuccess = () => {
+        const record = request.result;
+
+        values[key] = record ? record.value : null;
+      };
+      request.onerror = () => fail(request.error);
+    });
+
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(values);
+    };
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+function setSettings(values) {
+  return new Promise((resolve, reject) => {
+    if (!values || typeof values !== 'object') {
+      resolve();
+      return;
+    }
+
+    const entries = Object.entries(values);
+
+    if (entries.length === 0) {
+      resolve();
+      return;
+    }
+
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(SETTINGS_STORE, 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(SETTINGS_STORE);
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось сохранить настройки.'));
+    };
+
+    try {
+      entries.forEach(([key, value]) => {
+        if (value === undefined) {
+          store.delete(key);
+        } else {
+          store.put({
+            key,
+            value
+          });
+        }
+      });
+    } catch (error) {
+      try {
+        transaction.abort();
+      } catch (abortError) {
+        // Транзакция уже завершилась — настройки не изменились.
+      }
+
+      reject(error);
+      return;
+    }
+
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve();
+    };
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+function loadStoredPreferences() {
+  return getSettings([
+    'lastBackupAt',
+    'backupBannerHiddenUntil',
+    'pinHash',
+    'pinSalt',
+    'pinEnabled',
+    'biometricEnabled',
+    'credentialId'
+  ]).then((values) => {
+    const pinHash = typeof values.pinHash === 'string' ? values.pinHash : '';
+    const pinSalt = typeof values.pinSalt === 'string' ? values.pinSalt : '';
+    const pinEnabled = values.pinEnabled === true && Boolean(pinHash) && Boolean(pinSalt);
+
+    lastBackupAt = typeof values.lastBackupAt === 'string' ? values.lastBackupAt : null;
+    backupBannerHiddenUntil = typeof values.backupBannerHiddenUntil === 'string'
+      ? values.backupBannerHiddenUntil
+      : null;
+    securityState = {
+      pinEnabled,
+      pinHash,
+      pinSalt,
+      biometricEnabled: pinEnabled && values.biometricEnabled === true,
+      credentialId: typeof values.credentialId === 'string' ? values.credentialId : ''
+    };
   });
 }
 
@@ -2097,37 +2310,115 @@ function downloadFile(content, filename, mimeType) {
   }, 1000);
 }
 
+function hideBackupBanner() {
+  backupBanner.hidden = true;
+}
+
+function showBackupBanner(message) {
+  backupBannerText.textContent = message;
+  backupBanner.hidden = false;
+}
+
+function updateBackupBanner() {
+  const now = Date.now();
+  const hiddenUntil = Date.parse(backupBannerHiddenUntil || '');
+
+  if (Number.isFinite(hiddenUntil) && now < hiddenUntil) {
+    hideBackupBanner();
+    return;
+  }
+
+  if (expenses.length === 0) {
+    hideBackupBanner();
+    return;
+  }
+
+  if (!lastBackupAt) {
+    showBackupBanner('Резервная копия ещё не создавалась');
+    return;
+  }
+
+  const lastBackupTime = Date.parse(lastBackupAt);
+
+  if (!Number.isFinite(lastBackupTime)) {
+    showBackupBanner('Резервная копия ещё не создавалась');
+    return;
+  }
+
+  const elapsed = now - lastBackupTime;
+
+  if (elapsed > BACKUP_REMINDER_DAYS * DAY_MS) {
+    const days = Math.max(1, Math.floor(elapsed / DAY_MS));
+
+    showBackupBanner(`Последняя копия была ${days} дней назад`);
+    return;
+  }
+
+  hideBackupBanner();
+}
+
+async function handleBackupBannerHide() {
+  const hiddenUntil = new Date(Date.now() + DAY_MS).toISOString();
+
+  backupBannerHideButton.disabled = true;
+
+  try {
+    await setSettings({
+      backupBannerHiddenUntil: hiddenUntil
+    });
+    backupBannerHiddenUntil = hiddenUntil;
+    hideBackupBanner();
+  } catch (error) {
+    showError('Не удалось скрыть напоминание. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    backupBannerHideButton.disabled = false;
+  }
+}
+
+async function exportJSON() {
+  const exportedAt = new Date().toISOString();
+  const [items, balance, categories] = await Promise.all([
+    getAllExpenses(),
+    getInitialBalance(),
+    getAllCategories()
+  ]);
+  const content = JSON.stringify({
+    version: 2,
+    exportedAt,
+    initialBalance: balance,
+    categories: categories.map((category) => ({
+      name: category.name,
+      type: category.type,
+      isSystem: isSystemCategory(category)
+    })),
+    transactions: items
+  }, null, 2);
+
+  downloadFile(
+    content,
+    `expenses-backup-${getTodayISO()}.json`,
+    'application/json;charset=utf-8'
+  );
+
+  await setSettings({
+    lastBackupAt: exportedAt
+  });
+  lastBackupAt = exportedAt;
+  hideBackupBanner();
+}
+
 async function handleExportJson() {
   clearError();
   exportJsonButton.disabled = true;
+  backupBannerExportButton.disabled = true;
 
   try {
-    const [items, balance, categories] = await Promise.all([
-      getAllExpenses(),
-      getInitialBalance(),
-      getAllCategories()
-    ]);
-    const content = JSON.stringify({
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      initialBalance: balance,
-      categories: categories.map((category) => ({
-        name: category.name,
-        type: category.type,
-        isSystem: isSystemCategory(category)
-      })),
-      transactions: items
-    }, null, 2);
-
-    downloadFile(
-      content,
-      `expenses-backup-${getTodayISO()}.json`,
-      'application/json;charset=utf-8'
-    );
+    await exportJSON();
   } catch (error) {
     showError('Не удалось экспортировать данные. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
     exportJsonButton.disabled = false;
+    backupBannerExportButton.disabled = false;
   }
 }
 
@@ -2460,6 +2751,7 @@ async function handleImportFileChange(event) {
 
     await refreshCategoryUi();
     await render(expenses);
+    updateBackupBanner();
   } catch (error) {
     showError('Не удалось импортировать данные. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
@@ -2898,6 +3190,587 @@ function initCategoryModal() {
   });
 }
 
+function bytesToBase64(bytes) {
+  let binary = '';
+
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+
+  return window.btoa(binary);
+}
+
+function base64ToBytes(value) {
+  const binary = window.atob(value);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+function createRandomBytes(length) {
+  const bytes = new Uint8Array(length);
+
+  window.crypto.getRandomValues(bytes);
+  return bytes;
+}
+
+function createRandomSalt() {
+  return Array.from(createRandomBytes(16), (byte) => {
+    return byte.toString(16).padStart(2, '0');
+  }).join('');
+}
+
+async function hashPin(pin, salt) {
+  if (!window.crypto || !window.crypto.subtle) {
+    throw new Error('Web Crypto недоступен.');
+  }
+
+  const data = new TextEncoder().encode(`${pin}${salt}`);
+  const digest = await window.crypto.subtle.digest('SHA-256', data);
+
+  return Array.from(new Uint8Array(digest), (byte) => {
+    return byte.toString(16).padStart(2, '0');
+  }).join('');
+}
+
+function secureCompare(left, right) {
+  if (typeof left !== 'string' || typeof right !== 'string' || left.length !== right.length) {
+    return false;
+  }
+
+  let difference = 0;
+
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+
+  return difference === 0;
+}
+
+function isValidPinFormat(pin) {
+  return typeof pin === 'string'
+    && pin.length >= PIN_MIN_LENGTH
+    && pin.length <= PIN_MAX_LENGTH
+    && /^\d+$/.test(pin);
+}
+
+function isPinConfigured() {
+  return securityState.pinEnabled
+    && Boolean(securityState.pinHash)
+    && Boolean(securityState.pinSalt);
+}
+
+function isBiometricSupported() {
+  return Boolean(window.PublicKeyCredential)
+    && Boolean(navigator.credentials)
+    && typeof navigator.credentials.create === 'function'
+    && typeof navigator.credentials.get === 'function';
+}
+
+function hasBiometricLogin() {
+  return isBiometricSupported()
+    && securityState.pinEnabled
+    && securityState.biometricEnabled
+    && Boolean(securityState.credentialId);
+}
+
+function setSecurityModalError(message) {
+  securityModalError.textContent = message || '';
+  securityModalError.hidden = !message;
+}
+
+function refreshSecurityModalUi() {
+  const pinEnabled = securityState.pinEnabled;
+  const biometricSupported = isBiometricSupported();
+  const biometricEnabled = pinEnabled
+    && biometricSupported
+    && securityState.biometricEnabled
+    && Boolean(securityState.credentialId);
+
+  securityPinStatus.textContent = pinEnabled ? 'включён' : 'не включён';
+  securityBiometricStatus.textContent = !biometricSupported
+    ? 'недоступна'
+    : (biometricEnabled ? 'включена' : 'не настроена');
+  securityEnablePinSection.hidden = pinEnabled;
+  securityDisablePinSection.hidden = !pinEnabled;
+  securityEnableBiometricButton.hidden = !biometricSupported || biometricEnabled;
+  securityEnableBiometricButton.disabled = !pinEnabled;
+  securityDisableBiometricButton.hidden = !biometricSupported || !biometricEnabled;
+
+  if (!biometricSupported) {
+    securityBiometricHint.textContent = 'Биометрия недоступна на этом устройстве.';
+  } else if (!pinEnabled) {
+    securityBiometricHint.textContent = 'Сначала включите PIN.';
+  } else if (biometricEnabled) {
+    securityBiometricHint.textContent = 'Биометрия включена. PIN остаётся резервным способом входа.';
+  } else {
+    securityBiometricHint.textContent = 'Используйте отпечаток или Face ID для быстрого входа.';
+  }
+}
+
+function openSecurityModal() {
+  if (isAppLocked) {
+    return;
+  }
+
+  setSecurityModalError('');
+  securityPinInput.value = '';
+  securityPinConfirmInput.value = '';
+  securityCurrentPinInput.value = '';
+  refreshSecurityModalUi();
+  securityModal.hidden = false;
+  document.body.classList.add('modal-open');
+
+  const focusTarget = securityState.pinEnabled
+    ? securityCurrentPinInput
+    : securityPinInput;
+
+  window.setTimeout(() => {
+    focusTarget.focus();
+  }, 0);
+}
+
+function closeSecurityModal() {
+  if (securityModal.hidden) {
+    return;
+  }
+
+  securityModal.hidden = true;
+  document.body.classList.remove('modal-open');
+  setSecurityModalError('');
+  manageSecurityButton.focus();
+}
+
+async function handleSecurityPinSubmit(event) {
+  event.preventDefault();
+  setSecurityModalError('');
+
+  const pin = securityPinInput.value.trim();
+  const confirmation = securityPinConfirmInput.value.trim();
+
+  if (!isValidPinFormat(pin)) {
+    setSecurityModalError('PIN должен состоять из 4–6 цифр.');
+    securityPinInput.focus();
+    return;
+  }
+
+  if (pin !== confirmation) {
+    setSecurityModalError('PIN не совпадает.');
+    securityPinConfirmInput.focus();
+    return;
+  }
+
+  securityEnablePinButton.disabled = true;
+
+  try {
+    const salt = createRandomSalt();
+    const pinHash = await hashPin(pin, salt);
+
+    await setSettings({
+      pinEnabled: true,
+      pinHash,
+      pinSalt: salt,
+      biometricEnabled: false,
+      credentialId: undefined
+    });
+
+    securityState = {
+      pinEnabled: true,
+      pinHash,
+      pinSalt: salt,
+      biometricEnabled: false,
+      credentialId: ''
+    };
+    resetPinLockoutState();
+    securityPinInput.value = '';
+    securityPinConfirmInput.value = '';
+    refreshSecurityModalUi();
+    securityCurrentPinInput.focus();
+  } catch (error) {
+    setSecurityModalError('Не удалось включить PIN. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    securityEnablePinButton.disabled = false;
+  }
+}
+
+async function handleSecurityCurrentPinSubmit(event) {
+  event.preventDefault();
+  setSecurityModalError('');
+
+  const pin = securityCurrentPinInput.value.trim();
+
+  if (!isPinConfigured()) {
+    setSecurityModalError('PIN не настроен.');
+    return;
+  }
+
+  if (!isValidPinFormat(pin)) {
+    setSecurityModalError('Введите текущий PIN.');
+    securityCurrentPinInput.value = '';
+    securityCurrentPinInput.focus();
+    return;
+  }
+
+  securityDisablePinButton.disabled = true;
+
+  try {
+    const pinHash = await hashPin(pin, securityState.pinSalt);
+
+    if (!secureCompare(pinHash, securityState.pinHash)) {
+      setSecurityModalError('Неверный PIN');
+      securityCurrentPinInput.value = '';
+      securityCurrentPinInput.focus();
+      return;
+    }
+
+    await setSettings({
+      pinEnabled: false,
+      pinHash: undefined,
+      pinSalt: undefined,
+      biometricEnabled: false,
+      credentialId: undefined
+    });
+
+    securityState = {
+      pinEnabled: false,
+      pinHash: '',
+      pinSalt: '',
+      biometricEnabled: false,
+      credentialId: ''
+    };
+    resetPinLockoutState();
+    securityCurrentPinInput.value = '';
+    refreshSecurityModalUi();
+    securityPinInput.focus();
+  } catch (error) {
+    setSecurityModalError('Не удалось отключить PIN. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    securityDisablePinButton.disabled = false;
+  }
+}
+
+async function handleEnableBiometric() {
+  setSecurityModalError('');
+
+  if (!securityState.pinEnabled) {
+    setSecurityModalError('Сначала включите PIN.');
+    return;
+  }
+
+  if (!isBiometricSupported()) {
+    setSecurityModalError('Биометрия недоступна на этом устройстве.');
+    return;
+  }
+
+  securityEnableBiometricButton.disabled = true;
+
+  try {
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: createRandomBytes(32),
+        rp: {
+          name: 'Мои Расходы'
+        },
+        user: {
+          id: createRandomBytes(16),
+          name: 'local-user',
+          displayName: 'Мои Расходы'
+        },
+        pubKeyCredParams: [
+          { type: 'public-key', alg: -7 },
+          { type: 'public-key', alg: -257 }
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required'
+        },
+        timeout: 60000,
+        attestation: 'none'
+      }
+    });
+
+    if (!credential || !credential.rawId) {
+      throw new Error('Не удалось создать биометрический ключ.');
+    }
+
+    const credentialId = bytesToBase64(new Uint8Array(credential.rawId));
+
+    await setSettings({
+      biometricEnabled: true,
+      credentialId
+    });
+
+    securityState.biometricEnabled = true;
+    securityState.credentialId = credentialId;
+    refreshSecurityModalUi();
+  } catch (error) {
+    setSecurityModalError('Не удалось включить биометрию. Убедитесь, что она настроена на устройстве.');
+  } finally {
+    securityEnableBiometricButton.disabled = false;
+  }
+}
+
+async function handleDisableBiometric() {
+  setSecurityModalError('');
+  securityDisableBiometricButton.disabled = true;
+
+  try {
+    await setSettings({
+      biometricEnabled: false,
+      credentialId: undefined
+    });
+
+    securityState.biometricEnabled = false;
+    securityState.credentialId = '';
+    refreshSecurityModalUi();
+  } catch (error) {
+    setSecurityModalError('Не удалось отключить биометрию. Попробуйте ещё раз.');
+  } finally {
+    securityDisableBiometricButton.disabled = false;
+  }
+}
+
+function setLockMessage(message, isLockout = false) {
+  lockMessage.textContent = message || '';
+  lockMessage.hidden = !message;
+  lockMessage.dataset.lockout = isLockout ? 'true' : 'false';
+}
+
+function resetPinLockoutState() {
+  if (pinLockCountdownTimer !== null) {
+    window.clearInterval(pinLockCountdownTimer);
+    pinLockCountdownTimer = null;
+  }
+
+  pinFailedAttempts = 0;
+  pinLockedUntil = 0;
+  lockPinInput.disabled = false;
+  lockSubmitButton.disabled = false;
+}
+
+function updatePinLockoutUi() {
+  const remaining = pinLockedUntil - Date.now();
+
+  if (remaining > 0) {
+    const seconds = Math.ceil(remaining / 1000);
+
+    lockPinInput.disabled = true;
+    lockSubmitButton.disabled = true;
+    setLockMessage(`Слишком много попыток. Повторите через ${seconds} с.`, true);
+    return;
+  }
+
+  pinLockedUntil = 0;
+
+  if (pinLockCountdownTimer !== null) {
+    window.clearInterval(pinLockCountdownTimer);
+    pinLockCountdownTimer = null;
+  }
+
+  lockPinInput.disabled = false;
+  lockSubmitButton.disabled = false;
+
+  if (lockMessage.dataset.lockout === 'true') {
+    setLockMessage('');
+  }
+}
+
+function startPinLockout() {
+  pinFailedAttempts = 0;
+  pinLockedUntil = Date.now() + PIN_LOCK_DURATION;
+  lockPinInput.value = '';
+
+  if (pinLockCountdownTimer !== null) {
+    window.clearInterval(pinLockCountdownTimer);
+  }
+
+  updatePinLockoutUi();
+  pinLockCountdownTimer = window.setInterval(updatePinLockoutUi, 500);
+}
+
+function showLockScreen() {
+  if (!isPinConfigured()) {
+    return;
+  }
+
+  isAppLocked = true;
+  appRoot.hidden = true;
+  lockScreen.hidden = false;
+  document.body.classList.add('lock-screen-open');
+  lockPinInput.value = '';
+  setLockMessage('');
+  lockBiometricButton.hidden = !hasBiometricLogin();
+  lockBiometricButton.disabled = false;
+  updatePinLockoutUi();
+
+  if (!lockPinInput.disabled) {
+    window.setTimeout(() => {
+      if (isAppLocked) {
+        lockPinInput.focus();
+      }
+    }, 0);
+  }
+}
+
+function unlockApp() {
+  if (!isAppLocked) {
+    return;
+  }
+
+  isAppLocked = false;
+  appRoot.hidden = false;
+  lockScreen.hidden = true;
+  document.body.classList.remove('lock-screen-open');
+  lockPinInput.value = '';
+  setLockMessage('');
+  resetPinLockoutState();
+  appHiddenAt = 0;
+}
+
+async function handleLockSubmit(event) {
+  event.preventDefault();
+
+  if (Date.now() < pinLockedUntil) {
+    updatePinLockoutUi();
+    return;
+  }
+
+  if (!isPinConfigured()) {
+    setLockMessage('PIN не настроен.');
+    return;
+  }
+
+  setLockMessage('');
+
+  const pin = lockPinInput.value.trim();
+
+  if (!isValidPinFormat(pin)) {
+    setLockMessage('Введите PIN из 4–6 цифр.');
+    lockPinInput.value = '';
+    lockPinInput.focus();
+    return;
+  }
+
+  lockSubmitButton.disabled = true;
+
+  try {
+    const pinHash = await hashPin(pin, securityState.pinSalt);
+
+    if (!secureCompare(pinHash, securityState.pinHash)) {
+      pinFailedAttempts += 1;
+      lockPinInput.value = '';
+
+      if (pinFailedAttempts >= PIN_MAX_ATTEMPTS) {
+        startPinLockout();
+      } else {
+        setLockMessage('Неверный PIN');
+        lockPinInput.focus();
+      }
+
+      return;
+    }
+
+    unlockApp();
+  } catch (error) {
+    setLockMessage('Не удалось проверить PIN. Попробуйте ещё раз.');
+  } finally {
+    if (Date.now() >= pinLockedUntil) {
+      lockSubmitButton.disabled = false;
+    }
+  }
+}
+
+async function handleBiometricUnlock() {
+  if (!isAppLocked || !hasBiometricLogin()) {
+    return;
+  }
+
+  lockBiometricButton.disabled = true;
+  setLockMessage('');
+
+  try {
+    const credential = await navigator.credentials.get({
+      publicKey: {
+        challenge: createRandomBytes(32),
+        allowCredentials: [
+          {
+            id: base64ToBytes(securityState.credentialId),
+            type: 'public-key'
+          }
+        ],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+
+    if (!credential) {
+      throw new Error('Биометрия не подтвердила вход.');
+    }
+
+    unlockApp();
+  } catch (error) {
+    setLockMessage('Биометрия недоступна, введите PIN');
+
+    if (!lockPinInput.disabled) {
+      lockPinInput.focus();
+    }
+  } finally {
+    lockBiometricButton.disabled = false;
+  }
+}
+
+function handleVisibilityChange() {
+  if (!isPinConfigured()) {
+    return;
+  }
+
+  if (document.visibilityState === 'hidden') {
+    if (!isAppLocked) {
+      appHiddenAt = Date.now();
+    }
+
+    return;
+  }
+
+  if (document.visibilityState === 'visible') {
+    const hiddenAt = appHiddenAt;
+
+    appHiddenAt = 0;
+
+    if (!isAppLocked && hiddenAt && Date.now() - hiddenAt > APP_LOCK_TIMEOUT) {
+      showLockScreen();
+    }
+  }
+}
+
+function initSecurityUi() {
+  manageSecurityButton.addEventListener('click', openSecurityModal);
+  securityModalClose.addEventListener('click', closeSecurityModal);
+  securityModal.addEventListener('click', (event) => {
+    if (event.target === securityModal) {
+      closeSecurityModal();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !securityModal.hidden) {
+      closeSecurityModal();
+    }
+  });
+
+  securityPinForm.addEventListener('submit', handleSecurityPinSubmit);
+  securityCurrentPinForm.addEventListener('submit', handleSecurityCurrentPinSubmit);
+  securityEnableBiometricButton.addEventListener('click', handleEnableBiometric);
+  securityDisableBiometricButton.addEventListener('click', handleDisableBiometric);
+  lockForm.addEventListener('submit', handleLockSubmit);
+  lockBiometricButton.addEventListener('click', handleBiometricUnlock);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
 function parseBalanceInput(raw) {
   if (typeof raw !== 'string') {
     return null;
@@ -3192,10 +4065,13 @@ async function init() {
   exportCsvButton.addEventListener('click', handleExportCsv);
   importJsonButton.addEventListener('click', handleImportClick);
   importFileInput.addEventListener('change', handleImportFileChange);
+  backupBannerExportButton.addEventListener('click', handleExportJson);
+  backupBannerHideButton.addEventListener('click', handleBackupBannerHide);
   initTypeTabs();
   initPeriodTabs();
   initCategoryFilter();
   initCategoryModal();
+  initSecurityUi();
 
   window.addEventListener('resize', () => {
     if (lastChartData) {
@@ -3213,6 +4089,11 @@ async function init() {
   try {
     db = await openDB();
     await seedDefaultsIfEmpty();
+    await loadStoredPreferences();
+
+    if (isPinConfigured()) {
+      showLockScreen();
+    }
 
     const [loadedExpenses, balance] = await Promise.all([
       getAllExpenses(),
@@ -3223,6 +4104,7 @@ async function init() {
     initialBalance = balance;
     await refreshCategoryUi();
     await render(expenses);
+    updateBackupBanner();
   } catch (error) {
     showError('Не удалось загрузить операции. Проверьте настройки браузера и перезагрузите страницу.');
   }

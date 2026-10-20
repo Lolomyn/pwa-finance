@@ -52,10 +52,19 @@ body {
 
 .app-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px 12px;
   margin-bottom: 18px;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .header-button {
@@ -604,6 +613,69 @@ button:focus-visible {
   border-radius: 10px;
 }
 
+.backup-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  color: #5b4300;
+  background: #fff4c2;
+  border: 1px solid #efd77c;
+  border-left: 4px solid #d9a400;
+  border-radius: 10px;
+  box-shadow: 0 5px 16px rgba(91, 67, 0, 0.08);
+}
+
+.backup-banner-text {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.backup-banner-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.backup-banner-export {
+  padding: 8px 12px;
+  color: #4f3b00;
+  font-size: 13px;
+  font-weight: 700;
+  background: #f2d06b;
+  border: 1px solid #dfba4f;
+  white-space: nowrap;
+}
+
+.backup-banner-export:hover {
+  background: #ebc75d;
+}
+
+.backup-banner-close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: #5b4300;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.backup-banner-close:hover {
+  background: rgba(91, 67, 0, 0.09);
+}
+
 .empty-state {
   margin: 0;
   padding: 24px 16px;
@@ -871,6 +943,72 @@ body.modal-open {
   overflow-wrap: anywhere;
 }
 
+.security-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-bottom: 4px;
+  padding: 10px 12px;
+  background: #f5f8fb;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.security-status p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.security-status span {
+  color: #344054;
+  font-weight: 700;
+}
+
+.security-section {
+  padding: 16px 0;
+  border-top: 1px solid #eef2f6;
+}
+
+.security-section h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.security-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.security-action-button {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.security-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.security-modal-error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  color: #8e2a21;
+  font-size: 13px;
+  line-height: 1.35;
+  background: #fdecea;
+  border: 1px solid #f5c2bd;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
 body.undo-toast-visible .app {
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
@@ -934,6 +1072,88 @@ body.undo-toast-visible .app {
   }
 }
 
+body.lock-screen-open {
+  overflow: hidden;
+}
+
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.lock-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 26px 22px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16);
+}
+
+.lock-icon {
+  display: block;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
+  color: var(--primary);
+}
+
+.lock-card h1 {
+  font-size: 26px;
+}
+
+.lock-subtitle {
+  margin: 8px 0 22px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.lock-card .field {
+  text-align: left;
+}
+
+.lock-card .field input {
+  padding: 15px 14px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.lock-submit-button {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.lock-biometric-button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.lock-message {
+  margin: 14px 0 0;
+  color: #b42318;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+
 @media (max-width: 380px) {
   h1 {
     font-size: 25px;
@@ -982,5 +1202,25 @@ body.undo-toast-visible .app {
   .category-item-actions {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-button {
+    flex: 1 1 auto;
+  }
+
+  .security-action-button {
+    width: 100%;
+  }
+
+  .lock-card {
+    padding: 22px 18px;
+  }
+
+  .lock-card h1 {
+    font-size: 24px;
   }
 }

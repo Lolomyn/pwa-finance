@@ -16,8 +16,25 @@
   <main class="app">
     <header class="app-header">
       <h1>Мои расходы</h1>
-      <button id="manage-categories" class="secondary-button header-button" type="button">Категории</button>
+      <div class="header-actions">
+        <button id="manage-categories" class="secondary-button header-button" type="button">Категории</button>
+        <button id="manage-security" class="secondary-button header-button" type="button">Безопасность</button>
+      </div>
     </header>
+
+    <section id="backup-banner" class="backup-banner" aria-label="Напоминание о резервной копии" hidden>
+      <p id="backup-banner-text" class="backup-banner-text"></p>
+      <div class="backup-banner-actions">
+        <button id="backup-banner-export" class="backup-banner-export" type="button">Экспорт</button>
+        <button
+          id="backup-banner-hide"
+          class="backup-banner-close"
+          type="button"
+          aria-label="Скрыть до завтра"
+          title="Скрыть до завтра"
+        >×</button>
+      </div>
+    </section>
 
     <p id="app-error" class="app-error" role="alert" hidden></p>
 
@@ -296,11 +313,195 @@
     </div>
   </div>
 
+  <div id="security-modal" class="modal-overlay" hidden>
+    <div
+      class="modal-card security-modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="security-modal-title"
+    >
+      <div class="modal-header">
+        <h2 id="security-modal-title">Безопасность</h2>
+        <button
+          id="security-modal-close"
+          class="secondary-button modal-close-button"
+          type="button"
+        >Закрыть</button>
+      </div>
+
+      <div class="security-status">
+        <p>PIN: <span id="security-pin-status">не включён</span></p>
+        <p>Биометрия: <span id="security-biometric-status">не настроена</span></p>
+      </div>
+
+      <section
+        id="security-enable-pin-section"
+        class="security-section"
+        aria-labelledby="security-enable-pin-title"
+      >
+        <h3 id="security-enable-pin-title">Включить PIN</h3>
+        <p class="security-hint">PIN должен состоять из 4–6 цифр. Он будет запрашиваться при входе.</p>
+
+        <form id="security-pin-form" novalidate>
+          <div class="field">
+            <label for="security-pin">PIN (4–6 цифр)</label>
+            <input
+              id="security-pin"
+              type="password"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              autocomplete="new-password"
+              placeholder="••••"
+            >
+          </div>
+
+          <div class="field">
+            <label for="security-pin-confirm">Повторите PIN</label>
+            <input
+              id="security-pin-confirm"
+              type="password"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              autocomplete="new-password"
+              placeholder="••••"
+            >
+          </div>
+
+          <button
+            id="security-enable-pin"
+            class="secondary-button security-action-button"
+            type="submit"
+          >Включить PIN</button>
+        </form>
+      </section>
+
+      <section
+        id="security-disable-pin-section"
+        class="security-section"
+        aria-labelledby="security-disable-pin-title"
+        hidden
+      >
+        <h3 id="security-disable-pin-title">PIN включён</h3>
+        <p class="security-hint">Чтобы отключить PIN и биометрию, введите текущий PIN.</p>
+
+        <form id="security-current-pin-form" novalidate>
+          <div class="field">
+            <label for="security-current-pin">Текущий PIN</label>
+            <input
+              id="security-current-pin"
+              type="password"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              autocomplete="current-password"
+              placeholder="••••"
+            >
+          </div>
+
+          <button
+            id="security-disable-pin"
+            class="secondary-button security-action-button"
+            type="submit"
+          >Отключить PIN</button>
+        </form>
+      </section>
+
+      <section
+        id="security-biometric-section"
+        class="security-section"
+        aria-labelledby="security-biometric-title"
+      >
+        <h3 id="security-biometric-title">Биометрия</h3>
+        <p id="security-biometric-hint" class="security-hint">Сначала включите PIN.</p>
+
+        <div class="security-actions">
+          <button
+            id="security-enable-biometric"
+            class="secondary-button security-action-button"
+            type="button"
+            disabled
+          >Включить биометрию</button>
+          <button
+            id="security-disable-biometric"
+            class="secondary-button security-action-button"
+            type="button"
+            hidden
+          >Отключить биометрию</button>
+        </div>
+      </section>
+
+      <p id="security-modal-error" class="security-modal-error" role="alert" hidden></p>
+    </div>
+  </div>
+
   <div id="undo-toast" class="undo-toast" role="status" aria-live="polite" hidden>
     <span class="undo-toast-progress" aria-hidden="true"></span>
     <div class="undo-toast-content">
       <span>Удалено.</span>
       <button id="undo-toast-button" class="undo-toast-button" type="button">Отменить</button>
+    </div>
+  </div>
+
+  <div
+    id="lock-screen"
+    class="lock-screen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="lock-title"
+    hidden
+  >
+    <div class="lock-card">
+      <svg class="lock-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M7 10V7a5 5 0 0 1 10 0v3"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+        <rect
+          x="4"
+          y="10"
+          width="16"
+          height="11"
+          rx="2"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        />
+      </svg>
+
+      <h1 id="lock-title">Мои расходы</h1>
+      <p class="lock-subtitle">Введите PIN для входа</p>
+
+      <form id="lock-form" novalidate>
+        <div class="field">
+          <label for="lock-pin">PIN</label>
+          <input
+            id="lock-pin"
+            type="password"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            autocomplete="off"
+            placeholder="••••"
+            aria-describedby="lock-message"
+          >
+        </div>
+
+        <button id="lock-submit" class="lock-submit-button" type="submit">Разблокировать</button>
+      </form>
+
+      <button
+        id="lock-biometric"
+        class="secondary-button lock-biometric-button"
+        type="button"
+        hidden
+      >Войти по отпечатку / Face ID</button>
+
+      <p id="lock-message" class="lock-message" role="alert" hidden></p>
     </div>
   </div>
 
