@@ -51,6 +51,12 @@
     <section class="panel" aria-labelledby="form-title">
       <h2 id="form-title">Новая операция</h2>
 
+      <div
+        id="quick-templates"
+        class="quick-templates"
+        aria-label="Быстрые шаблоны"
+      ></div>
+
       <form id="expense-form" novalidate>
         <div id="type-tabs" class="type-switch" role="tablist" aria-label="Тип операции">
           <button
@@ -364,6 +370,98 @@
     </div>
   </div>
 
+  <div id="quick-template-modal" class="modal-overlay" hidden>
+    <div
+      class="modal-card quick-template-modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="quick-template-modal-title"
+    >
+      <div class="modal-header">
+        <h2 id="quick-template-modal-title">Шаблоны быстрых трат</h2>
+        <button
+          id="quick-template-modal-close"
+          class="secondary-button modal-close-button"
+          type="button"
+        >Закрыть</button>
+      </div>
+
+      <ul id="quick-template-list" class="quick-template-list"></ul>
+      <p id="quick-template-empty" class="quick-template-empty" hidden>Нет шаблонов</p>
+
+      <form id="quick-template-form" class="quick-template-form" novalidate>
+        <h3 id="quick-template-form-title" class="quick-template-form-title">Новый шаблон</h3>
+
+        <div class="field">
+          <label for="quick-template-label">Название</label>
+          <input
+            id="quick-template-label"
+            type="text"
+            maxlength="30"
+            placeholder="Например, Кофе"
+            autocomplete="off"
+            required
+          >
+        </div>
+
+        <div class="quick-template-form-grid">
+          <div class="field">
+            <label for="quick-template-amount">Сумма</label>
+            <input
+              id="quick-template-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              inputmode="decimal"
+              placeholder="Сумма"
+              required
+            >
+          </div>
+
+          <div class="field">
+            <label for="quick-template-type">Тип</label>
+            <select id="quick-template-type">
+              <option value="expense">Расход</option>
+              <option value="income">Доход</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="quick-template-category">Категория</label>
+          <select id="quick-template-category" required></select>
+        </div>
+
+        <div class="field">
+          <label for="quick-template-note">Заметка (необязательно)</label>
+          <input
+            id="quick-template-note"
+            type="text"
+            placeholder="По умолчанию совпадает с названием"
+            autocomplete="off"
+          >
+        </div>
+
+        <p
+          id="quick-template-error"
+          class="quick-template-error"
+          role="alert"
+          hidden
+        ></p>
+
+        <div class="form-actions">
+          <button class="submit-button" type="submit">Сохранить</button>
+          <button
+            id="quick-template-cancel"
+            class="cancel-edit-button"
+            type="button"
+            hidden
+          >Отмена</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="security-modal" class="modal-overlay" hidden>
     <div
       class="modal-card security-modal-card"
@@ -490,7 +588,7 @@
   <div id="undo-toast" class="undo-toast" role="status" aria-live="polite" hidden>
     <span class="undo-toast-progress" aria-hidden="true"></span>
     <div class="undo-toast-content">
-      <span>Удалено.</span>
+      <span id="undo-toast-text">Удалено.</span>
       <button id="undo-toast-button" class="undo-toast-button" type="button">Отменить</button>
     </div>
   </div>

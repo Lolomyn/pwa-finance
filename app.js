@@ -6,6 +6,8 @@ const STORE_NAME = 'expenses';
 const SETTINGS_STORE = 'settings';
 const CATEGORIES_STORE = 'categories';
 const INITIAL_BALANCE_KEY = 'initialBalance';
+const QUICK_TEMPLATES_KEY = 'quickTemplates';
+const QUICK_TEMPLATE_LABEL_MAX = 30;
 
 const SYSTEM_CATEGORY_NAME = 'Другое';
 const TRANSACTION_TYPES = ['expense', 'income'];
@@ -100,6 +102,20 @@ const backupBannerText = document.getElementById('backup-banner-text');
 const backupBannerExportButton = document.getElementById('backup-banner-export');
 const backupBannerHideButton = document.getElementById('backup-banner-hide');
 const manageCategoriesButton = document.getElementById('manage-categories');
+const quickTemplatesRow = document.getElementById('quick-templates');
+const quickTemplateModal = document.getElementById('quick-template-modal');
+const quickTemplateModalClose = document.getElementById('quick-template-modal-close');
+const quickTemplateList = document.getElementById('quick-template-list');
+const quickTemplateEmpty = document.getElementById('quick-template-empty');
+const quickTemplateForm = document.getElementById('quick-template-form');
+const quickTemplateFormTitle = document.getElementById('quick-template-form-title');
+const quickTemplateLabelInput = document.getElementById('quick-template-label');
+const quickTemplateAmountInput = document.getElementById('quick-template-amount');
+const quickTemplateTypeSelect = document.getElementById('quick-template-type');
+const quickTemplateCategorySelect = document.getElementById('quick-template-category');
+const quickTemplateNoteInput = document.getElementById('quick-template-note');
+const quickTemplateCancel = document.getElementById('quick-template-cancel');
+const quickTemplateError = document.getElementById('quick-template-error');
 const categoryModal = document.getElementById('category-modal');
 const categoryModalClose = document.getElementById('category-modal-close');
 const categoryModalTabs = document.getElementById('category-modal-tabs');
@@ -127,6 +143,7 @@ const securityEnableBiometricButton = document.getElementById('security-enable-b
 const securityDisableBiometricButton = document.getElementById('security-disable-biometric');
 const securityModalError = document.getElementById('security-modal-error');
 const undoToast = document.getElementById('undo-toast');
+const undoToastText = document.getElementById('undo-toast-text');
 const undoToastButton = document.getElementById('undo-toast-button');
 const lockScreen = document.getElementById('lock-screen');
 const lockForm = document.getElementById('lock-form');
@@ -170,8 +187,10 @@ let lastBalanceSeries = null;
 let lastBalancePeriod = 'month';
 let categoryModalType = 'expense';
 let editingExpenseId = null;
-let pendingDelete = null;
-let pendingDeleteCommit = null;
+let quickTemplates = [];
+let editingQuickTemplateId = null;
+let pendingUndo = null;
+let pendingUndoCommit = null;
 let printReportAfterPrint = null;
 let printReportTimer = null;
 let lastBackupAt = null;
@@ -1131,6 +1150,333 @@ function setSettings(values) {
   });
 }
 
+function createQuickTemplateId() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return window.crypto.randomUUID();
+  }
+
+  return `quick-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeStoredQuickTemplate(record, index) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    return null;
+  }
+
+  const label = typeof record.label === 'string' ? record.label.trim() : '';
+  const amount = Number(record.amount);
+  const roundedAmount = roundCurrency(amount);
+  const type = TRANSACTION_TYPES.includes(record.type) ? record.type : '';
+  const category = typeof record.category === 'string' ? record.category.trim() : '';
+  const note = typeof record.note === 'string' ? record.note.trim() : '';
+
+  if (
+    !label ||
+    label.length > QUICK_TEMPLATE_LABEL_MAX ||
+    !Number.isFinite(amount) ||
+    roundedAmount <= 0 ||
+    !type ||
+    !category
+  ) {
+    return null;
+  }
+
+  const order = Number.isFinite(Number(record.order)) ? Number(record.order) : index;
+  const id = typeof record.id === 'string' && record.id.trim()
+    ? record.id.trim()
+    : createQuickTemplateId();
+
+  return {
+    id,
+    label,
+    amount: roundedAmount,
+    type,
+    category,
+    note: note || label,
+    enabled: record.enabled !== false,
+    order
+  };
+}
+
+async function getQuickTemplates() {
+  const values = await getSettings([QUICK_TEMPLATES_KEY]);
+  const rawList = Array.isArray(values[QUICK_TEMPLATES_KEY])
+    ? values[QUICK_TEMPLATES_KEY]
+    : [];
+  const usedIds = new Set();
+  const normalized = [];
+
+  rawList.forEach((record, index) => {
+    const template = normalizeStoredQuickTemplate(record, index);
+
+    if (!template) {
+      return;
+    }
+
+    if (usedIds.has(template.id)) {
+      template.id = createQuickTemplateId();
+    }
+
+    usedIds.add(template.id);
+    normalized.push({ template, index });
+  });
+
+  normalized.sort((left, right) => {
+    return left.template.order - right.template.order || left.index - right.index;
+  });
+
+  return normalized.map((entry) => entry.template);
+}
+
+async function saveQuickTemplates(list) {
+  const source = Array.isArray(list) ? list : [];
+  const normalized = source.map((template, index) => ({
+    ...template,
+    order: index
+  }));
+
+  await setSettings({
+    [QUICK_TEMPLATES_KEY]: normalized
+  });
+
+  return normalized;
+}
+
+async function validateQuickTemplateInput(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('Некорректные данные шаблона.');
+  }
+
+  const label = typeof input.label === 'string' ? input.label.trim() : '';
+
+  if (!label) {
+    throw new Error('Введите название шаблона.');
+  }
+
+  if (label.length > QUICK_TEMPLATE_LABEL_MAX) {
+    throw new Error(`Название должно быть не длиннее ${QUICK_TEMPLATE_LABEL_MAX} символов.`);
+  }
+
+  const rawAmount = typeof input.amount === 'string'
+    ? input.amount.trim().replace(',', '.')
+    : input.amount;
+  const amount = Number(rawAmount);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Сумма должна быть больше 0.');
+  }
+
+  const roundedAmount = roundCurrency(amount);
+
+  if (roundedAmount <= 0) {
+    throw new Error('Сумма должна быть больше 0.');
+  }
+
+  const type = TRANSACTION_TYPES.includes(input.type) ? input.type : '';
+
+  if (!type) {
+    throw new Error('Выберите тип шаблона.');
+  }
+
+  const category = typeof input.category === 'string' ? input.category.trim() : '';
+
+  if (!category) {
+    throw new Error('Выберите категорию.');
+  }
+
+  const categories = await getCategories(type);
+  const categoryExists = categories.some((item) => item.name === category);
+
+  if (!categoryExists) {
+    throw new Error(`Категория "${category}" не существует. Выберите другую.`);
+  }
+
+  const note = typeof input.note === 'string' ? input.note.trim() : '';
+
+  return {
+    label,
+    amount: roundedAmount,
+    type,
+    category,
+    note: note || label,
+    enabled: input.enabled !== false
+  };
+}
+
+async function addQuickTemplate(template) {
+  const list = await getQuickTemplates();
+  const prepared = await validateQuickTemplateInput(template);
+  const created = {
+    ...prepared,
+    id: createQuickTemplateId(),
+    order: list.length
+  };
+
+  await saveQuickTemplates([...list, created]);
+
+  return created;
+}
+
+async function updateQuickTemplate(id, patch) {
+  const list = await getQuickTemplates();
+  const index = list.findIndex((template) => template.id === id);
+
+  if (index < 0) {
+    throw new Error('Шаблон не найден.');
+  }
+
+  const merged = {
+    ...list[index],
+    ...(patch && typeof patch === 'object' ? patch : {})
+  };
+  const prepared = await validateQuickTemplateInput(merged);
+  const updated = {
+    ...prepared,
+    id: list[index].id,
+    order: list[index].order
+  };
+
+  list[index] = updated;
+  await saveQuickTemplates(list);
+
+  return updated;
+}
+
+async function setQuickTemplateEnabled(id, enabled) {
+  const list = await getQuickTemplates();
+  const index = list.findIndex((template) => template.id === id);
+
+  if (index < 0) {
+    throw new Error('Шаблон не найден.');
+  }
+
+  const updated = {
+    ...list[index],
+    enabled: enabled === true
+  };
+
+  list[index] = updated;
+  await saveQuickTemplates(list);
+
+  return updated;
+}
+
+async function deleteQuickTemplate(id) {
+  const list = await getQuickTemplates();
+  const index = list.findIndex((template) => template.id === id);
+
+  if (index < 0) {
+    return null;
+  }
+
+  const [removed] = list.splice(index, 1);
+  await saveQuickTemplates(list);
+
+  return removed;
+}
+
+async function reorderQuickTemplate(id, direction) {
+  const list = await getQuickTemplates();
+  const index = list.findIndex((template) => template.id === id);
+
+  if (index < 0) {
+    return list;
+  }
+
+  const targetIndex = direction === 'up'
+    ? index - 1
+    : (direction === 'down' ? index + 1 : index);
+
+  if (targetIndex === index || targetIndex < 0 || targetIndex >= list.length) {
+    return list;
+  }
+
+  const [template] = list.splice(index, 1);
+  list.splice(targetIndex, 0, template);
+  await saveQuickTemplates(list);
+
+  return list;
+}
+
+async function renameQuickTemplateCategory(type, oldName, newName) {
+  const list = await getQuickTemplates();
+  let changed = false;
+
+  const updated = list.map((template) => {
+    if (template.type === type && template.category === oldName) {
+      changed = true;
+      return {
+        ...template,
+        category: newName
+      };
+    }
+
+    return template;
+  });
+
+  if (changed) {
+    await saveQuickTemplates(updated);
+  }
+}
+
+async function applyQuickTemplate(template) {
+  if (!template || typeof template !== 'object') {
+    return null;
+  }
+
+  const categories = await getCategories(template.type);
+  const matchingCategory = categories.find((item) => {
+    return categoryKey(item.type, item.name) === categoryKey(template.type, template.category);
+  });
+
+  if (!matchingCategory) {
+    alert(`Категория "${template.category}" удалена, обновите шаблон`);
+    return null;
+  }
+
+  const prepared = await validateQuickTemplateInput({
+    ...template,
+    category: matchingCategory.name
+  });
+
+  await settlePendingUndoForNewAction();
+
+  const expense = {
+    amount: prepared.amount,
+    note: prepared.note,
+    category: prepared.category,
+    date: getTodayISO(),
+    type: prepared.type,
+    createdAt: new Date().toISOString()
+  };
+  const id = await addExpense(expense);
+  const created = { id, ...expense };
+
+  expenses.push(created);
+
+  startPendingUndo({
+    kind: 'quick-add',
+    toastText: `Добавлено: ${prepared.label} ${formatAmount(prepared.amount)}`,
+    renderAfterCommit: false,
+    undoErrorMessage: 'Не удалось отменить добавление. Проверьте доступ к хранилищу.',
+    undo: async () => {
+      await deleteExpenseRecord(id);
+      expenses = expenses.filter((item) => item.id !== id);
+
+      if (editingExpenseId === id) {
+        await resetFormToAdd();
+      }
+
+      await render(expenses);
+    },
+    commit: async () => {}
+  });
+
+  await render(expenses);
+
+  return created;
+}
+
 function loadStoredPreferences() {
   return getSettings([
     'lastBackupAt',
@@ -1445,6 +1791,13 @@ function replaceAllData(data) {
         key: INITIAL_BALANCE_KEY,
         value: data.balance
       });
+
+      if (Array.isArray(data.quickTemplates)) {
+        settingsStore.put({
+          key: QUICK_TEMPLATES_KEY,
+          value: data.quickTemplates
+        });
+      }
     } catch (error) {
       try {
         transaction.abort();
@@ -2998,7 +3351,7 @@ function hasActiveListFilters() {
 }
 
 function getVisibleExpenses(items) {
-  const pendingDeleteId = pendingDelete ? pendingDelete.expense.id : null;
+  const pendingDeleteId = getPendingExpenseDeleteId();
   const query = currentSearch.trim().toLowerCase();
 
   return items.filter((expense) => {
@@ -3279,10 +3632,11 @@ async function handleBackupBannerHide() {
 
 async function exportJSON() {
   const exportedAt = new Date().toISOString();
-  const [items, balance, categories] = await Promise.all([
+  const [items, balance, categories, templates] = await Promise.all([
     getAllExpenses(),
     getInitialBalance(),
-    getAllCategories()
+    getAllCategories(),
+    getQuickTemplates()
   ]);
   const content = JSON.stringify({
     version: 2,
@@ -3292,6 +3646,16 @@ async function exportJSON() {
       name: category.name,
       type: category.type,
       isSystem: isSystemCategory(category)
+    })),
+    quickTemplates: templates.map((template) => ({
+      id: template.id,
+      label: template.label,
+      amount: template.amount,
+      type: template.type,
+      category: template.category,
+      note: template.note,
+      enabled: template.enabled,
+      order: template.order
     })),
     transactions: items
   }, null, 2);
@@ -3841,6 +4205,116 @@ function buildImportCategories(importedCategories, items, addDefaults) {
   };
 }
 
+function validateImportQuickTemplates(list, categories) {
+  if (!Array.isArray(list)) {
+    console.warn('Блок "quickTemplates" пропущен: ожидается массив шаблонов.');
+    return undefined;
+  }
+
+  const categoryNames = new Map(
+    (categories || []).map((category) => [
+      categoryKey(category.type, category.name),
+      category.name
+    ])
+  );
+  const usedIds = new Set();
+  const result = [];
+
+  list.forEach((entry, index) => {
+    const label = `шаблон №${index + 1}`;
+
+    const skip = (reason) => {
+      console.warn(`${label} пропущен: ${reason}`);
+    };
+
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      skip('ожидается объект.');
+      return;
+    }
+
+    const templateLabel = typeof entry.label === 'string' ? entry.label.trim() : '';
+
+    if (!templateLabel || templateLabel.length > QUICK_TEMPLATE_LABEL_MAX) {
+      skip('поле "label" должно быть непустой строкой до 30 символов.');
+      return;
+    }
+
+    if (
+      typeof entry.amount !== 'number' ||
+      !Number.isFinite(entry.amount) ||
+      entry.amount <= 0
+    ) {
+      skip('поле "amount" должно быть положительным числом.');
+      return;
+    }
+
+    const amount = roundCurrency(entry.amount);
+
+    if (amount <= 0) {
+      skip('поле "amount" слишком маленькое.');
+      return;
+    }
+
+    if (!TRANSACTION_TYPES.includes(entry.type)) {
+      skip('поле "type" должно быть "expense" или "income".');
+      return;
+    }
+
+    const category = typeof entry.category === 'string' ? entry.category.trim() : '';
+
+    if (!category) {
+      skip('поле "category" должно быть непустой строкой.');
+      return;
+    }
+
+    const canonicalCategory = categoryNames.get(categoryKey(entry.type, category));
+
+    if (!canonicalCategory) {
+      skip(`категория "${category}" отсутствует в резервной копии.`);
+      return;
+    }
+
+    if (typeof entry.enabled !== 'boolean') {
+      skip('поле "enabled" должно быть boolean.');
+      return;
+    }
+
+    let id = typeof entry.id === 'string' && entry.id.trim() ? entry.id.trim() : '';
+
+    if (!id || usedIds.has(id)) {
+      id = createQuickTemplateId();
+    }
+
+    usedIds.add(id);
+
+    const note = typeof entry.note === 'string' ? entry.note.trim() : '';
+    const order = Number.isFinite(Number(entry.order)) ? Number(entry.order) : index;
+
+    result.push({
+      template: {
+        id,
+        label: templateLabel,
+        amount,
+        type: entry.type,
+        category: canonicalCategory,
+        note: note || templateLabel,
+        enabled: entry.enabled
+      },
+      order,
+      index
+    });
+  });
+
+  result.sort((left, right) => {
+    return left.order - right.order || left.index - right.index;
+  });
+
+  return result.map((entry, index) => ({
+    ...entry.template,
+    order: index
+  }));
+}
+
 function parseImportJson(text) {
   let data;
 
@@ -3891,13 +4365,17 @@ function parseImportJson(text) {
   const items = data.transactions.map((item, index) => {
     return validateImportItem(item, index);
   });
+  const quickTemplates = Object.prototype.hasOwnProperty.call(data, 'quickTemplates')
+    ? data.quickTemplates
+    : undefined;
 
   if (Object.prototype.hasOwnProperty.call(data, 'categories')) {
     return {
       format: 'v2',
       balance,
       items,
-      categories: validateImportCategories(data.categories)
+      categories: validateImportCategories(data.categories),
+      quickTemplates
     };
   }
 
@@ -3905,7 +4383,8 @@ function parseImportJson(text) {
     format: 'legacy-object',
     balance,
     items,
-    categories: null
+    categories: null,
+    quickTemplates
   };
 }
 
@@ -3949,11 +4428,11 @@ async function handleImportFileChange(event) {
       return;
     }
 
-    if (pendingDeleteCommit) {
-      await pendingDeleteCommit;
+    if (pendingUndoCommit) {
+      await pendingUndoCommit;
     }
 
-    discardPendingDelete();
+    discardPendingUndo();
     renderExpenseList(expenses);
 
     const prepared = buildImportCategories(
@@ -3961,11 +4440,15 @@ async function handleImportFileChange(event) {
       importedData.items,
       importedData.format !== 'v2'
     );
+    const importedQuickTemplates = importedData.quickTemplates === undefined
+      ? undefined
+      : validateImportQuickTemplates(importedData.quickTemplates, prepared.categories);
 
     await replaceAllData({
       items: prepared.items,
       balance: importedData.balance,
-      categories: prepared.categories
+      categories: prepared.categories,
+      quickTemplates: importedQuickTemplates
     });
 
     initialBalance = importedData.balance;
@@ -3979,6 +4462,7 @@ async function handleImportFileChange(event) {
     }
 
     await refreshCategoryUi();
+    await refreshQuickTemplatesUi();
     await render(expenses);
     updateBackupBanner();
   } catch (error) {
@@ -4259,6 +4743,7 @@ async function refreshCategoryUi() {
 async function refreshAfterCategoryChange() {
   expenses = await getAllExpenses();
   await refreshCategoryUi();
+  await refreshQuickTemplatesUi();
   await render(expenses);
 }
 
@@ -4289,6 +4774,7 @@ async function handleCategoryRename(id) {
 
   try {
     await renameCategory(id, newName);
+    await renameQuickTemplateCategory(category.type, category.name, newName.trim());
     setCategoryModalError('');
 
     if (currentFilter === category.name) {
@@ -4416,6 +4902,592 @@ function initCategoryModal() {
     } catch (error) {
       setCategoryModalError(error.message || 'Не удалось добавить категорию.');
     }
+  });
+}
+
+function setQuickTemplateError(message) {
+  const text = typeof message === 'string' ? message : '';
+
+  quickTemplateError.textContent = text;
+  quickTemplateError.hidden = !text;
+}
+
+async function populateQuickTemplateCategorySelect(type, preferredName, keepEmptyWhenMissing) {
+  let categories;
+
+  try {
+    categories = await getCategories(type);
+  } catch (error) {
+    return;
+  }
+
+  if (quickTemplateTypeSelect.value !== type) {
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  const placeholder = document.createElement('option');
+
+  placeholder.value = '';
+  placeholder.textContent = 'Выберите категорию';
+  fragment.append(placeholder);
+
+  categories.forEach((category) => {
+    const option = document.createElement('option');
+
+    option.value = category.name;
+    option.textContent = category.name;
+    fragment.append(option);
+  });
+
+  quickTemplateCategorySelect.replaceChildren(fragment);
+
+  const names = categories.map((category) => category.name);
+  const preferred = typeof preferredName === 'string' ? preferredName : '';
+
+  if (preferred && names.includes(preferred)) {
+    quickTemplateCategorySelect.value = preferred;
+  } else if (!keepEmptyWhenMissing && categories.length > 0) {
+    quickTemplateCategorySelect.value = categories[0].name;
+  } else {
+    quickTemplateCategorySelect.value = '';
+  }
+}
+
+async function resetQuickTemplateForm() {
+  editingQuickTemplateId = null;
+  quickTemplateForm.reset();
+  quickTemplateTypeSelect.value = 'expense';
+  quickTemplateFormTitle.textContent = 'Новый шаблон';
+  quickTemplateCancel.hidden = true;
+  setQuickTemplateError('');
+  await populateQuickTemplateCategorySelect('expense', '', false);
+}
+
+async function renderQuickTemplateModalList() {
+  if (quickTemplateModal.hidden) {
+    return;
+  }
+
+  let categories;
+
+  try {
+    categories = await getAllCategories();
+  } catch (error) {
+    setQuickTemplateError('Не удалось загрузить категории.');
+    return;
+  }
+
+  if (quickTemplateModal.hidden) {
+    return;
+  }
+
+  const categoryKeys = new Set(
+    categories.map((category) => categoryKey(category.type, category.name))
+  );
+  const fragment = document.createDocumentFragment();
+
+  quickTemplates.forEach((template, index) => {
+    const missingCategory = !categoryKeys.has(
+      categoryKey(template.type, template.category)
+    );
+    const item = document.createElement('li');
+
+    item.className = 'quick-template-item';
+    item.dataset.id = template.id;
+
+    if (missingCategory) {
+      item.classList.add('is-missing-category');
+    }
+
+    const info = document.createElement('div');
+
+    info.className = 'quick-template-item-info';
+
+    const name = document.createElement('span');
+
+    name.className = 'quick-template-item-name';
+    name.textContent = template.label;
+
+    const amount = document.createElement('span');
+
+    amount.className = `quick-template-item-amount is-${template.type}`;
+    amount.textContent = formatAmount(template.amount);
+
+    const typeBadge = document.createElement('span');
+
+    typeBadge.className = `quick-template-item-type is-${template.type}`;
+    typeBadge.textContent = template.type === 'income' ? 'Доход' : 'Расход';
+
+    const category = document.createElement('span');
+
+    category.className = 'quick-template-item-category';
+    category.textContent = `Категория: ${template.category}`;
+
+    info.append(name, amount, typeBadge, category);
+
+    if (missingCategory) {
+      const missingBadge = document.createElement('span');
+
+      missingBadge.className = 'quick-template-missing-badge';
+      missingBadge.textContent = 'Категория удалена';
+      info.append(missingBadge);
+    }
+
+    const actions = document.createElement('div');
+
+    actions.className = 'quick-template-item-actions';
+
+    const createActionButton = (action, text, className) => {
+      const button = document.createElement('button');
+
+      button.type = 'button';
+      button.className = className || 'quick-template-action-button';
+      button.dataset.quickTemplateAction = action;
+      button.dataset.id = template.id;
+      button.textContent = text;
+
+      return button;
+    };
+
+    const upButton = createActionButton('up', 'Вверх');
+
+    upButton.disabled = index === 0;
+
+    const downButton = createActionButton('down', 'Вниз');
+
+    downButton.disabled = index === quickTemplates.length - 1;
+
+    const editButton = createActionButton('edit', 'Изменить');
+    const deleteButton = createActionButton(
+      'delete',
+      'Удалить',
+      'quick-template-action-button quick-template-action-button--danger'
+    );
+    const toggleButton = createActionButton(
+      'toggle',
+      template.enabled ? 'Вкл' : 'Выкл',
+      `quick-template-action-button quick-template-toggle${template.enabled ? '' : ' is-off'}`
+    );
+
+    toggleButton.setAttribute('aria-pressed', String(template.enabled));
+    toggleButton.title = template.enabled ? 'Отключить шаблон' : 'Включить шаблон';
+
+    actions.append(upButton, downButton, editButton, deleteButton, toggleButton);
+    item.append(info, actions);
+    fragment.append(item);
+  });
+
+  quickTemplateList.replaceChildren(fragment);
+  quickTemplateEmpty.hidden = quickTemplates.length > 0;
+}
+
+async function renderQuickTemplateRow() {
+  let categories;
+
+  try {
+    categories = await getAllCategories();
+  } catch (error) {
+    return;
+  }
+
+  const categoryKeys = new Set(
+    categories.map((category) => categoryKey(category.type, category.name))
+  );
+  const fragment = document.createDocumentFragment();
+  const activeTemplates = quickTemplates.filter((template) => template.enabled);
+
+  if (quickTemplates.length === 0) {
+    const addButton = document.createElement('button');
+
+    addButton.type = 'button';
+    addButton.className = 'quick-template-add';
+    addButton.dataset.quickTemplateAction = 'manage';
+    addButton.textContent = '+ Добавить шаблон';
+    fragment.append(addButton);
+  } else {
+    activeTemplates.forEach((template) => {
+      const missingCategory = !categoryKeys.has(
+        categoryKey(template.type, template.category)
+      );
+      const button = document.createElement('button');
+
+      button.type = 'button';
+      button.className = `quick-template-button is-${template.type}${missingCategory ? ' is-disabled' : ''}`;
+      button.dataset.quickTemplateId = template.id;
+
+      if (missingCategory) {
+        button.setAttribute('aria-disabled', 'true');
+        button.title = 'Категория удалена';
+      }
+
+      const label = document.createElement('span');
+
+      label.className = 'quick-template-label';
+      label.textContent = template.label;
+
+      const amount = document.createElement('span');
+
+      amount.className = 'quick-template-amount';
+      amount.textContent = formatAmount(template.amount);
+
+      button.append(label, amount);
+
+      if (missingCategory) {
+        const badge = document.createElement('span');
+
+        badge.className = 'quick-template-badge';
+        badge.textContent = 'Категория удалена';
+        button.append(badge);
+      }
+
+      fragment.append(button);
+    });
+
+    const manageButton = document.createElement('button');
+
+    manageButton.type = 'button';
+    manageButton.className = 'quick-template-manage';
+    manageButton.dataset.quickTemplateAction = 'manage';
+    manageButton.setAttribute('aria-label', 'Управление шаблонами');
+    manageButton.title = 'Управление шаблонами';
+    manageButton.textContent = '⚙';
+    fragment.append(manageButton);
+  }
+
+  quickTemplatesRow.replaceChildren(fragment);
+}
+
+async function refreshQuickTemplatesUi() {
+  try {
+    quickTemplates = await getQuickTemplates();
+  } catch (error) {
+    if (!quickTemplateModal.hidden) {
+      setQuickTemplateError('Не удалось загрузить шаблоны.');
+    }
+
+    return;
+  }
+
+  await renderQuickTemplateRow();
+
+  if (!quickTemplateModal.hidden) {
+    await renderQuickTemplateModalList();
+  }
+}
+
+async function openQuickTemplateModal() {
+  if (isAppLocked) {
+    return;
+  }
+
+  setQuickTemplateError('');
+  quickTemplateModal.hidden = false;
+  document.body.classList.add('modal-open');
+  await resetQuickTemplateForm();
+  await renderQuickTemplateModalList();
+
+  if (!quickTemplateModal.hidden) {
+    quickTemplateLabelInput.focus();
+  }
+}
+
+function closeQuickTemplateModal() {
+  if (quickTemplateModal.hidden) {
+    return;
+  }
+
+  quickTemplateModal.hidden = true;
+  document.body.classList.remove('modal-open');
+  setQuickTemplateError('');
+
+  const focusTarget = quickTemplatesRow.querySelector(
+    '.quick-template-manage, .quick-template-add'
+  );
+
+  if (focusTarget) {
+    focusTarget.focus();
+  }
+}
+
+async function editQuickTemplate(id) {
+  const template = quickTemplates.find((item) => item.id === id);
+
+  if (!template) {
+    setQuickTemplateError('Шаблон не найден.');
+    return;
+  }
+
+  let categories;
+
+  try {
+    categories = await getCategories(template.type);
+  } catch (error) {
+    setQuickTemplateError('Не удалось загрузить категории.');
+    return;
+  }
+
+  const matchingCategory = categories.find((category) => {
+    return categoryKey(category.type, category.name)
+      === categoryKey(template.type, template.category);
+  });
+
+  editingQuickTemplateId = template.id;
+  quickTemplateFormTitle.textContent = 'Редактирование шаблона';
+  quickTemplateLabelInput.value = template.label;
+  quickTemplateAmountInput.value = String(template.amount);
+  quickTemplateTypeSelect.value = template.type;
+  quickTemplateNoteInput.value = template.note;
+  quickTemplateCancel.hidden = false;
+  setQuickTemplateError('');
+
+  await populateQuickTemplateCategorySelect(
+    template.type,
+    matchingCategory ? matchingCategory.name : template.category,
+    !matchingCategory
+  );
+
+  if (quickTemplateModal.hidden) {
+    return;
+  }
+
+  quickTemplateForm.scrollIntoView({ block: 'nearest' });
+  quickTemplateLabelInput.focus();
+}
+
+async function handleQuickTemplateSubmit(event) {
+  event.preventDefault();
+  setQuickTemplateError('');
+
+  const label = quickTemplateLabelInput.value.trim();
+
+  if (!label) {
+    setQuickTemplateError('Введите название шаблона.');
+    quickTemplateLabelInput.focus();
+    return;
+  }
+
+  if (label.length > QUICK_TEMPLATE_LABEL_MAX) {
+    setQuickTemplateError(`Название должно быть не длиннее ${QUICK_TEMPLATE_LABEL_MAX} символов.`);
+    quickTemplateLabelInput.focus();
+    return;
+  }
+
+  const rawAmount = quickTemplateAmountInput.value.trim();
+  const amount = Number(rawAmount.replace(',', '.'));
+
+  if (!rawAmount || !Number.isFinite(amount) || amount <= 0) {
+    setQuickTemplateError('Сумма должна быть больше 0.');
+    quickTemplateAmountInput.focus();
+    return;
+  }
+
+  const type = TRANSACTION_TYPES.includes(quickTemplateTypeSelect.value)
+    ? quickTemplateTypeSelect.value
+    : '';
+  const category = quickTemplateCategorySelect.value;
+
+  if (!type) {
+    setQuickTemplateError('Выберите тип шаблона.');
+    return;
+  }
+
+  if (!category) {
+    setQuickTemplateError('Выберите категорию.');
+    quickTemplateCategorySelect.focus();
+    return;
+  }
+
+  const data = {
+    label,
+    amount,
+    type,
+    category,
+    note: quickTemplateNoteInput.value
+  };
+
+  try {
+    if (editingQuickTemplateId === null) {
+      await addQuickTemplate(data);
+    } else {
+      await updateQuickTemplate(editingQuickTemplateId, data);
+    }
+
+    await refreshQuickTemplatesUi();
+    await resetQuickTemplateForm();
+    quickTemplateLabelInput.focus();
+  } catch (error) {
+    setQuickTemplateError(error.message || 'Не удалось сохранить шаблон.');
+  }
+}
+
+async function handleQuickTemplateDelete(id) {
+  const template = quickTemplates.find((item) => item.id === id);
+  const index = quickTemplates.findIndex((item) => item.id === id);
+
+  if (!template || index < 0) {
+    setQuickTemplateError('Шаблон не найден.');
+    return;
+  }
+
+  setQuickTemplateError('');
+
+  try {
+    await settlePendingUndoForNewAction();
+    const removed = await deleteQuickTemplate(id);
+
+    if (!removed) {
+      await refreshQuickTemplatesUi();
+      return;
+    }
+
+    if (editingQuickTemplateId === id) {
+      await resetQuickTemplateForm();
+    }
+
+    await refreshQuickTemplatesUi();
+
+    startPendingUndo({
+      kind: 'template-delete',
+      toastText: 'Шаблон удалён.',
+      renderAfterCommit: false,
+      undoErrorMessage: 'Не удалось вернуть шаблон. Проверьте доступ к хранилищу.',
+      undo: async () => {
+        const current = await getQuickTemplates();
+
+        if (!current.some((item) => item.id === template.id)) {
+          current.splice(Math.min(index, current.length), 0, template);
+          await saveQuickTemplates(current);
+        }
+
+        await refreshQuickTemplatesUi();
+      },
+      commit: async () => {}
+    });
+  } catch (error) {
+    setQuickTemplateError(error.message || 'Не удалось удалить шаблон.');
+  }
+}
+
+async function handleQuickTemplateToggle(id) {
+  const template = quickTemplates.find((item) => item.id === id);
+
+  if (!template) {
+    return;
+  }
+
+  setQuickTemplateError('');
+
+  try {
+    await setQuickTemplateEnabled(id, !template.enabled);
+    await refreshQuickTemplatesUi();
+  } catch (error) {
+    setQuickTemplateError(error.message || 'Не удалось изменить шаблон.');
+  }
+}
+
+async function handleQuickTemplateReorder(id, direction) {
+  setQuickTemplateError('');
+
+  try {
+    await reorderQuickTemplate(id, direction);
+    await refreshQuickTemplatesUi();
+  } catch (error) {
+    setQuickTemplateError(error.message || 'Не удалось изменить порядок шаблонов.');
+  }
+}
+
+function initQuickTemplateUi() {
+  quickTemplatesRow.addEventListener('click', async (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (target.closest('[data-quick-template-action="manage"]')) {
+      await openQuickTemplateModal();
+      return;
+    }
+
+    const button = target.closest('[data-quick-template-id]');
+
+    if (!button || !quickTemplatesRow.contains(button)) {
+      return;
+    }
+
+    const template = quickTemplates.find((item) => {
+      return item.id === button.dataset.quickTemplateId;
+    });
+
+    if (!template) {
+      return;
+    }
+
+    try {
+      await applyQuickTemplate(template);
+    } catch (error) {
+      showError('Не удалось добавить операцию по шаблону. Проверьте доступ к хранилищу.');
+    }
+  });
+
+  quickTemplateModalClose.addEventListener('click', closeQuickTemplateModal);
+  quickTemplateModal.addEventListener('click', (event) => {
+    if (event.target === quickTemplateModal) {
+      closeQuickTemplateModal();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !quickTemplateModal.hidden) {
+      closeQuickTemplateModal();
+    }
+  });
+
+  quickTemplateList.addEventListener('click', async (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const button = target.closest('[data-quick-template-action]');
+
+    if (!button || !quickTemplateList.contains(button)) {
+      return;
+    }
+
+    const action = button.dataset.quickTemplateAction;
+    const id = button.dataset.id;
+
+    if (!id) {
+      return;
+    }
+
+    if (action === 'up' || action === 'down') {
+      await handleQuickTemplateReorder(id, action);
+    } else if (action === 'edit') {
+      await editQuickTemplate(id);
+    } else if (action === 'delete') {
+      await handleQuickTemplateDelete(id);
+    } else if (action === 'toggle') {
+      await handleQuickTemplateToggle(id);
+    }
+  });
+
+  quickTemplateTypeSelect.addEventListener('change', async () => {
+    setQuickTemplateError('');
+    await populateQuickTemplateCategorySelect(
+      quickTemplateTypeSelect.value,
+      '',
+      false
+    );
+  });
+
+  quickTemplateForm.addEventListener('submit', handleQuickTemplateSubmit);
+  quickTemplateCancel.addEventListener('click', async () => {
+    await resetQuickTemplateForm();
+    quickTemplateLabelInput.focus();
   });
 }
 
@@ -5054,7 +6126,8 @@ async function handleEditBalance() {
   }
 }
 
-function showUndoToast() {
+function showUndoToast(message) {
+  undoToastText.textContent = message || 'Удалено.';
   undoToast.hidden = false;
   undoToast.classList.remove('is-visible');
   void undoToast.offsetWidth;
@@ -5068,68 +6141,124 @@ function hideUndoToast() {
   document.body.classList.remove('undo-toast-visible');
 }
 
-function discardPendingDelete() {
-  if (!pendingDelete) {
+function startPendingUndo(options) {
+  const entry = {
+    kind: options.kind,
+    toastText: options.toastText || 'Удалено.',
+    renderAfterCommit: options.renderAfterCommit === true,
+    undoErrorMessage: options.undoErrorMessage,
+    commitErrorMessage: options.commitErrorMessage,
+    expense: options.expense || null,
+    undo: options.undo,
+    commit: options.commit,
+    timerId: null
+  };
+
+  entry.timerId = window.setTimeout(() => {
+    finalizePendingUndo(entry);
+  }, UNDO_DELETE_TIMEOUT);
+  pendingUndo = entry;
+  showUndoToast(entry.toastText);
+
+  return entry;
+}
+
+function discardPendingUndo() {
+  if (!pendingUndo) {
     hideUndoToast();
     return;
   }
 
-  window.clearTimeout(pendingDelete.timerId);
-  pendingDelete = null;
+  window.clearTimeout(pendingUndo.timerId);
+  pendingUndo = null;
   hideUndoToast();
 }
 
-function undoPendingDelete() {
-  if (!pendingDelete) {
+async function undoPendingUndo() {
+  if (!pendingUndo) {
     return;
   }
 
-  discardPendingDelete();
-  renderExpenseList(expenses);
+  const entry = pendingUndo;
+
+  discardPendingUndo();
+
+  try {
+    await entry.undo();
+  } catch (error) {
+    showError(entry.undoErrorMessage || 'Не удалось отменить действие. Попробуйте ещё раз.');
+  }
 }
 
-async function commitPendingDelete() {
-  if (!pendingDelete) {
-    if (pendingDeleteCommit) {
-      await pendingDeleteCommit;
+function getPendingExpenseDeleteId() {
+  if (pendingUndo && pendingUndo.kind === 'expense-delete' && pendingUndo.expense) {
+    return pendingUndo.expense.id;
+  }
+
+  return null;
+}
+
+async function commitPendingUndo() {
+  if (!pendingUndo) {
+    if (pendingUndoCommit) {
+      await pendingUndoCommit;
     }
 
     return;
   }
 
-  const { expense, timerId } = pendingDelete;
+  const entry = pendingUndo;
 
-  window.clearTimeout(timerId);
-  pendingDelete = null;
+  window.clearTimeout(entry.timerId);
+  pendingUndo = null;
   hideUndoToast();
 
   const commit = (async () => {
     try {
-      await deleteExpenseRecord(expense.id);
-      expenses = expenses.filter((item) => item.id !== expense.id);
+      await entry.commit();
     } catch (error) {
-      showError('Не удалось удалить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+      showError(
+        entry.commitErrorMessage
+          || 'Не удалось завершить действие. Проверьте доступ к хранилищу и попробуйте ещё раз.'
+      );
     }
   })();
 
-  pendingDeleteCommit = commit;
+  pendingUndoCommit = commit;
 
   try {
     await commit;
   } finally {
-    if (pendingDeleteCommit === commit) {
-      pendingDeleteCommit = null;
+    if (pendingUndoCommit === commit) {
+      pendingUndoCommit = null;
     }
   }
 }
 
-async function finalizePendingDelete(entry) {
-  if (!pendingDelete || pendingDelete !== entry) {
+async function finalizePendingUndo(entry) {
+  if (!pendingUndo || pendingUndo !== entry) {
     return;
   }
 
-  await commitPendingDelete();
-  await render(expenses);
+  await commitPendingUndo();
+
+  if (entry.renderAfterCommit) {
+    await render(expenses);
+  }
+}
+
+async function settlePendingUndoForNewAction() {
+  if (pendingUndo) {
+    const renderAfterCommit = pendingUndo.renderAfterCommit;
+
+    await commitPendingUndo();
+
+    if (renderAfterCommit) {
+      await render(expenses);
+    }
+  } else if (pendingUndoCommit) {
+    await pendingUndoCommit;
+  }
 }
 
 async function deleteExpense(id) {
@@ -5137,17 +6266,17 @@ async function deleteExpense(id) {
     return;
   }
 
-  if (pendingDelete && pendingDelete.expense.id === id) {
+  if (
+    pendingUndo
+    && pendingUndo.kind === 'expense-delete'
+    && pendingUndo.expense
+    && pendingUndo.expense.id === id
+  ) {
     return;
   }
 
   clearError();
-
-  if (pendingDelete) {
-    await commitPendingDelete();
-  } else if (pendingDeleteCommit) {
-    await pendingDeleteCommit;
-  }
+  await settlePendingUndoForNewAction();
 
   const expense = expenses.find((item) => item.id === id);
 
@@ -5160,16 +6289,22 @@ async function deleteExpense(id) {
     await resetFormToAdd();
   }
 
-  const entry = {
+  startPendingUndo({
+    kind: 'expense-delete',
+    toastText: 'Удалено.',
     expense,
-    timerId: null
-  };
+    renderAfterCommit: true,
+    commitErrorMessage: 'Не удалось удалить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.',
+    undoErrorMessage: 'Не удалось отменить удаление. Попробуйте ещё раз.',
+    undo: async () => {
+      renderExpenseList(expenses);
+    },
+    commit: async () => {
+      await deleteExpenseRecord(expense.id);
+      expenses = expenses.filter((item) => item.id !== expense.id);
+    }
+  });
 
-  entry.timerId = window.setTimeout(() => {
-    finalizePendingDelete(entry);
-  }, UNDO_DELETE_TIMEOUT);
-  pendingDelete = entry;
-  showUndoToast();
   await render(expenses);
 }
 
@@ -5294,7 +6429,7 @@ async function init() {
   form.addEventListener('submit', handleSubmit);
   cancelEditButton.addEventListener('click', handleCancelEdit);
   expenseList.addEventListener('click', handleExpenseListClick);
-  undoToastButton.addEventListener('click', undoPendingDelete);
+  undoToastButton.addEventListener('click', undoPendingUndo);
   editBalanceButton.addEventListener('click', handleEditBalance);
   exportJsonButton.addEventListener('click', handleExportJson);
   exportCsvButton.addEventListener('click', handleExportCsv);
@@ -5309,6 +6444,7 @@ async function init() {
   initCategoryFilter();
   initExpenseListControls();
   initCategoryModal();
+  initQuickTemplateUi();
   initSecurityUi();
 
   window.addEventListener('resize', () => {
@@ -5322,9 +6458,9 @@ async function init() {
   });
 
   window.addEventListener('beforeunload', () => {
-    if (pendingDelete) {
-      window.clearTimeout(pendingDelete.timerId);
-      pendingDelete = null;
+    if (pendingUndo) {
+      window.clearTimeout(pendingUndo.timerId);
+      pendingUndo = null;
     }
   });
 
@@ -5345,6 +6481,7 @@ async function init() {
     expenses = loadedExpenses;
     initialBalance = balance;
     await refreshCategoryUi();
+    await refreshQuickTemplatesUi();
     await render(expenses);
     updateBackupBanner();
   } catch (error) {
