@@ -29,13 +29,17 @@ const MONTHS_SHORT = [
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const CHART_FONT_SIZE = 9;
 const CHART_LABEL_GAP = 6;
+const UNDO_DELETE_TIMEOUT = 5000;
 
 const form = document.getElementById('expense-form');
+const formTitle = document.getElementById('form-title');
 const amountInput = document.getElementById('amount');
 const categoryInput = document.getElementById('category');
 const dateInput = document.getElementById('date');
 const noteInput = document.getElementById('note');
 const submitButton = form.querySelector('button[type="submit"]');
+const cancelEditButton = document.getElementById('cancel-edit');
+const formPanel = form.closest('.panel');
 const typeTabs = document.getElementById('type-tabs');
 const expenseList = document.getElementById('expense-list');
 const emptyState = document.getElementById('empty-state');
@@ -72,6 +76,8 @@ const categoryModalEmpty = document.getElementById('category-modal-empty');
 const categoryAddForm = document.getElementById('category-add-form');
 const categoryNameInput = document.getElementById('category-name-input');
 const categoryModalError = document.getElementById('category-modal-error');
+const undoToast = document.getElementById('undo-toast');
+const undoToastButton = document.getElementById('undo-toast-button');
 
 const amountFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2
@@ -93,6 +99,9 @@ let initialBalanceExists = false;
 let statsRequestId = 0;
 let lastChartData = null;
 let categoryModalType = 'expense';
+let editingExpenseId = null;
+let pendingDelete = null;
+let pendingDeleteCommit = null;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -1000,7 +1009,82 @@ function addExpense(expense) {
   });
 }
 
-function deleteExpense(id) {
+function updateExpense(id, data) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(STORE_NAME, 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(STORE_NAME);
+    const getRequest = store.get(id);
+    let updatedRecord = null;
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось обновить операцию.'));
+    };
+
+    getRequest.onsuccess = () => {
+      const existing = getRequest.result;
+
+      if (!existing) {
+        transaction.abort();
+        fail(new Error('Операция не найдена.'));
+        return;
+      }
+
+      const fields = data && typeof data === 'object' ? data : {};
+      const updated = {
+        ...existing,
+        ...fields,
+        id: existing.id,
+        createdAt: existing.createdAt
+      };
+
+      let putRequest;
+
+      try {
+        putRequest = store.put(updated);
+      } catch (error) {
+        transaction.abort();
+        fail(error);
+        return;
+      }
+
+      updatedRecord = updated;
+      putRequest.onerror = () => fail(putRequest.error);
+    };
+
+    getRequest.onerror = () => fail(getRequest.error);
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(normalizeTransaction(updatedRecord));
+    };
+    transaction.onerror = () => fail(transaction.error || getRequest.error);
+    transaction.onabort = () => fail(transaction.error || getRequest.error);
+  });
+}
+
+function deleteExpenseRecord(id) {
   return new Promise((resolve, reject) => {
     if (!db) {
       reject(new Error('База данных не открыта.'));
@@ -1476,13 +1560,23 @@ function createExpenseElement(expense) {
     info.append(note);
   }
 
+  const actions = document.createElement('div');
+  actions.className = 'expense-actions';
+
+  const editButton = document.createElement('button');
+  editButton.type = 'button';
+  editButton.className = 'edit-button expense-action-button';
+  editButton.dataset.id = String(expense.id);
+  editButton.textContent = 'Изменить';
+
   const deleteButton = document.createElement('button');
   deleteButton.type = 'button';
-  deleteButton.className = 'delete-button';
+  deleteButton.className = 'delete-button expense-action-button';
   deleteButton.dataset.id = String(expense.id);
   deleteButton.textContent = 'Удалить';
 
-  item.append(info, deleteButton);
+  actions.append(editButton, deleteButton);
+  item.append(info, actions);
   return item;
 }
 
@@ -1910,9 +2004,14 @@ function initCategoryFilter() {
 }
 
 function renderExpenseList(items) {
-  const visibleExpenses = currentFilter
-    ? items.filter((expense) => expense.category === currentFilter)
-    : items;
+  const pendingDeleteId = pendingDelete ? pendingDelete.expense.id : null;
+  const visibleExpenses = items.filter((expense) => {
+    if (expense.id === pendingDeleteId) {
+      return false;
+    }
+
+    return currentFilter ? expense.category === currentFilter : true;
+  });
   const sortedExpenses = [...visibleExpenses].sort(compareExpenses);
   const fragment = document.createDocumentFragment();
 
@@ -2330,6 +2429,13 @@ async function handleImportFileChange(event) {
       return;
     }
 
+    if (pendingDeleteCommit) {
+      await pendingDeleteCommit;
+    }
+
+    discardPendingDelete();
+    renderExpenseList(expenses);
+
     const prepared = buildImportCategories(
       importedData.categories,
       importedData.items,
@@ -2347,6 +2453,11 @@ async function handleImportFileChange(event) {
     currentFilter = '';
     closeCategoryModal();
     expenses = await getAllExpenses();
+
+    if (editingExpenseId !== null) {
+      await resetFormToAdd();
+    }
+
     await refreshCategoryUi();
     await render(expenses);
   } catch (error) {
@@ -2357,9 +2468,19 @@ async function handleImportFileChange(event) {
   }
 }
 
-function updateTypeControls() {
+function updateFormModeUi() {
+  const isEditing = editingExpenseId !== null;
   const isIncome = currentType === 'income';
 
+  formTitle.textContent = isEditing ? 'Редактирование операции' : 'Новая операция';
+  submitButton.textContent = isEditing
+    ? 'Сохранить изменения'
+    : (isIncome ? 'Добавить доход' : 'Добавить расход');
+  cancelEditButton.hidden = !isEditing;
+  formPanel.classList.toggle('is-editing', isEditing);
+}
+
+function updateTypeControls() {
   typeTabs.querySelectorAll('[data-type]').forEach((tab) => {
     const isActive = tab.dataset.type === currentType;
 
@@ -2367,7 +2488,7 @@ function updateTypeControls() {
     tab.setAttribute('aria-selected', String(isActive));
   });
 
-  submitButton.textContent = isIncome ? 'Добавить доход' : 'Добавить расход';
+  updateFormModeUi();
 }
 
 async function renderFormCategories(preferredName) {
@@ -2423,6 +2544,52 @@ async function setTransactionType(type) {
   currentType = type;
   updateTypeControls();
   await renderFormCategories(null);
+}
+
+async function resetFormToAdd({ focus = false } = {}) {
+  editingExpenseId = null;
+  currentType = 'expense';
+  form.reset();
+  dateInput.value = getTodayISO();
+  updateTypeControls();
+  await renderFormCategories(null);
+
+  if (focus) {
+    amountInput.focus();
+  }
+}
+
+async function startEditingExpense(expense) {
+  if (!expense || !Number.isInteger(Number(expense.id))) {
+    return;
+  }
+
+  const id = Number(expense.id);
+
+  clearError();
+  editingExpenseId = id;
+  currentType = getTransactionType(expense);
+  amountInput.value = String(expense.amount);
+  noteInput.value = typeof expense.note === 'string' ? expense.note : '';
+  dateInput.value = expense.date;
+  updateTypeControls();
+  await renderFormCategories(expense.category);
+
+  if (editingExpenseId !== id) {
+    return;
+  }
+
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  amountInput.focus({ preventScroll: true });
+}
+
+async function handleCancelEdit() {
+  if (editingExpenseId === null) {
+    return;
+  }
+
+  clearError();
+  await resetFormToAdd({ focus: true });
 }
 
 function initTypeTabs() {
@@ -2785,6 +2952,125 @@ async function handleEditBalance() {
   }
 }
 
+function showUndoToast() {
+  undoToast.hidden = false;
+  undoToast.classList.remove('is-visible');
+  void undoToast.offsetWidth;
+  undoToast.classList.add('is-visible');
+  document.body.classList.add('undo-toast-visible');
+}
+
+function hideUndoToast() {
+  undoToast.hidden = true;
+  undoToast.classList.remove('is-visible');
+  document.body.classList.remove('undo-toast-visible');
+}
+
+function discardPendingDelete() {
+  if (!pendingDelete) {
+    hideUndoToast();
+    return;
+  }
+
+  window.clearTimeout(pendingDelete.timerId);
+  pendingDelete = null;
+  hideUndoToast();
+}
+
+function undoPendingDelete() {
+  if (!pendingDelete) {
+    return;
+  }
+
+  discardPendingDelete();
+  renderExpenseList(expenses);
+}
+
+async function commitPendingDelete() {
+  if (!pendingDelete) {
+    if (pendingDeleteCommit) {
+      await pendingDeleteCommit;
+    }
+
+    return;
+  }
+
+  const { expense, timerId } = pendingDelete;
+
+  window.clearTimeout(timerId);
+  pendingDelete = null;
+  hideUndoToast();
+
+  const commit = (async () => {
+    try {
+      await deleteExpenseRecord(expense.id);
+      expenses = expenses.filter((item) => item.id !== expense.id);
+    } catch (error) {
+      showError('Не удалось удалить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+    }
+  })();
+
+  pendingDeleteCommit = commit;
+
+  try {
+    await commit;
+  } finally {
+    if (pendingDeleteCommit === commit) {
+      pendingDeleteCommit = null;
+    }
+  }
+}
+
+async function finalizePendingDelete(entry) {
+  if (!pendingDelete || pendingDelete !== entry) {
+    return;
+  }
+
+  await commitPendingDelete();
+  await render(expenses);
+}
+
+async function deleteExpense(id) {
+  if (!Number.isInteger(id)) {
+    return;
+  }
+
+  if (pendingDelete && pendingDelete.expense.id === id) {
+    return;
+  }
+
+  clearError();
+
+  if (pendingDelete) {
+    await commitPendingDelete();
+  } else if (pendingDeleteCommit) {
+    await pendingDeleteCommit;
+  }
+
+  const expense = expenses.find((item) => item.id === id);
+
+  if (!expense) {
+    await render(expenses);
+    return;
+  }
+
+  if (editingExpenseId === id) {
+    await resetFormToAdd();
+  }
+
+  const entry = {
+    expense,
+    timerId: null
+  };
+
+  entry.timerId = window.setTimeout(() => {
+    finalizePendingDelete(entry);
+  }, UNDO_DELETE_TIMEOUT);
+  pendingDelete = entry;
+  showUndoToast();
+  await render(expenses);
+}
+
 async function handleSubmit(event) {
   event.preventDefault();
   clearError();
@@ -2813,30 +3099,45 @@ async function handleSubmit(event) {
     return;
   }
 
-  const expense = {
+  const expenseData = {
     amount,
     note: noteInput.value.trim(),
     category: categoryInput.value,
     date: dateInput.value,
-    createdAt: new Date().toISOString(),
     type: currentType
   };
 
   submitButton.disabled = true;
+  cancelEditButton.disabled = true;
 
   try {
-    const id = await addExpense(expense);
+    if (editingExpenseId !== null) {
+      const updated = await updateExpense(editingExpenseId, expenseData);
 
-    expenses.push({ id, ...expense });
-    await render(expenses);
+      expenses = expenses.map((expense) => {
+        return expense.id === updated.id ? updated : expense;
+      });
+      await render(expenses);
+      await resetFormToAdd();
+    } else {
+      const expense = {
+        ...expenseData,
+        createdAt: new Date().toISOString()
+      };
+      const id = await addExpense(expense);
 
-    form.reset();
-    dateInput.value = getTodayISO();
-    amountInput.focus();
+      expenses.push({ id, ...expense });
+      await render(expenses);
+
+      form.reset();
+      dateInput.value = getTodayISO();
+      amountInput.focus();
+    }
   } catch (error) {
     showError('Не удалось сохранить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
     submitButton.disabled = false;
+    cancelEditButton.disabled = false;
   }
 }
 
@@ -2847,31 +3148,34 @@ async function handleExpenseListClick(event) {
     return;
   }
 
-  const button = target.closest('.delete-button');
+  const editButton = target.closest('.edit-button');
 
-  if (!button || !expenseList.contains(button)) {
+  if (editButton && expenseList.contains(editButton)) {
+    const id = Number(editButton.dataset.id);
+    const expense = expenses.find((item) => item.id === id);
+
+    if (expense) {
+      await startEditingExpense(expense);
+    }
+
     return;
   }
 
-  const id = Number(button.dataset.id);
+  const deleteButton = target.closest('.delete-button');
+
+  if (!deleteButton || !expenseList.contains(deleteButton)) {
+    return;
+  }
+
+  const id = Number(deleteButton.dataset.id);
 
   if (!Number.isInteger(id)) {
     return;
   }
 
-  if (!confirm('Удалить эту операцию?')) {
-    return;
-  }
-
-  clearError();
-  button.disabled = true;
-
   try {
     await deleteExpense(id);
-    expenses = expenses.filter((expense) => expense.id !== id);
-    await render(expenses);
   } catch (error) {
-    button.disabled = false;
     showError('Не удалось удалить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   }
 }
@@ -2880,7 +3184,9 @@ async function init() {
   dateInput.value = getTodayISO();
 
   form.addEventListener('submit', handleSubmit);
+  cancelEditButton.addEventListener('click', handleCancelEdit);
   expenseList.addEventListener('click', handleExpenseListClick);
+  undoToastButton.addEventListener('click', undoPendingDelete);
   editBalanceButton.addEventListener('click', handleEditBalance);
   exportJsonButton.addEventListener('click', handleExportJson);
   exportCsvButton.addEventListener('click', handleExportCsv);
@@ -2894,6 +3200,13 @@ async function init() {
   window.addEventListener('resize', () => {
     if (lastChartData) {
       renderBarChart(statsChart, lastChartData, currentPeriod);
+    }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    if (pendingDelete) {
+      window.clearTimeout(pendingDelete.timerId);
+      pendingDelete = null;
     }
   });
 

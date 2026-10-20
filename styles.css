@@ -157,6 +157,14 @@ h2 {
   box-shadow: 0 6px 20px rgba(44, 62, 80, 0.06);
 }
 
+.panel.is-editing {
+  background: #f8fafc;
+  border-color: #aebfd1;
+  box-shadow:
+    0 0 0 3px rgba(44, 62, 80, 0.08),
+    0 10px 28px rgba(44, 62, 80, 0.1);
+}
+
 .type-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -258,10 +266,36 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.form-actions .submit-button {
+  flex: 1 1 auto;
+  width: auto;
+  margin-top: 0;
+}
+
 .submit-button {
   width: 100%;
   margin-top: 2px;
   font-weight: 700;
+}
+
+.cancel-edit-button {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 600;
+  background: #e4eaf0;
+  border: 1px solid transparent;
+}
+
+.cancel-edit-button:hover {
+  background: #d6dee8;
 }
 
 .total {
@@ -650,6 +684,29 @@ button:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.expense-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.expense-action-button {
+  padding: 7px 9px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.edit-button {
+  color: #344054;
+  background: #eef2f6;
+  border: 1px solid #d6dee8;
+}
+
+.edit-button:hover {
+  background: #e4eaf0;
+}
+
 .delete-button {
   flex-shrink: 0;
   background: var(--danger);
@@ -814,6 +871,69 @@ body.modal-open {
   overflow-wrap: anywhere;
 }
 
+body.undo-toast-visible .app {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+.undo-toast {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 900;
+  width: min(520px, calc(100% - 32px));
+  overflow: hidden;
+  color: #ffffff;
+  background: #1f2a37;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+  transform: translateX(-50%);
+}
+
+.undo-toast-progress {
+  display: block;
+  width: 100%;
+  height: 3px;
+  background: #f2b84b;
+}
+
+.undo-toast.is-visible .undo-toast-progress {
+  animation: undo-toast-countdown 5s linear forwards;
+}
+
+.undo-toast-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.undo-toast-button {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.undo-toast-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@keyframes undo-toast-countdown {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0;
+  }
+}
+
 @media (max-width: 380px) {
   h1 {
     font-size: 25px;
@@ -845,8 +965,14 @@ body.modal-open {
   }
 
   .expense-item {
+    flex-wrap: wrap;
     align-items: flex-start;
     padding: 12px;
+  }
+
+  .expense-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .category-item {

@@ -86,7 +86,10 @@
           >
         </div>
 
-        <button class="submit-button" type="submit">Добавить расход</button>
+        <div class="form-actions">
+          <button class="submit-button" type="submit">Добавить расход</button>
+          <button id="cancel-edit" class="cancel-edit-button" type="button" hidden>Отмена</button>
+        </div>
       </form>
     </section>
 
@@ -290,6 +293,14 @@
       </form>
 
       <p id="category-modal-error" class="category-modal-error" role="alert" hidden></p>
+    </div>
+  </div>
+
+  <div id="undo-toast" class="undo-toast" role="status" aria-live="polite" hidden>
+    <span class="undo-toast-progress" aria-hidden="true"></span>
+    <div class="undo-toast-content">
+      <span>Удалено.</span>
+      <button id="undo-toast-button" class="undo-toast-button" type="button">Отменить</button>
     </div>
   </div>
 
