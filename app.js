@@ -92,6 +92,7 @@ const expenseSearchInput = document.getElementById('expense-search');
 const expenseSortSelect = document.getElementById('expense-sort');
 const exportJsonButton = document.getElementById('export-json');
 const exportCsvButton = document.getElementById('export-csv');
+const reportPdfButton = document.getElementById('report-pdf');
 const importJsonButton = document.getElementById('import-json');
 const importFileInput = document.getElementById('import-file');
 const backupBanner = document.getElementById('backup-banner');
@@ -144,6 +145,14 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
   year: 'numeric'
 });
 
+const reportDateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+});
+
 let db = null;
 let expenses = [];
 let currentType = 'expense';
@@ -163,6 +172,8 @@ let categoryModalType = 'expense';
 let editingExpenseId = null;
 let pendingDelete = null;
 let pendingDeleteCommit = null;
+let printReportAfterPrint = null;
+let printReportTimer = null;
 let lastBackupAt = null;
 let backupBannerHiddenUntil = null;
 let securityState = {
@@ -1524,6 +1535,21 @@ function formatNetAmount(value) {
   return `${amount > 0 ? '+' : '−'} ${formatAmount(Math.abs(amount))}`;
 }
 
+function escapeHtml(value) {
+  const replacements = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+
+  return String(value == null ? '' : value).replace(
+    /[&<>"']/g,
+    (character) => replacements[character]
+  );
+}
+
 function getTransactionType(transaction) {
   return transaction && transaction.type === 'income' ? 'income' : 'expense';
 }
@@ -2589,22 +2615,10 @@ function getComparisonChange(metric, current, previous) {
   };
 }
 
-function renderComparison(container, comparison) {
-  container.replaceChildren();
-
+function getComparisonMetricRows(comparison) {
   if (!comparison || !comparison.current || !comparison.prev) {
-    container.hidden = true;
-    return;
+    return [];
   }
-
-  container.hidden = false;
-
-  const title = document.createElement('span');
-  title.className = 'stats-label comparison-title';
-  title.textContent = 'Сравнение с прошлым периодом';
-
-  const list = document.createElement('div');
-  list.className = 'comparison-list';
 
   const metrics = [
     {
@@ -2627,12 +2641,45 @@ function renderComparison(container, comparison) {
     }
   ];
 
-  metrics.forEach((metric) => {
+  return metrics.map((metric) => {
     const current = Number(metric.current);
     const previous = Number(metric.previous);
     const safeCurrent = Number.isFinite(current) ? current : 0;
     const safePrevious = Number.isFinite(previous) ? previous : 0;
-    const change = getComparisonChange(metric.key, safeCurrent, safePrevious);
+
+    return {
+      key: metric.key,
+      label: metric.label,
+      current: safeCurrent,
+      currentText: metric.key === 'net'
+        ? formatNetAmount(safeCurrent)
+        : formatAmount(safeCurrent),
+      change: getComparisonChange(metric.key, safeCurrent, safePrevious)
+    };
+  });
+}
+
+function renderComparison(container, comparison) {
+  container.replaceChildren();
+
+  const rows = getComparisonMetricRows(comparison);
+
+  if (rows.length === 0) {
+    container.hidden = true;
+    return;
+  }
+
+  container.hidden = false;
+
+  const title = document.createElement('span');
+  title.className = 'stats-label comparison-title';
+  title.textContent = 'Сравнение с прошлым периодом';
+
+  const list = document.createElement('div');
+  list.className = 'comparison-list';
+
+  rows.forEach((metric) => {
+    const change = metric.change;
     const row = document.createElement('div');
     const label = document.createElement('span');
     const values = document.createElement('span');
@@ -2645,9 +2692,7 @@ function renderComparison(container, comparison) {
     label.textContent = metric.label;
     values.className = 'comparison-values';
     currentValue.className = 'comparison-current';
-    currentValue.textContent = metric.key === 'net'
-      ? formatNetAmount(safeCurrent)
-      : formatAmount(safeCurrent);
+    currentValue.textContent = metric.currentText;
     detail.className = 'comparison-change';
     arrow.className = `comparison-arrow comparison-arrow--${change.tone}`;
     arrow.textContent = change.arrow;
@@ -2948,6 +2993,27 @@ function matchesExpenseSearch(expense, query) {
   return note.includes(query) || category.includes(query) || amount.includes(query);
 }
 
+function hasActiveListFilters() {
+  return Boolean(currentSearch.trim() || currentFilter);
+}
+
+function getVisibleExpenses(items) {
+  const pendingDeleteId = pendingDelete ? pendingDelete.expense.id : null;
+  const query = currentSearch.trim().toLowerCase();
+
+  return items.filter((expense) => {
+    if (expense.id === pendingDeleteId) {
+      return false;
+    }
+
+    if (currentFilter && expense.category !== currentFilter) {
+      return false;
+    }
+
+    return matchesExpenseSearch(expense, query);
+  });
+}
+
 function getYesterdayISO() {
   const yesterday = startOfDay(new Date());
   yesterday.setDate(yesterday.getDate() - 1);
@@ -3008,7 +3074,7 @@ function updateExpenseEmptyState(items, visibleCount) {
     return;
   }
 
-  const hasFilters = Boolean(currentSearch.trim() || currentFilter);
+  const hasFilters = hasActiveListFilters();
   emptyState.textContent = items.length > 0 || hasFilters
     ? 'Ничего не найдено'
     : 'Пока нет операций';
@@ -3016,19 +3082,7 @@ function updateExpenseEmptyState(items, visibleCount) {
 }
 
 function renderExpenseList(items) {
-  const pendingDeleteId = pendingDelete ? pendingDelete.expense.id : null;
-  const query = currentSearch.trim().toLowerCase();
-  const visibleExpenses = items.filter((expense) => {
-    if (expense.id === pendingDeleteId) {
-      return false;
-    }
-
-    if (currentFilter && expense.category !== currentFilter) {
-      return false;
-    }
-
-    return matchesExpenseSearch(expense, query);
-  });
+  const visibleExpenses = getVisibleExpenses(items);
   const sortedExpenses = sortExpensesForList(visibleExpenses);
 
   if (sortedExpenses.length === 0) {
@@ -3286,6 +3340,333 @@ async function handleExportCsv() {
     showError('Не удалось экспортировать данные. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
     exportCsvButton.disabled = false;
+  }
+}
+
+function getReportPeriodLabel(period) {
+  if (period === 'custom') {
+    const from = customRange ? parseISODate(customRange.from) : null;
+    const to = customRange ? parseISODate(customRange.to) : null;
+
+    if (from && to) {
+      return `${dateFormatter.format(from)} — ${dateFormatter.format(to)}`;
+    }
+
+    return 'Произвольный период';
+  }
+
+  const labels = {
+    week: 'Неделя (последние 7 дней)',
+    month: 'Месяц (последние 30 дней)',
+    year: 'Год (последние 365 дней)',
+    all: 'Всё время'
+  };
+
+  return labels[period] || labels.month;
+}
+
+function buildReportCategoryTableHTML(categories, total) {
+  const source = categories && typeof categories === 'object' ? categories : {};
+  const entries = Object.entries(source)
+    .filter(([, sum]) => Number.isFinite(sum) && sum > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const rows = entries.length > 0
+    ? entries.map(([category, sum]) => {
+      const percent = total > 0
+        ? Math.round((sum / total) * 100)
+        : 0;
+
+      return `
+        <tr>
+          <td>${escapeHtml(category)}</td>
+          <td class="report-number">${escapeHtml(formatAmount(sum))}</td>
+          <td class="report-number">${percent}%</td>
+        </tr>
+      `;
+    }).join('')
+    : `
+      <tr>
+        <td colspan="3" class="report-empty-cell">Нет данных</td>
+      </tr>
+    `;
+
+  return `
+    <table class="report-table report-category-table">
+      <thead>
+        <tr>
+          <th>Категория</th>
+          <th class="report-number">Сумма</th>
+          <th class="report-number">Процент</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function buildReportOperationsHTML(items) {
+  const sortedExpenses = items
+    .filter((expense) => parseISODate(expense.date) !== null)
+    .slice()
+    .sort(compareExpenses);
+
+  if (sortedExpenses.length === 0) {
+    return '<p class="report-empty">Нет операций за период</p>';
+  }
+
+  const todayIso = getTodayISO();
+  const yesterdayIso = getYesterdayISO();
+  const groups = new Map();
+
+  sortedExpenses.forEach((expense) => {
+    if (!groups.has(expense.date)) {
+      groups.set(expense.date, []);
+    }
+
+    groups.get(expense.date).push(expense);
+  });
+
+  const groupRows = Array.from(groups.entries()).map(([date, groupItems]) => {
+    const rows = groupItems.map((expense) => {
+      const type = getTransactionType(expense);
+      const category = expense.category == null || expense.category === ''
+        ? SYSTEM_CATEGORY_NAME
+        : expense.category;
+      const note = expense.note == null ? '' : String(expense.note);
+
+      return `
+        <tr>
+          <td>${type === 'income' ? 'Доход' : 'Расход'}</td>
+          <td>${escapeHtml(category)}</td>
+          <td>${note ? escapeHtml(note) : '—'}</td>
+          <td class="report-number">${escapeHtml(formatSignedAmount(expense.amount, type))}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <tbody class="report-day-group">
+        <tr class="report-day-row">
+          <th colspan="4">${escapeHtml(getExpenseDateGroupTitle(date, todayIso, yesterdayIso))}</th>
+        </tr>
+        ${rows}
+      </tbody>
+    `;
+  }).join('');
+
+  return `
+    <table class="report-table report-operations-table">
+      <thead>
+        <tr>
+          <th>Тип</th>
+          <th>Категория</th>
+          <th>Заметка</th>
+          <th class="report-number">Сумма</th>
+        </tr>
+      </thead>
+      ${groupRows}
+    </table>
+  `;
+}
+
+function buildReportComparisonHTML(comparison) {
+  const rows = getComparisonMetricRows(comparison);
+
+  if (rows.length === 0) {
+    return '';
+  }
+
+  const rowsHtml = rows.map((row) => `
+    <p class="report-comparison-row">
+      <span class="report-comparison-label">${escapeHtml(row.label)}</span>
+      <span class="report-comparison-values"><strong>${escapeHtml(row.currentText)}</strong> (<span class="comparison-arrow comparison-arrow--${row.change.tone}">${row.change.arrow}</span> ${escapeHtml(row.change.text)})</span>
+    </p>
+  `).join('');
+
+  return `
+    <section class="report-section report-comparison">
+      <h2>Сравнение с прошлым периодом</h2>
+      ${rowsHtml}
+    </section>
+  `;
+}
+
+function buildReportHTML(period, filteredOps, stats) {
+  const safeStats = stats && typeof stats === 'object' ? stats : {};
+  const initial = Number(safeStats.initialBalance);
+  const initialBalanceValue = Number.isFinite(initial) ? initial : initialBalance;
+  const current = Number(safeStats.currentBalance);
+  const currentBalanceValue = Number.isFinite(current) ? current : initialBalanceValue;
+  const expenseTotal = Number(safeStats.expenseTotal);
+  const incomeTotal = Number(safeStats.incomeTotal);
+  const netFlow = Number(safeStats.netFlow);
+  const safeExpenseTotal = Number.isFinite(expenseTotal) ? expenseTotal : 0;
+  const safeIncomeTotal = Number.isFinite(incomeTotal) ? incomeTotal : 0;
+  const safeNetFlow = Number.isFinite(netFlow) ? netFlow : 0;
+  const periodLabel = getReportPeriodLabel(period);
+  const generatedAt = reportDateTimeFormatter.format(new Date());
+  const filterNote = hasActiveListFilters()
+    ? '<p class="report-filter-note">с учётом фильтров</p>'
+    : '';
+  const balanceTitle = safeStats.balanceGranularity === 'month'
+    ? 'Баланс по месяцам'
+    : 'Баланс по дням';
+
+  return `
+    <header class="report-header">
+      <h1>Отчёт по финансам</h1>
+      <p class="report-period"><span>Период:</span> <strong>${escapeHtml(periodLabel)}</strong></p>
+      ${filterNote}
+      <p class="report-generated">Сформирован ${escapeHtml(generatedAt)}</p>
+    </header>
+
+    <section class="report-section">
+      <h2>Сводка</h2>
+      <div class="report-summary">
+        <p><span>Начальный баланс:</span> <strong>${escapeHtml(formatAmount(initialBalanceValue))}</strong></p>
+        <p><span>Текущий баланс:</span> <strong>${escapeHtml(formatAmount(currentBalanceValue))}</strong></p>
+        <p><span>Доходы за период:</span> <strong>${escapeHtml(formatAmount(safeIncomeTotal))}</strong></p>
+        <p><span>Расходы за период:</span> <strong>${escapeHtml(formatAmount(safeExpenseTotal))}</strong></p>
+        <p><span>Чистый поток:</span> <strong>${escapeHtml(formatNetAmount(safeNetFlow))}</strong></p>
+      </div>
+    </section>
+
+    ${buildReportComparisonHTML(safeStats.comparison)}
+
+    <section class="report-section">
+      <h2>Расходы по категориям</h2>
+      ${buildReportCategoryTableHTML(safeStats.expenseByCategory, safeExpenseTotal)}
+    </section>
+
+    <section class="report-section">
+      <h2>Доходы по категориям</h2>
+      ${buildReportCategoryTableHTML(safeStats.incomeByCategory, safeIncomeTotal)}
+    </section>
+
+    <section class="report-section report-chart-section">
+      <h2>График баланса</h2>
+      <p class="report-chart-title">${escapeHtml(balanceTitle)}</p>
+      <div class="report-chart" data-report-balance-chart></div>
+    </section>
+
+    <section class="report-section">
+      <h2>Операции за период</h2>
+      ${buildReportOperationsHTML(filteredOps)}
+    </section>
+
+    <footer class="report-footer">
+      Мои Расходы — личный трекер. Данные хранятся на устройстве пользователя.
+    </footer>
+  `;
+}
+
+function cleanupPrintReport() {
+  const report = document.getElementById('print-report');
+
+  if (report) {
+    report.remove();
+  }
+
+  document.body.classList.remove('print-mode');
+
+  if (printReportTimer !== null) {
+    window.clearTimeout(printReportTimer);
+    printReportTimer = null;
+  }
+
+  if (printReportAfterPrint) {
+    window.removeEventListener('afterprint', printReportAfterPrint);
+    printReportAfterPrint = null;
+  }
+}
+
+async function printReport() {
+  if (document.getElementById('print-report')) {
+    return;
+  }
+
+  clearError();
+  reportPdfButton.disabled = true;
+
+  try {
+    const [allExpenses, balance] = await Promise.all([
+      getAllExpenses(),
+      getInitialBalance()
+    ]);
+    const period = getActiveStatsPeriod();
+    const stats = aggregate(allExpenses, period);
+    const range = getPeriodRange(period, allExpenses);
+    const startIso = formatISODate(range.start);
+    const endIso = formatISODate(range.end);
+    const filteredExpenses = getVisibleExpenses(allExpenses).filter((expense) => {
+      const date = parseISODate(expense.date);
+
+      if (!date) {
+        return false;
+      }
+
+      const isoDate = formatISODate(date);
+      return isoDate >= startIso && isoDate <= endIso;
+    });
+    const totals = calculateTotals(allExpenses);
+    const currentBalance = roundCurrency(
+      (Number(balance) || 0) + totals.incomeTotal - totals.expenseTotal
+    );
+    const report = document.createElement('div');
+    report.id = 'print-report';
+    report.innerHTML = buildReportHTML(period, filteredExpenses, {
+      ...stats,
+      initialBalance: balance,
+      currentBalance
+    });
+
+    document.body.append(report);
+    document.body.classList.add('print-mode');
+
+    const chartContainer = report.querySelector('[data-report-balance-chart]');
+
+    if (chartContainer) {
+      renderBalanceChart(
+        chartContainer,
+        stats.balanceSeries,
+        stats.chartPeriod || period
+      );
+    }
+
+    printReportAfterPrint = () => {
+      cleanupPrintReport();
+    };
+    window.addEventListener('afterprint', printReportAfterPrint, { once: true });
+
+    let printInvoked = false;
+    const invokePrint = () => {
+      if (printInvoked || !document.getElementById('print-report')) {
+        return;
+      }
+
+      printInvoked = true;
+
+      if (printReportTimer !== null) {
+        window.clearTimeout(printReportTimer);
+        printReportTimer = null;
+      }
+
+      try {
+        window.print();
+      } catch (error) {
+        cleanupPrintReport();
+        showError('Не удалось открыть окно печати. Попробуйте ещё раз.');
+      }
+    };
+
+    requestAnimationFrame(invokePrint);
+    // В фоновой вкладке requestAnimationFrame может не сработать до возврата фокуса.
+    printReportTimer = window.setTimeout(invokePrint, 200);
+  } catch (error) {
+    cleanupPrintReport();
+    showError('Не удалось сформировать отчёт. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    reportPdfButton.disabled = false;
   }
 }
 
@@ -4911,6 +5292,7 @@ async function init() {
   editBalanceButton.addEventListener('click', handleEditBalance);
   exportJsonButton.addEventListener('click', handleExportJson);
   exportCsvButton.addEventListener('click', handleExportCsv);
+  reportPdfButton.addEventListener('click', printReport);
   importJsonButton.addEventListener('click', handleImportClick);
   importFileInput.addEventListener('change', handleImportFileChange);
   backupBannerExportButton.addEventListener('click', handleExportJson);

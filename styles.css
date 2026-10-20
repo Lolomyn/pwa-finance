@@ -1343,6 +1343,246 @@ body.lock-screen-open {
   }
 }
 
+#print-report {
+  display: none;
+}
+
+body.print-mode #print-report {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  display: block;
+  width: 180mm;
+  color: #000000;
+  visibility: hidden;
+  pointer-events: none;
+  background: #ffffff;
+}
+
+#print-report .report-chart {
+  height: 62mm;
+}
+
+#print-report .report-chart text {
+  font-family: inherit;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+@page {
+  size: A4;
+  margin: 15mm;
+}
+
+@media print {
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  body.print-mode > *:not(#print-report) {
+    display: none !important;
+  }
+
+  body.print-mode #print-report {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    display: block !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #000000;
+    visibility: visible !important;
+    pointer-events: auto;
+    background: #ffffff;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  #print-report,
+  #print-report * {
+    position: static !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background-image: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  #print-report .report-header {
+    margin-bottom: 5mm;
+    padding-bottom: 4mm;
+    border-bottom: 1.5pt solid #000000;
+  }
+
+  #print-report h1 {
+    margin: 0 0 2mm;
+    font-size: 22pt;
+    line-height: 1.2;
+  }
+
+  #print-report h2 {
+    margin: 0 0 2mm;
+    font-size: 14pt;
+    line-height: 1.25;
+  }
+
+  #print-report h1,
+  #print-report h2,
+  #print-report h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  #print-report .report-period,
+  #print-report .report-generated,
+  #print-report .report-filter-note {
+    margin: 1.5mm 0 0;
+    font-size: 10.5pt;
+  }
+
+  #print-report .report-filter-note {
+    font-weight: 700;
+  }
+
+  #print-report .report-section {
+    margin-bottom: 5mm;
+  }
+
+  #print-report .report-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 8mm;
+  }
+
+  #print-report .report-summary p {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4mm;
+    margin: 0;
+    padding: 1.2mm 0;
+    border-bottom: 0.5pt solid #777777;
+  }
+
+  #print-report .report-summary p:last-child {
+    grid-column: 1 / -1;
+  }
+
+  #print-report .report-summary strong {
+    white-space: nowrap;
+  }
+
+  #print-report .report-comparison-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4mm;
+    margin: 0;
+    padding: 1.2mm 0;
+    border-bottom: 0.5pt solid #777777;
+  }
+
+  #print-report .report-comparison-values {
+    text-align: right;
+  }
+
+  #print-report .report-table {
+    width: 100%;
+    margin: 0 0 2mm;
+    border-collapse: collapse;
+    font-size: 10pt;
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  #print-report .report-table thead {
+    display: table-header-group;
+  }
+
+  #print-report .report-table th,
+  #print-report .report-table td {
+    padding: 1.4mm 2mm;
+    text-align: left;
+    vertical-align: top;
+    border: 0.75pt solid #000000;
+  }
+
+  #print-report .report-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  #print-report .report-table .report-number {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  #print-report .report-day-row th {
+    font-weight: 700;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  #print-report .report-operations-table {
+    font-size: 9.5pt;
+  }
+
+  #print-report .report-empty,
+  #print-report .report-empty-cell {
+    margin: 0;
+    padding: 2mm 0;
+    color: #000000;
+  }
+
+  #print-report .report-chart-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  #print-report .report-chart-title {
+    margin: 0 0 1mm;
+    font-size: 10.5pt;
+  }
+
+  #print-report .report-chart {
+    width: 100%;
+    height: 62mm;
+    overflow: hidden;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  #print-report .report-chart svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  #print-report .report-chart text {
+    fill: #000000;
+    font-family: inherit;
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #print-report .stats-chart-empty {
+    color: #000000;
+  }
+
+  #print-report .report-footer {
+    margin-top: 8mm;
+    padding-top: 3mm;
+    font-size: 9pt;
+    border-top: 0.75pt solid #000000;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
 @media (max-width: 380px) {
   h1 {
     font-size: 25px;
