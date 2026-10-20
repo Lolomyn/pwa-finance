@@ -1,14 +1,18 @@
 'use strict';
 
 const DB_NAME = 'expense-tracker-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'expenses';
 const SETTINGS_STORE = 'settings';
+const CATEGORIES_STORE = 'categories';
 const INITIAL_BALANCE_KEY = 'initialBalance';
 
-const EXPENSE_CATEGORIES = ['Еда', 'Транспорт', 'Жильё', 'Развлечения', 'Другое'];
-const INCOME_CATEGORIES = ['Зарплата', 'Фриланс', 'Подарок', 'Инвестиции', 'Другое'];
+const SYSTEM_CATEGORY_NAME = 'Другое';
 const TRANSACTION_TYPES = ['expense', 'income'];
+const DEFAULT_CATEGORIES = {
+  expense: ['Еда', 'Транспорт', 'Жильё', 'Развлечения', SYSTEM_CATEGORY_NAME],
+  income: ['Зарплата', 'Фриланс', 'Подарок', 'Инвестиции', SYSTEM_CATEGORY_NAME]
+};
 
 const PERIODS = ['week', 'month', 'year', 'all'];
 const PERIOD_DAYS = {
@@ -59,6 +63,15 @@ const exportJsonButton = document.getElementById('export-json');
 const exportCsvButton = document.getElementById('export-csv');
 const importJsonButton = document.getElementById('import-json');
 const importFileInput = document.getElementById('import-file');
+const manageCategoriesButton = document.getElementById('manage-categories');
+const categoryModal = document.getElementById('category-modal');
+const categoryModalClose = document.getElementById('category-modal-close');
+const categoryModalTabs = document.getElementById('category-modal-tabs');
+const categoryModalList = document.getElementById('category-modal-list');
+const categoryModalEmpty = document.getElementById('category-modal-empty');
+const categoryAddForm = document.getElementById('category-add-form');
+const categoryNameInput = document.getElementById('category-name-input');
+const categoryModalError = document.getElementById('category-modal-error');
 
 const amountFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2
@@ -79,6 +92,7 @@ let initialBalance = 0;
 let initialBalanceExists = false;
 let statsRequestId = 0;
 let lastChartData = null;
+let categoryModalType = 'expense';
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -110,6 +124,51 @@ function openDB() {
         database.createObjectStore(SETTINGS_STORE, {
           keyPath: 'key'
         });
+      }
+
+      if (!database.objectStoreNames.contains(CATEGORIES_STORE)) {
+        const categoriesStore = database.createObjectStore(CATEGORIES_STORE, {
+          keyPath: 'id',
+          autoIncrement: true
+        });
+        const knownCategories = new Set();
+
+        createDefaultCategoryRecords().forEach((record) => {
+          categoriesStore.add(record);
+          knownCategories.add(categoryKey(record.type, record.name));
+        });
+
+        const expensesStore = database.objectStoreNames.contains(STORE_NAME)
+          ? request.transaction.objectStore(STORE_NAME)
+          : null;
+
+        if (expensesStore) {
+          const cursorRequest = expensesStore.openCursor();
+
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+
+            if (!cursor) {
+              return;
+            }
+
+            const record = cursor.value || {};
+            const type = record.type === 'income' ? 'income' : 'expense';
+            const name = typeof record.category === 'string' ? record.category : '';
+            const key = name ? categoryKey(type, name) : '';
+
+            if (name && !knownCategories.has(key)) {
+              knownCategories.add(key);
+              categoriesStore.add({
+                name,
+                type,
+                isSystem: name === SYSTEM_CATEGORY_NAME
+              });
+            }
+
+            cursor.continue();
+          };
+        }
       }
     };
 
@@ -144,6 +203,601 @@ function normalizeTransaction(transaction) {
     ...record,
     type: record.type === 'income' ? 'income' : 'expense'
   };
+}
+
+function isSystemCategory(category) {
+  return Boolean(category) && (
+    category.isSystem === true ||
+    category.name === SYSTEM_CATEGORY_NAME
+  );
+}
+
+function normalizeCategory(record) {
+  const category = record && typeof record === 'object' ? record : {};
+  const name = typeof category.name === 'string' ? category.name : '';
+
+  return {
+    ...category,
+    name,
+    type: category.type === 'income' ? 'income' : 'expense',
+    isSystem: category.isSystem === true || name === SYSTEM_CATEGORY_NAME
+  };
+}
+
+function createDefaultCategoryRecords() {
+  const records = [];
+
+  TRANSACTION_TYPES.forEach((type) => {
+    DEFAULT_CATEGORIES[type].forEach((name) => {
+      records.push({
+        name,
+        type,
+        isSystem: name === SYSTEM_CATEGORY_NAME
+      });
+    });
+  });
+
+  return records;
+}
+
+function sortCategoryGroup(categories) {
+  const regular = categories
+    .filter((category) => !category.isSystem)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  const system = categories
+    .filter((category) => category.isSystem)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+  return [...regular, ...system];
+}
+
+function readAllCategories() {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(CATEGORIES_STORE, 'readonly');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(CATEGORIES_STORE);
+    const request = store.getAll();
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось прочитать категории.'));
+    };
+
+    request.onsuccess = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve((request.result || []).map(normalizeCategory));
+    };
+
+    request.onerror = () => fail(request.error);
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+async function getCategories(type) {
+  const all = await readAllCategories();
+  const group = all.filter((category) => category.type === type);
+
+  return sortCategoryGroup(group);
+}
+
+async function getAllCategories() {
+  const all = await readAllCategories();
+
+  return [
+    ...sortCategoryGroup(all.filter((category) => category.type === 'expense')),
+    ...sortCategoryGroup(all.filter((category) => category.type === 'income'))
+  ];
+}
+
+function getCategoryById(id) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(CATEGORIES_STORE, 'readonly');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(CATEGORIES_STORE);
+    const request = store.get(id);
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось прочитать категорию.'));
+    };
+
+    request.onsuccess = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(request.result ? normalizeCategory(request.result) : null);
+    };
+
+    request.onerror = () => fail(request.error);
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+function seedDefaultsIfEmpty() {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(CATEGORIES_STORE, 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(CATEGORIES_STORE);
+    const request = store.getAll();
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось проверить категории.'));
+    };
+
+    request.onsuccess = () => {
+      const existing = request.result || [];
+
+      TRANSACTION_TYPES.forEach((type) => {
+        const typeCategories = existing.filter((category) => category.type === type);
+
+        if (typeCategories.length === 0) {
+          DEFAULT_CATEGORIES[type].forEach((name) => {
+            store.add({
+              name,
+              type,
+              isSystem: name === SYSTEM_CATEGORY_NAME
+            });
+          });
+        } else if (!typeCategories.some((category) => {
+          return category.name === SYSTEM_CATEGORY_NAME;
+        })) {
+          store.add({
+            name: SYSTEM_CATEGORY_NAME,
+            type,
+            isSystem: true
+          });
+        }
+      });
+    };
+
+    request.onerror = () => fail(request.error);
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve();
+    };
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+function validateCategoryName(rawName) {
+  const name = typeof rawName === 'string' ? rawName.trim() : '';
+
+  if (!name) {
+    throw new Error('Название категории не может быть пустым.');
+  }
+
+  return name;
+}
+
+function categoryKey(type, name) {
+  return `${type}\u0000${name.toLowerCase()}`;
+}
+
+function addCategory(name, type) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    if (!TRANSACTION_TYPES.includes(type)) {
+      reject(new Error('Неизвестный тип категории.'));
+      return;
+    }
+
+    let cleanName;
+
+    try {
+      cleanName = validateCategoryName(name);
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(CATEGORIES_STORE, 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(CATEGORIES_STORE);
+    const listRequest = store.getAll();
+    let created = null;
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось добавить категорию.'));
+    };
+
+    listRequest.onsuccess = () => {
+      const exists = (listRequest.result || []).some((category) => {
+        return (
+          category.type === type &&
+          String(category.name).trim().toLowerCase() === cleanName.toLowerCase()
+        );
+      });
+
+      if (exists) {
+        transaction.abort();
+        fail(new Error('Категория с таким названием уже есть.'));
+        return;
+      }
+
+      const addRequest = store.add({
+        name: cleanName,
+        type,
+        isSystem: false
+      });
+
+      addRequest.onsuccess = () => {
+        created = {
+          id: addRequest.result,
+          name: cleanName,
+          type,
+          isSystem: false
+        };
+      };
+    };
+
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(created);
+    };
+
+    transaction.onerror = () => fail(transaction.error || listRequest.error);
+    transaction.onabort = () => fail(transaction.error || listRequest.error);
+  });
+}
+
+function renameCategory(id, newName) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction([CATEGORIES_STORE, STORE_NAME], 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const categoriesStore = transaction.objectStore(CATEGORIES_STORE);
+    const expensesStore = transaction.objectStore(STORE_NAME);
+    const getRequest = categoriesStore.get(id);
+    let updatedExpenses = 0;
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось переименовать категорию.'));
+    };
+
+    getRequest.onsuccess = () => {
+      const category = getRequest.result;
+
+      if (!category) {
+        transaction.abort();
+        fail(new Error('Категория не найдена.'));
+        return;
+      }
+
+      if (isSystemCategory(category)) {
+        transaction.abort();
+        fail(new Error('Системную категорию нельзя переименовать.'));
+        return;
+      }
+
+      let cleanName;
+
+      try {
+        cleanName = validateCategoryName(newName);
+      } catch (error) {
+        transaction.abort();
+        fail(error);
+        return;
+      }
+
+      const oldName = typeof category.name === 'string' ? category.name : '';
+      const listRequest = categoriesStore.getAll();
+
+      listRequest.onsuccess = () => {
+        const exists = (listRequest.result || []).some((item) => {
+          return (
+            item.id !== id &&
+            item.type === category.type &&
+            String(item.name).trim().toLowerCase() === cleanName.toLowerCase()
+          );
+        });
+
+        if (exists) {
+          transaction.abort();
+          fail(new Error('Категория с таким названием уже есть.'));
+          return;
+        }
+
+        category.name = cleanName;
+        categoriesStore.put(category);
+
+        const cursorRequest = expensesStore.openCursor();
+
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+
+          if (!cursor) {
+            return;
+          }
+
+          const record = cursor.value;
+          const recordType = record && record.type === 'income' ? 'income' : 'expense';
+
+          if (recordType === category.type && record.category === oldName) {
+            cursor.update({
+              ...record,
+              category: cleanName
+            });
+            updatedExpenses += 1;
+          }
+
+          cursor.continue();
+        };
+      };
+    };
+
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve({ updatedExpenses });
+    };
+
+    transaction.onerror = () => fail(transaction.error || getRequest.error);
+    transaction.onabort = () => fail(transaction.error || getRequest.error);
+  });
+}
+
+function countCategoryUsage(category) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(STORE_NAME, 'readonly');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.getAll();
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось посчитать операции категории.'));
+    };
+
+    request.onsuccess = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+
+      const count = (request.result || []).filter((record) => {
+        const recordType = record && record.type === 'income' ? 'income' : 'expense';
+
+        return recordType === category.type && record.category === category.name;
+      }).length;
+
+      resolve(count);
+    };
+
+    request.onerror = () => fail(request.error);
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+function deleteCategoryRecord(category, moveToOther) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction([CATEGORIES_STORE, STORE_NAME], 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const categoriesStore = transaction.objectStore(CATEGORIES_STORE);
+    const expensesStore = transaction.objectStore(STORE_NAME);
+    let movedExpenses = 0;
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось удалить категорию.'));
+    };
+
+    try {
+      categoriesStore.delete(category.id);
+
+      if (moveToOther) {
+        const cursorRequest = expensesStore.openCursor();
+
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+
+          if (!cursor) {
+            return;
+          }
+
+          const record = cursor.value;
+          const recordType = record && record.type === 'income' ? 'income' : 'expense';
+
+          if (recordType === category.type && record.category === category.name) {
+            cursor.update({
+              ...record,
+              category: SYSTEM_CATEGORY_NAME
+            });
+            movedExpenses += 1;
+          }
+
+          cursor.continue();
+        };
+      }
+    } catch (error) {
+      try {
+        transaction.abort();
+      } catch (abortError) {
+        // Транзакция уже завершилась — данные не менялись.
+      }
+
+      reject(error);
+      return;
+    }
+
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve({ movedExpenses });
+    };
+
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
+async function deleteCategory(id) {
+  const category = await getCategoryById(id);
+
+  if (!category) {
+    throw new Error('Категория не найдена.');
+  }
+
+  if (isSystemCategory(category)) {
+    throw new Error('Системную категорию нельзя удалить.');
+  }
+
+  const usage = await countCategoryUsage(category);
+  const message = usage > 0
+    ? `Категория используется в ${usage} операциях. Заменить их на «Другое» и удалить?`
+    : `Удалить категорию «${category.name}»?`;
+
+  if (!window.confirm(message)) {
+    return false;
+  }
+
+  await deleteCategoryRecord(category, usage > 0);
+
+  return true;
 }
 
 function getInitialBalance() {
@@ -395,7 +1049,7 @@ function deleteExpense(id) {
   });
 }
 
-function replaceAllData(items, balance) {
+function replaceAllData(data) {
   return new Promise((resolve, reject) => {
     if (!db) {
       reject(new Error('База данных не открыта.'));
@@ -405,7 +1059,10 @@ function replaceAllData(items, balance) {
     let transaction;
 
     try {
-      transaction = db.transaction([STORE_NAME, SETTINGS_STORE], 'readwrite');
+      transaction = db.transaction(
+        [STORE_NAME, SETTINGS_STORE, CATEGORIES_STORE],
+        'readwrite'
+      );
     } catch (error) {
       reject(error);
       return;
@@ -413,6 +1070,7 @@ function replaceAllData(items, balance) {
 
     const store = transaction.objectStore(STORE_NAME);
     const settingsStore = transaction.objectStore(SETTINGS_STORE);
+    const categoriesStore = transaction.objectStore(CATEGORIES_STORE);
     const fallbackCreatedAt = new Date().toISOString();
     let settled = false;
 
@@ -426,9 +1084,18 @@ function replaceAllData(items, balance) {
     };
 
     try {
+      categoriesStore.clear();
       store.clear();
 
-      items.forEach((item) => {
+      (data.categories || []).forEach((category) => {
+        categoriesStore.add({
+          name: category.name,
+          type: category.type,
+          isSystem: isSystemCategory(category)
+        });
+      });
+
+      (data.items || []).forEach((item) => {
         store.add({
           amount: item.amount,
           note: item.note,
@@ -443,9 +1110,15 @@ function replaceAllData(items, balance) {
 
       settingsStore.put({
         key: INITIAL_BALANCE_KEY,
-        value: balance
+        value: data.balance
       });
     } catch (error) {
+      try {
+        transaction.abort();
+      } catch (abortError) {
+        // Транзакция уже завершилась — данные не менялись.
+      }
+
       reject(error);
       return;
     }
@@ -680,7 +1353,7 @@ function aggregate(items, period) {
 
     const category = typeof expense.category === 'string' && expense.category
       ? expense.category
-      : 'Другое';
+      : SYSTEM_CATEGORY_NAME;
     const monthKey = expenseIso.slice(0, 7);
     const type = getTransactionType(expense);
 
@@ -1201,23 +1874,35 @@ function initPeriodTabs() {
   });
 }
 
-function getAllCategories() {
-  return [...new Set([...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES])];
-}
-
-function initCategoryFilter() {
+async function renderCategoryFilter() {
+  const categories = await getAllCategories();
+  const names = [...new Set(categories.map((category) => category.name))];
   const fragment = document.createDocumentFragment();
+  const allOption = document.createElement('option');
 
-  getAllCategories().forEach((category) => {
+  allOption.value = '';
+  allOption.textContent = 'Все категории';
+  fragment.append(allOption);
+
+  names.forEach((name) => {
     const option = document.createElement('option');
-    option.value = category;
-    option.textContent = category;
+
+    option.value = name;
+    option.textContent = name;
     fragment.append(option);
   });
 
-  categoryFilter.append(fragment);
-  categoryFilter.value = currentFilter;
+  categoryFilter.replaceChildren(fragment);
 
+  if (currentFilter && names.includes(currentFilter)) {
+    categoryFilter.value = currentFilter;
+  } else {
+    currentFilter = '';
+    categoryFilter.value = '';
+  }
+}
+
+function initCategoryFilter() {
   categoryFilter.addEventListener('change', () => {
     currentFilter = categoryFilter.value;
     renderExpenseList(expenses);
@@ -1318,13 +2003,20 @@ async function handleExportJson() {
   exportJsonButton.disabled = true;
 
   try {
-    const [items, balance] = await Promise.all([
+    const [items, balance, categories] = await Promise.all([
       getAllExpenses(),
-      getInitialBalance()
+      getInitialBalance(),
+      getAllCategories()
     ]);
     const content = JSON.stringify({
-      initialBalance: balance,
+      version: 2,
       exportedAt: new Date().toISOString(),
+      initialBalance: balance,
+      categories: categories.map((category) => ({
+        name: category.name,
+        type: category.type,
+        isSystem: isSystemCategory(category)
+      })),
       transactions: items
     }, null, 2);
 
@@ -1359,16 +2051,21 @@ async function handleExportCsv() {
   }
 }
 
-function validateImportItem(item, index) {
+function validateImportItem(item, index, forcedType) {
   const label = `запись №${index + 1}`;
 
   if (item === null || typeof item !== 'object' || Array.isArray(item)) {
     throw new Error(`${label}: ожидается объект.`);
   }
 
-  let type = 'expense';
+  let type = forcedType === 'income' || forcedType === 'expense'
+    ? forcedType
+    : 'expense';
 
-  if (Object.prototype.hasOwnProperty.call(item, 'type')) {
+  if (
+    !forcedType &&
+    Object.prototype.hasOwnProperty.call(item, 'type')
+  ) {
     if (item.type !== 'expense' && item.type !== 'income') {
       throw new Error(`${label}: поле "type" должно быть "expense" или "income".`);
     }
@@ -1414,6 +2111,117 @@ function validateImportItem(item, index) {
   };
 }
 
+function validateImportCategories(list) {
+  if (!Array.isArray(list)) {
+    throw new Error('поле "categories" должно быть массивом категорий.');
+  }
+
+  const result = [];
+  const seen = new Set();
+
+  list.forEach((entry, index) => {
+    const label = `категория №${index + 1}`;
+
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(`${label}: ожидается объект.`);
+    }
+
+    if (typeof entry.name !== 'string' || !entry.name.trim()) {
+      throw new Error(`${label}: поле "name" должно быть непустой строкой.`);
+    }
+
+    if (entry.type !== 'expense' && entry.type !== 'income') {
+      throw new Error(`${label}: поле "type" должно быть "expense" или "income".`);
+    }
+
+    const name = entry.name.trim();
+    const key = categoryKey(entry.type, name);
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    result.push({
+      name,
+      type: entry.type,
+      isSystem: name === SYSTEM_CATEGORY_NAME
+    });
+  });
+
+  return result;
+}
+
+function buildImportCategories(importedCategories, items, addDefaults) {
+  const map = new Map();
+
+  const add = (rawName, type, forceSystem) => {
+    if (!TRANSACTION_TYPES.includes(type)) {
+      return null;
+    }
+
+    const name = typeof rawName === 'string' ? rawName.trim() : '';
+
+    if (!name) {
+      return null;
+    }
+
+    const key = categoryKey(type, name);
+    const isSystem = forceSystem === true || name === SYSTEM_CATEGORY_NAME;
+
+    if (map.has(key)) {
+      const existing = map.get(key);
+
+      if (isSystem) {
+        existing.isSystem = true;
+      }
+
+      return existing;
+    }
+
+    const record = { name, type, isSystem };
+    map.set(key, record);
+
+    return record;
+  };
+
+  (importedCategories || []).forEach((category) => {
+    add(category.name, category.type, category.isSystem);
+  });
+
+  if (addDefaults) {
+    TRANSACTION_TYPES.forEach((type) => {
+      DEFAULT_CATEGORIES[type].forEach((name) => {
+        add(name, type);
+      });
+    });
+  }
+
+  const normalizedItems = items.map((item) => {
+    const type = item.type === 'income' ? 'income' : 'expense';
+    const rawCategory = typeof item.category === 'string' ? item.category.trim() : '';
+    const existing = rawCategory ? map.get(categoryKey(type, rawCategory)) : null;
+    const category = existing
+      || add(rawCategory || SYSTEM_CATEGORY_NAME, type, !rawCategory)
+      || add(SYSTEM_CATEGORY_NAME, type, true);
+
+    return {
+      ...item,
+      category: category.name,
+      type
+    };
+  });
+
+  TRANSACTION_TYPES.forEach((type) => {
+    add(SYSTEM_CATEGORY_NAME, type, true);
+  });
+
+  return {
+    categories: [...map.values()],
+    items: normalizedItems
+  };
+}
+
 function parseImportJson(text) {
   let data;
 
@@ -1423,32 +2231,62 @@ function parseImportJson(text) {
     throw new Error('файл содержит некорректный JSON.');
   }
 
-  let initialBalance = 0;
-  let items;
-
   if (Array.isArray(data)) {
-    items = data;
-  } else if (data !== null && typeof data === 'object') {
-    if (Object.prototype.hasOwnProperty.call(data, 'initialBalance')) {
-      if (typeof data.initialBalance !== 'number' || !Number.isFinite(data.initialBalance)) {
-        throw new Error('поле "initialBalance" должно быть числом.');
-      }
+    return {
+      format: 'legacy-array',
+      balance: 0,
+      items: data.map((item, index) => validateImportItem(item, index, 'expense')),
+      categories: null
+    };
+  }
 
-      initialBalance = data.initialBalance;
-    }
-
-    if (!Array.isArray(data.transactions)) {
-      throw new Error('поле "transactions" должно быть массивом записей.');
-    }
-
-    items = data.transactions;
-  } else {
+  if (data === null || typeof data !== 'object') {
     throw new Error('ожидается массив записей или объект с полем "transactions".');
   }
 
+  if (Object.prototype.hasOwnProperty.call(data, 'version') && data.version !== 2) {
+    throw new Error('неподдерживаемая версия резервной копии.');
+  }
+
+  let balance = 0;
+
+  if (Object.prototype.hasOwnProperty.call(data, 'initialBalance')) {
+    if (typeof data.initialBalance !== 'number' || !Number.isFinite(data.initialBalance)) {
+      throw new Error('поле "initialBalance" должно быть числом.');
+    }
+
+    balance = data.initialBalance;
+  }
+
+  if (!Array.isArray(data.transactions)) {
+    throw new Error('поле "transactions" должно быть массивом записей.');
+  }
+
+  if (
+    data.version === 2 &&
+    !Object.prototype.hasOwnProperty.call(data, 'categories')
+  ) {
+    throw new Error('в резервной копии версии 2 отсутствует поле "categories".');
+  }
+
+  const items = data.transactions.map((item, index) => {
+    return validateImportItem(item, index);
+  });
+
+  if (Object.prototype.hasOwnProperty.call(data, 'categories')) {
+    return {
+      format: 'v2',
+      balance,
+      items,
+      categories: validateImportCategories(data.categories)
+    };
+  }
+
   return {
-    initialBalance,
-    items: items.map(validateImportItem)
+    format: 'legacy-object',
+    balance,
+    items,
+    categories: null
   };
 }
 
@@ -1492,11 +2330,24 @@ async function handleImportFileChange(event) {
       return;
     }
 
-    await replaceAllData(importedData.items, importedData.initialBalance);
+    const prepared = buildImportCategories(
+      importedData.categories,
+      importedData.items,
+      importedData.format !== 'v2'
+    );
 
-    initialBalance = importedData.initialBalance;
+    await replaceAllData({
+      items: prepared.items,
+      balance: importedData.balance,
+      categories: prepared.categories
+    });
+
+    initialBalance = importedData.balance;
     initialBalanceExists = true;
+    currentFilter = '';
+    closeCategoryModal();
     expenses = await getAllExpenses();
+    await refreshCategoryUi();
     await render(expenses);
   } catch (error) {
     showError('Не удалось импортировать данные. Проверьте доступ к хранилищу и попробуйте ещё раз.');
@@ -1504,10 +2355,6 @@ async function handleImportFileChange(event) {
     importJsonButton.disabled = false;
     input.value = '';
   }
-}
-
-function getCategoriesForType(type) {
-  return type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 }
 
 function updateTypeControls() {
@@ -1523,34 +2370,63 @@ function updateTypeControls() {
   submitButton.textContent = isIncome ? 'Добавить доход' : 'Добавить расход';
 }
 
-function renderFormCategories() {
-  const categories = getCategoriesForType(currentType);
+async function renderFormCategories(preferredName) {
+  const type = currentType;
+  const previousSelection = categoryInput.value;
+  let categories;
+
+  try {
+    categories = await getCategories(type);
+  } catch (error) {
+    return;
+  }
+
+  if (type !== currentType) {
+    return;
+  }
+
   const fragment = document.createDocumentFragment();
 
-  categories.forEach((category) => {
+  if (categories.length === 0) {
     const option = document.createElement('option');
-    option.value = category;
-    option.textContent = category;
+
+    option.value = '';
+    option.textContent = 'Нет категорий';
+    option.disabled = true;
     fragment.append(option);
-  });
+  } else {
+    categories.forEach((category) => {
+      const option = document.createElement('option');
+
+      option.value = category.name;
+      option.textContent = category.name;
+      fragment.append(option);
+    });
+  }
 
   categoryInput.replaceChildren(fragment);
-  categoryInput.value = categories[0];
+
+  const preferred = preferredName === undefined ? previousSelection : preferredName;
+
+  if (preferred && categories.some((category) => category.name === preferred)) {
+    categoryInput.value = preferred;
+  } else if (categories.length > 0) {
+    categoryInput.value = categories[0].name;
+  }
 }
 
-function setTransactionType(type) {
+async function setTransactionType(type) {
   if (!TRANSACTION_TYPES.includes(type) || type === currentType) {
     return;
   }
 
   currentType = type;
   updateTypeControls();
-  renderFormCategories();
+  await renderFormCategories(null);
 }
 
 function initTypeTabs() {
   updateTypeControls();
-  renderFormCategories();
 
   typeTabs.addEventListener('click', (event) => {
     const target = event.target;
@@ -1566,6 +2442,292 @@ function initTypeTabs() {
     }
 
     setTransactionType(tab.dataset.type);
+  });
+}
+
+function setCategoryModalError(message) {
+  const text = typeof message === 'string' ? message : '';
+
+  categoryModalError.textContent = text;
+  categoryModalError.hidden = !text;
+}
+
+function updateCategoryModalTabs() {
+  categoryModalTabs.querySelectorAll('[data-category-type]').forEach((tab) => {
+    const isActive = tab.dataset.categoryType === categoryModalType;
+
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', String(isActive));
+  });
+}
+
+async function renderCategoryModalList() {
+  const type = categoryModalType;
+  let categories;
+
+  try {
+    categories = await getCategories(type);
+  } catch (error) {
+    setCategoryModalError('Не удалось загрузить категории.');
+    return;
+  }
+
+  if (type !== categoryModalType || categoryModal.hidden) {
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  categories.forEach((category) => {
+    const item = document.createElement('li');
+    item.className = 'category-item';
+
+    const info = document.createElement('div');
+    info.className = 'category-item-info';
+
+    const name = document.createElement('span');
+    name.className = 'category-item-name';
+    name.textContent = category.name;
+    info.append(name);
+
+    if (isSystemCategory(category)) {
+      const badge = document.createElement('span');
+      badge.className = 'category-system-badge';
+      badge.textContent = 'системная';
+      info.append(badge);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'category-item-actions';
+
+    const actionsDisabled = isSystemCategory(category);
+    const renameButton = document.createElement('button');
+    renameButton.type = 'button';
+    renameButton.className = 'category-action-button';
+    renameButton.dataset.categoryAction = 'rename';
+    renameButton.dataset.id = String(category.id);
+    renameButton.textContent = 'Переименовать';
+    renameButton.disabled = actionsDisabled;
+
+    if (actionsDisabled) {
+      renameButton.title = 'Системная категория';
+    }
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'category-action-button category-action-button--danger';
+    deleteButton.dataset.categoryAction = 'delete';
+    deleteButton.dataset.id = String(category.id);
+    deleteButton.textContent = 'Удалить';
+    deleteButton.disabled = actionsDisabled;
+
+    if (actionsDisabled) {
+      deleteButton.title = 'Системная категория';
+    }
+
+    actions.append(renameButton, deleteButton);
+    item.append(info, actions);
+    fragment.append(item);
+  });
+
+  categoryModalList.replaceChildren(fragment);
+  categoryModalEmpty.hidden = categories.length > 0;
+}
+
+function openCategoryModal() {
+  categoryModalType = currentType;
+  updateCategoryModalTabs();
+  setCategoryModalError('');
+  categoryNameInput.value = '';
+  categoryModal.hidden = false;
+  document.body.classList.add('modal-open');
+  renderCategoryModalList();
+  categoryNameInput.focus();
+}
+
+function closeCategoryModal() {
+  if (categoryModal.hidden) {
+    return;
+  }
+
+  categoryModal.hidden = true;
+  document.body.classList.remove('modal-open');
+  setCategoryModalError('');
+
+  if (manageCategoriesButton) {
+    manageCategoriesButton.focus();
+  }
+}
+
+async function refreshCategoryUi() {
+  await renderCategoryFilter();
+  await renderFormCategories();
+
+  if (!categoryModal.hidden) {
+    await renderCategoryModalList();
+  }
+}
+
+async function refreshAfterCategoryChange() {
+  expenses = await getAllExpenses();
+  await refreshCategoryUi();
+  await render(expenses);
+}
+
+async function handleCategoryRename(id) {
+  setCategoryModalError('');
+
+  let category;
+
+  try {
+    const categories = await getCategories(categoryModalType);
+
+    category = categories.find((item) => item.id === id);
+  } catch (error) {
+    setCategoryModalError('Не удалось загрузить категории.');
+    return;
+  }
+
+  if (!category) {
+    setCategoryModalError('Категория не найдена.');
+    return;
+  }
+
+  const newName = window.prompt('Новое название категории:', category.name);
+
+  if (newName === null) {
+    return;
+  }
+
+  try {
+    await renameCategory(id, newName);
+    setCategoryModalError('');
+
+    if (currentFilter === category.name) {
+      currentFilter = newName.trim();
+    }
+
+    await refreshAfterCategoryChange();
+  } catch (error) {
+    setCategoryModalError(error.message || 'Не удалось переименовать категорию.');
+  }
+}
+
+async function handleCategoryDelete(id) {
+  setCategoryModalError('');
+
+  let category;
+
+  try {
+    const categories = await getCategories(categoryModalType);
+
+    category = categories.find((item) => item.id === id);
+  } catch (error) {
+    setCategoryModalError('Не удалось загрузить категории.');
+    return;
+  }
+
+  if (!category) {
+    setCategoryModalError('Категория не найдена.');
+    return;
+  }
+
+  try {
+    const deleted = await deleteCategory(id);
+
+    if (!deleted) {
+      return;
+    }
+
+    if (currentFilter === category.name) {
+      currentFilter = '';
+    }
+
+    setCategoryModalError('');
+    await refreshAfterCategoryChange();
+  } catch (error) {
+    setCategoryModalError(error.message || 'Не удалось удалить категорию.');
+  }
+}
+
+function initCategoryModal() {
+  manageCategoriesButton.addEventListener('click', openCategoryModal);
+  categoryModalClose.addEventListener('click', closeCategoryModal);
+  categoryModal.addEventListener('click', (event) => {
+    if (event.target === categoryModal) {
+      closeCategoryModal();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !categoryModal.hidden) {
+      closeCategoryModal();
+    }
+  });
+
+  categoryModalTabs.addEventListener('click', (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const tab = target.closest('[data-category-type]');
+
+    if (!tab || !categoryModalTabs.contains(tab)) {
+      return;
+    }
+
+    const type = tab.dataset.categoryType;
+
+    if (type === categoryModalType) {
+      return;
+    }
+
+    categoryModalType = type;
+    updateCategoryModalTabs();
+    setCategoryModalError('');
+    renderCategoryModalList();
+  });
+
+  categoryModalList.addEventListener('click', (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const button = target.closest('[data-category-action]');
+
+    if (!button || !categoryModalList.contains(button)) {
+      return;
+    }
+
+    const id = Number(button.dataset.id);
+
+    if (!Number.isInteger(id)) {
+      return;
+    }
+
+    if (button.dataset.categoryAction === 'rename') {
+      handleCategoryRename(id);
+    } else if (button.dataset.categoryAction === 'delete') {
+      handleCategoryDelete(id);
+    }
+  });
+
+  categoryAddForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setCategoryModalError('');
+
+    try {
+      await addCategory(categoryNameInput.value, categoryModalType);
+      categoryNameInput.value = '';
+      await refreshAfterCategoryChange();
+      categoryNameInput.focus();
+    } catch (error) {
+      setCategoryModalError(error.message || 'Не удалось добавить категорию.');
+    }
   });
 }
 
@@ -1643,7 +2805,9 @@ async function handleSubmit(event) {
     return;
   }
 
-  if (!getCategoriesForType(currentType).includes(categoryInput.value)) {
+  const selectedCategory = categoryInput.selectedOptions[0];
+
+  if (!categoryInput.value || !selectedCategory || selectedCategory.disabled) {
     alert('Выберите категорию.');
     categoryInput.focus();
     return;
@@ -1725,6 +2889,7 @@ async function init() {
   initTypeTabs();
   initPeriodTabs();
   initCategoryFilter();
+  initCategoryModal();
 
   window.addEventListener('resize', () => {
     if (lastChartData) {
@@ -1734,6 +2899,7 @@ async function init() {
 
   try {
     db = await openDB();
+    await seedDefaultsIfEmpty();
 
     const [loadedExpenses, balance] = await Promise.all([
       getAllExpenses(),
@@ -1742,6 +2908,7 @@ async function init() {
 
     expenses = loadedExpenses;
     initialBalance = balance;
+    await refreshCategoryUi();
     await render(expenses);
   } catch (error) {
     showError('Не удалось загрузить операции. Проверьте настройки браузера и перезагрузите страницу.');

@@ -16,6 +16,7 @@
   <main class="app">
     <header class="app-header">
       <h1>Мои расходы</h1>
+      <button id="manage-categories" class="secondary-button header-button" type="button">Категории</button>
     </header>
 
     <p id="app-error" class="app-error" role="alert" hidden></p>
@@ -67,13 +68,7 @@
 
         <div class="field">
           <label for="category">Категория</label>
-          <select id="category" name="category" required>
-            <option value="Еда">Еда</option>
-            <option value="Транспорт">Транспорт</option>
-            <option value="Жильё">Жильё</option>
-            <option value="Развлечения">Развлечения</option>
-            <option value="Другое">Другое</option>
-          </select>
+          <select id="category" name="category" required></select>
         </div>
 
         <div class="field">
@@ -241,6 +236,62 @@
       <ul id="expense-list" class="expense-list"></ul>
     </section>
   </main>
+
+  <div id="category-modal" class="modal-overlay" hidden>
+    <div
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="category-modal-title"
+    >
+      <div class="modal-header">
+        <h2 id="category-modal-title">Категории</h2>
+        <button
+          id="category-modal-close"
+          class="secondary-button modal-close-button"
+          type="button"
+        >Закрыть</button>
+      </div>
+
+      <div
+        id="category-modal-tabs"
+        class="period-tabs category-modal-tabs"
+        role="tablist"
+        aria-label="Тип категорий"
+      >
+        <button
+          type="button"
+          class="period-tab is-active"
+          data-category-type="expense"
+          role="tab"
+          aria-selected="true"
+        >Расходы</button>
+        <button
+          type="button"
+          class="period-tab"
+          data-category-type="income"
+          role="tab"
+          aria-selected="false"
+        >Доходы</button>
+      </div>
+
+      <ul id="category-modal-list" class="category-list"></ul>
+      <p id="category-modal-empty" class="category-empty" hidden>Нет категорий</p>
+
+      <form id="category-add-form" class="category-add-row" novalidate>
+        <input
+          id="category-name-input"
+          type="text"
+          placeholder="Новая категория"
+          aria-label="Новая категория"
+          autocomplete="off"
+        >
+        <button class="category-add-button" type="submit">Добавить</button>
+      </form>
+
+      <p id="category-modal-error" class="category-modal-error" role="alert" hidden></p>
+    </div>
+  </div>
 
   <script>
     window.addEventListener('load', () => {
