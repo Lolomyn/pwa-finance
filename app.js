@@ -5283,6 +5283,12 @@ async function handleExpenseListClick(event) {
 }
 
 async function init() {
+  if ('launchQueue' in window && typeof window.launchQueue.setConsumer === 'function') {
+    window.launchQueue.setConsumer(async () => {
+      // focus-existing переиспользует уже открытое окно; данные запуска не нужны.
+    });
+  }
+
   dateInput.value = getTodayISO();
 
   form.addEventListener('submit', handleSubmit);
