@@ -13,43 +13,42 @@
   <script src="app.js" defer></script>
 </head>
 <body>
-  <main class="app">
-    <header class="app-header">
-      <h1>Мои расходы</h1>
-      <div class="header-actions">
-        <button id="manage-categories" class="secondary-button header-button" type="button">Категории</button>
-        <button id="manage-security" class="secondary-button header-button" type="button">Безопасность</button>
-      </div>
-    </header>
-
-    <section id="backup-banner" class="backup-banner" aria-label="Напоминание о резервной копии" hidden>
-      <p id="backup-banner-text" class="backup-banner-text"></p>
-      <div class="backup-banner-actions">
-        <button id="backup-banner-export" class="backup-banner-export" type="button">Экспорт</button>
-        <button
-          id="backup-banner-hide"
-          class="backup-banner-close"
-          type="button"
-          aria-label="Скрыть до завтра"
-          title="Скрыть до завтра"
-        >×</button>
-      </div>
-    </section>
-
+  <main id="app" class="app">
     <p id="app-error" class="app-error" role="alert" hidden></p>
 
-    <section class="balance" aria-labelledby="balance-title" aria-live="polite">
-      <div class="balance-info">
-        <span id="balance-title" class="balance-label">Баланс:</span>
-        <strong id="balance-value" class="balance-value">0 ₽</strong>
-        <p id="balance-hint" class="balance-hint">Задайте начальный баланс</p>
-        <p class="balance-initial">Начальный баланс: <span id="initial-balance-value">0 ₽</span></p>
-      </div>
-      <button id="edit-balance" class="balance-edit-button" type="button">Изменить</button>
-    </section>
+    <section data-tab="home" class="tab-panel" id="tab-home">
+      <header class="app-header tab-header">
+        <h1>Мои расходы</h1>
+      </header>
 
-    <section class="panel" aria-labelledby="form-title">
-      <h2 id="form-title">Новая операция</h2>
+      <section id="backup-banner" class="backup-banner" aria-label="Напоминание о резервной копии" hidden>
+        <p id="backup-banner-text" class="backup-banner-text"></p>
+        <div class="backup-banner-actions">
+          <button id="backup-banner-export" class="backup-banner-export" type="button">Экспорт</button>
+          <button
+            id="backup-banner-hide"
+            class="backup-banner-close"
+            type="button"
+            aria-label="Скрыть до завтра"
+            title="Скрыть до завтра"
+          >×</button>
+        </div>
+      </section>
+
+      <section class="balance home-balance" aria-labelledby="balance-title" aria-live="polite">
+        <div class="balance-info">
+          <span id="balance-title" class="balance-label">Баланс:</span>
+          <strong id="balance-value" class="balance-value">0 ₽</strong>
+          <p id="balance-hint" class="balance-hint">Задайте начальный баланс</p>
+        </div>
+        <button id="edit-balance" class="balance-edit-button" type="button">Изменить</button>
+      </section>
+
+      <section id="home-limits" class="home-limits" aria-labelledby="home-limits-title" hidden>
+        <h2 id="home-limits-title">Лимиты на месяц</h2>
+        <div id="home-limits-list" class="home-limits-list"></div>
+        <button id="manage-limits" class="home-limits-manage" type="button">Настроить лимиты</button>
+      </section>
 
       <div
         id="quick-templates"
@@ -57,142 +56,200 @@
         aria-label="Быстрые шаблоны"
       ></div>
 
-      <form id="expense-form" novalidate>
-        <div id="type-tabs" class="type-switch" role="tablist" aria-label="Тип операции">
-          <button
-            type="button"
-            class="type-button is-active"
-            data-type="expense"
-            role="tab"
-            aria-selected="true"
-          >Расход</button>
-          <button
-            type="button"
-            class="type-button"
-            data-type="income"
-            role="tab"
-            aria-selected="false"
-          >Доход</button>
-        </div>
+      <section class="panel" aria-labelledby="form-title">
+        <h2 id="form-title">Новая операция</h2>
 
-        <div class="field">
-          <label for="amount">Сумма</label>
-          <input
-            id="amount"
-            name="amount"
-            type="number"
-            step="0.01"
-            min="0.01"
-            inputmode="decimal"
-            placeholder="Сумма"
-            required
-          >
-        </div>
+        <form id="expense-form" novalidate>
+          <div id="type-tabs" class="type-switch" role="tablist" aria-label="Тип операции">
+            <button
+              type="button"
+              class="type-button is-active"
+              data-type="expense"
+              role="tab"
+              aria-selected="true"
+            >Расход</button>
+            <button
+              type="button"
+              class="type-button"
+              data-type="income"
+              role="tab"
+              aria-selected="false"
+            >Доход</button>
+          </div>
 
-        <div class="field">
-          <label for="category">Категория</label>
-          <select id="category" name="category" required></select>
-        </div>
+          <div class="field">
+            <label for="amount">Сумма</label>
+            <input
+              id="amount"
+              name="amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              inputmode="decimal"
+              placeholder="Сумма"
+              required
+            >
+          </div>
 
-        <div class="field">
-          <label for="date">Дата операции</label>
-          <input id="date" name="date" type="date" required>
-        </div>
+          <div class="field">
+            <label for="category">Категория</label>
+            <select id="category" name="category" required></select>
+          </div>
 
-        <div class="field">
-          <label for="note">Заметка</label>
-          <input
-            id="note"
-            name="note"
-            type="text"
-            placeholder="Заметка (необязательно)"
-          >
-        </div>
+          <div class="field">
+            <label for="date">Дата операции</label>
+            <input id="date" name="date" type="date" required>
+          </div>
 
-        <div class="form-actions">
-          <button class="submit-button" type="submit">Добавить расход</button>
-          <button id="cancel-edit" class="cancel-edit-button" type="button" hidden>Отмена</button>
-        </div>
-      </form>
+          <div class="field">
+            <label for="note">Заметка</label>
+            <input
+              id="note"
+              name="note"
+              type="text"
+              placeholder="Заметка (необязательно)"
+            >
+          </div>
+
+          <div class="form-actions">
+            <button class="submit-button" type="submit">Добавить расход</button>
+            <button id="cancel-edit" class="cancel-edit-button" type="button" hidden>Отмена</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="home-last-operations" class="home-last" aria-labelledby="home-last-title" hidden>
+        <h2 id="home-last-title">Последние операции</h2>
+        <ul id="home-last-list" class="home-last-list"></ul>
+        <button id="home-show-all" class="home-show-all" type="button">Показать все →</button>
+      </section>
     </section>
 
-    <div class="total" aria-live="polite">
-      <span class="total-title">Итого за всё время:</span>
+    <section data-tab="history" class="tab-panel" id="tab-history" hidden>
+      <header class="app-header tab-header">
+        <h1>История операций</h1>
+      </header>
 
-      <div class="total-row">
-        <span class="total-label">Всего расходов:</span>
-        <strong id="total-expense" class="total-row-value is-expense">0 ₽</strong>
-      </div>
+      <div class="expense-controls">
+        <div class="field expense-search-field">
+          <label for="expense-search">Поиск</label>
+          <input
+            id="expense-search"
+            type="search"
+            placeholder="Поиск по заметке, категории, сумме"
+            autocomplete="off"
+          >
+        </div>
 
-      <div class="total-row">
-        <span class="total-label">Всего доходов:</span>
-        <strong id="total-income" class="total-row-value is-income">0 ₽</strong>
-      </div>
+        <div class="expense-controls-row">
+          <div class="field expenses-filter">
+            <label for="category-filter">Фильтр по категории</label>
+            <select id="category-filter">
+              <option value="">Все категории</option>
+            </select>
+          </div>
 
-      <div class="total-row">
-        <span class="total-label">Чистый поток:</span>
-        <strong id="total-net" class="total-row-value is-income">0 ₽</strong>
-      </div>
-    </div>
-
-    <section class="stats" aria-labelledby="stats-title">
-      <h2 id="stats-title">Статистика</h2>
-
-      <div id="period-tabs" class="period-tabs" role="tablist" aria-label="Период статистики">
-        <button
-          type="button"
-          class="period-tab"
-          data-period="week"
-          role="tab"
-          aria-selected="false"
-          aria-controls="stats-panel"
-        >Неделя</button>
-        <button
-          type="button"
-          class="period-tab is-active"
-          data-period="month"
-          role="tab"
-          aria-selected="true"
-          aria-controls="stats-panel"
-        >Месяц</button>
-        <button
-          type="button"
-          class="period-tab"
-          data-period="year"
-          role="tab"
-          aria-selected="false"
-          aria-controls="stats-panel"
-        >Год</button>
-        <button
-          type="button"
-          class="period-tab"
-          data-period="all"
-          role="tab"
-          aria-selected="false"
-          aria-controls="stats-panel"
-        >Всё</button>
-      </div>
-
-      <div class="period-custom" aria-label="Произвольный период статистики">
-        <label class="period-date-field">
-          <span>С</span>
-          <input id="custom-from" type="date" aria-label="Начало периода">
-        </label>
-        <span class="period-custom-dash" aria-hidden="true">—</span>
-        <label class="period-date-field">
-          <span>По</span>
-          <input id="custom-to" type="date" aria-label="Конец периода">
-        </label>
-        <div class="period-custom-actions">
-          <button id="custom-apply" class="secondary-button period-custom-button" type="button">Применить</button>
-          <button id="custom-reset" class="secondary-button period-custom-button" type="button">Сбросить</button>
+          <div class="field expense-sort-field">
+            <label for="expense-sort">Сортировка</label>
+            <select id="expense-sort">
+              <option value="date-desc" selected>Сначала новые</option>
+              <option value="date-asc">Сначала старые</option>
+              <option value="amount-desc">Сумма: по убыванию</option>
+              <option value="amount-asc">Сумма: по возрастанию</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <p id="custom-range-error" class="period-custom-error" role="alert" hidden></p>
-      <p id="stats-period-label" class="stats-period-label" hidden></p>
+      <p id="empty-state" class="empty-state">Пока нет операций. Добавьте первую на вкладке «Главная».</p>
+      <div id="expense-list" class="expense-list"></div>
+    </section>
+
+    <section data-tab="stats" class="tab-panel" id="tab-stats" hidden>
+      <header class="app-header tab-header">
+        <h1 id="stats-title">Статистика</h1>
+      </header>
+
+      <p id="stats-tab-empty" class="stats-tab-empty" hidden>
+        Нет данных. Добавьте операции на вкладке «Главная».
+      </p>
+
+      <div id="stats-period-controls">
+        <div id="period-tabs" class="period-tabs" role="tablist" aria-label="Период статистики">
+          <button
+            type="button"
+            class="period-tab"
+            data-period="week"
+            role="tab"
+            aria-selected="false"
+            aria-controls="stats-panel"
+          >Неделя</button>
+          <button
+            type="button"
+            class="period-tab is-active"
+            data-period="month"
+            role="tab"
+            aria-selected="true"
+            aria-controls="stats-panel"
+          >Месяц</button>
+          <button
+            type="button"
+            class="period-tab"
+            data-period="year"
+            role="tab"
+            aria-selected="false"
+            aria-controls="stats-panel"
+          >Год</button>
+          <button
+            type="button"
+            class="period-tab"
+            data-period="all"
+            role="tab"
+            aria-selected="false"
+            aria-controls="stats-panel"
+          >Всё</button>
+        </div>
+
+        <div class="period-custom" aria-label="Произвольный период статистики">
+          <label class="period-date-field">
+            <span>С</span>
+            <input id="custom-from" type="date" aria-label="Начало периода">
+          </label>
+          <span class="period-custom-dash" aria-hidden="true">—</span>
+          <label class="period-date-field">
+            <span>По</span>
+            <input id="custom-to" type="date" aria-label="Конец периода">
+          </label>
+          <div class="period-custom-actions">
+            <button id="custom-apply" class="secondary-button period-custom-button" type="button">Применить</button>
+            <button id="custom-reset" class="secondary-button period-custom-button" type="button">Сбросить</button>
+          </div>
+        </div>
+
+        <p id="custom-range-error" class="period-custom-error" role="alert" hidden></p>
+        <p id="stats-period-label" class="stats-period-label" hidden></p>
+      </div>
 
       <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
+        <div class="total stats-total" aria-live="polite">
+          <span class="total-title">Итого за всё время:</span>
+
+          <div class="total-row">
+            <span class="total-label">Всего расходов:</span>
+            <strong id="total-expense" class="total-row-value is-expense">0 ₽</strong>
+          </div>
+
+          <div class="total-row">
+            <span class="total-label">Всего доходов:</span>
+            <strong id="total-income" class="total-row-value is-income">0 ₽</strong>
+          </div>
+
+          <div class="total-row">
+            <span class="total-label">Чистый поток:</span>
+            <strong id="total-net" class="total-row-value is-income">0 ₽</strong>
+          </div>
+        </div>
+
         <div class="stats-cards">
           <div class="stats-card">
             <div class="stats-row">
@@ -255,64 +312,121 @@
       </div>
     </section>
 
-    <section class="backup" aria-labelledby="backup-title">
-      <h2 id="backup-title">Резервная копия</h2>
+    <section data-tab="settings" class="tab-panel" id="tab-settings" hidden>
+      <header class="app-header tab-header">
+        <h1>Настройки</h1>
+      </header>
 
-      <div class="backup-actions">
-        <button id="export-json" class="secondary-button" type="button">Экспорт в JSON</button>
-        <button id="export-csv" class="secondary-button" type="button">Экспорт в CSV</button>
-        <button id="report-pdf" class="secondary-button" type="button">Отчёт PDF</button>
-        <button id="import-json" class="secondary-button" type="button">Импорт из JSON</button>
-      </div>
+      <div class="settings-list">
+        <section class="settings-card" aria-labelledby="settings-balance-title">
+          <h2 id="settings-balance-title">Начальный баланс</h2>
+          <p class="settings-hint">Баланс на момент начала учёта. Используется в расчёте текущего баланса.</p>
+          <div class="settings-balance-row">
+            <strong id="initial-balance-value" class="settings-balance-value">0 ₽</strong>
+            <button id="edit-initial-balance" class="secondary-button settings-action-button" type="button">Изменить</button>
+          </div>
+          <button
+            id="reconcile-balance"
+            class="secondary-button settings-action-button settings-reconcile-button"
+            type="button"
+          >Сверить с реальностью</button>
+        </section>
 
-      <input
-        id="import-file"
-        type="file"
-        accept="application/json,.json"
-        hidden
-      >
+        <section class="settings-card" aria-labelledby="settings-categories-title">
+          <h2 id="settings-categories-title">Категории</h2>
+          <p class="settings-hint">Добавление, переименование и удаление категорий расходов и доходов.</p>
+          <button id="manage-categories" class="secondary-button settings-action-button" type="button">Управление категориями</button>
+        </section>
 
-      <p class="backup-hint">Импорт заменяет все текущие данные.</p>
-    </section>
+        <section class="settings-card" aria-labelledby="settings-templates-title">
+          <h2 id="settings-templates-title">Быстрые шаблоны</h2>
+          <p class="settings-hint">Частые операции, которые добавляются одним нажатием на главной.</p>
+          <button id="manage-quick-templates" class="secondary-button settings-action-button" type="button">Управление шаблонами</button>
+        </section>
 
-    <section class="expenses" aria-labelledby="expenses-title">
-      <h2 id="expenses-title">Операции</h2>
+        <section class="settings-card" aria-labelledby="settings-security-title">
+          <h2 id="settings-security-title">Безопасность</h2>
+          <p class="settings-hint">PIN-код и вход по биометрии для защиты приложения.</p>
+          <button id="manage-security" class="secondary-button settings-action-button" type="button">Настроить безопасность</button>
+        </section>
 
-      <div class="expense-controls">
-        <div class="field expense-search-field">
-          <label for="expense-search">Поиск</label>
+        <section class="settings-card" aria-labelledby="backup-title">
+          <h2 id="backup-title">Резервное копирование</h2>
+          <p class="settings-hint backup-status" aria-live="polite">
+            Последняя копия: <strong id="last-backup-value">никогда</strong>
+          </p>
+
+          <div class="backup-actions">
+            <button id="export-json" class="secondary-button" type="button">Экспорт в JSON</button>
+            <button id="export-csv" class="secondary-button" type="button">Экспорт в CSV</button>
+            <button id="report-pdf" class="secondary-button" type="button">Отчёт PDF</button>
+            <button id="import-json" class="secondary-button" type="button">Импорт из JSON</button>
+          </div>
+
           <input
-            id="expense-search"
-            type="search"
-            placeholder="Поиск по заметке, категории, сумме"
-            autocomplete="off"
+            id="import-file"
+            type="file"
+            accept="application/json,.json"
+            hidden
           >
-        </div>
 
-        <div class="expense-controls-row">
-          <div class="field expenses-filter">
-            <label for="category-filter">Фильтр по категории</label>
-            <select id="category-filter">
-              <option value="">Все категории</option>
-            </select>
-          </div>
+          <p class="backup-hint">Импорт заменяет все текущие данные.</p>
+        </section>
 
-          <div class="field expense-sort-field">
-            <label for="expense-sort">Сортировка</label>
-            <select id="expense-sort">
-              <option value="date-desc" selected>Сначала новые</option>
-              <option value="date-asc">Сначала старые</option>
-              <option value="amount-desc">Сумма: по убыванию</option>
-              <option value="amount-asc">Сумма: по возрастанию</option>
-            </select>
-          </div>
-        </div>
+        <section class="settings-card" aria-labelledby="settings-about-title">
+          <h2 id="settings-about-title">О приложении</h2>
+          <p class="settings-hint">Версия 1.0</p>
+          <p class="settings-hint">
+            Локальный офлайн-трекер доходов и расходов. Данные хранятся только на этом устройстве.
+          </p>
+        </section>
       </div>
-
-      <p id="empty-state" class="empty-state">Пока нет операций</p>
-      <div id="expense-list" class="expense-list"></div>
     </section>
   </main>
+
+  <nav id="bottom-nav" class="bottom-nav" aria-label="Основная навигация">
+    <button
+      type="button"
+      class="bottom-nav-button is-active"
+      data-tab-target="home"
+      aria-current="page"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+        <path d="M12 3.1 2.5 11.2c-.4.3-.2 1 .3 1h1.9v8.3c0 .5.4.9.9.9h4.1v-6h4.6v6h4.1c.5 0 .9-.4.9-.9v-8.3h1.9c.5 0 .7-.7.3-1L12 3.1z"/>
+      </svg>
+      <span>Главная</span>
+    </button>
+    <button
+      type="button"
+      class="bottom-nav-button"
+      data-tab-target="history"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+        <path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2z"/>
+      </svg>
+      <span>История</span>
+    </button>
+    <button
+      type="button"
+      class="bottom-nav-button"
+      data-tab-target="stats"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+        <path d="M4 20V10h3v10H4zm6 0V4h3v16h-3zm6 0v-7h3v7h-3z"/>
+      </svg>
+      <span>Статистика</span>
+    </button>
+    <button
+      type="button"
+      class="bottom-nav-button"
+      data-tab-target="settings"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+        <path d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm7.43-2.53c.04-.32.07-.65.07-.97s-.03-.65-.08-.97l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.49.49 0 0 0 .12.64l2.11 1.65c-.04.32-.08.66-.08.98s.03.65.08.97l-2.11 1.65a.49.49 0 0 0-.12.64l2 3.46c.13.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.49.42h4c.24 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.49 0 .61-.22l2-3.46a.49.49 0 0 0-.12-.64l-2.11-1.65z"/>
+      </svg>
+      <span>Настройки</span>
+    </button>
+  </nav>
 
   <div id="category-modal" class="modal-overlay" hidden>
     <div
@@ -462,6 +576,58 @@
     </div>
   </div>
 
+  <div id="balance-reconcile-modal" class="modal-overlay" hidden>
+    <div
+      class="modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="balance-reconcile-title"
+    >
+      <div class="modal-header">
+        <h2 id="balance-reconcile-title">Сверка баланса</h2>
+        <button
+          id="balance-reconcile-close"
+          class="secondary-button modal-close-button"
+          type="button"
+        >Закрыть</button>
+      </div>
+
+      <p class="reconcile-computed">
+        Текущий баланс по приложению:
+        <strong id="reconcile-computed-value">0 ₽</strong>
+      </p>
+
+      <form id="balance-reconcile-form" novalidate>
+        <div class="field">
+          <label for="reconcile-actual">Фактический остаток</label>
+          <input
+            id="reconcile-actual"
+            type="number"
+            step="0.01"
+            inputmode="decimal"
+            placeholder="Например, 98 500"
+            required
+          >
+        </div>
+        <button
+          id="reconcile-submit"
+          class="secondary-button settings-action-button"
+          type="submit"
+        >Сверить</button>
+      </form>
+
+      <p id="reconcile-error" class="security-modal-error" role="alert" hidden></p>
+
+      <div id="reconcile-result" hidden>
+        <p id="reconcile-result-message" class="reconcile-result-message" role="status"></p>
+        <div id="reconcile-result-actions" class="reconcile-result-actions" hidden>
+          <button id="reconcile-create" class="secondary-button" type="button">Создать корректировку</button>
+          <button id="reconcile-cancel" class="secondary-button" type="button">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="security-modal" class="modal-overlay" hidden>
     <div
       class="modal-card security-modal-card"
@@ -489,7 +655,11 @@
         aria-labelledby="security-enable-pin-title"
       >
         <h3 id="security-enable-pin-title">Включить PIN</h3>
-        <p class="security-hint">PIN должен состоять из 4–6 цифр. Он будет запрашиваться при входе.</p>
+        <p class="security-hint">
+          PIN должен состоять из 4–6 цифр. Он будет запрашиваться при входе.
+          Перед включением PIN обязательно сделайте экспорт JSON: при забытом
+          PIN без биометрии восстановить данные невозможно.
+        </p>
 
         <form id="security-pin-form" novalidate>
           <div class="field">
@@ -558,6 +728,73 @@
       </section>
 
       <section
+        id="security-change-pin-section"
+        class="security-section"
+        aria-labelledby="security-change-pin-title"
+        hidden
+      >
+        <h3 id="security-change-pin-title">Сменить PIN</h3>
+        <p class="security-hint">
+          Введите текущий PIN и дважды новый. Биометрия продолжит работать
+          после смены PIN.
+        </p>
+
+        <form id="security-change-pin-form" novalidate>
+          <div class="field">
+            <label for="security-change-old-pin">Текущий PIN</label>
+            <input
+              id="security-change-old-pin"
+              type="password"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              autocomplete="current-password"
+              placeholder="••••"
+            >
+          </div>
+
+          <div class="field">
+            <label for="security-change-new-pin">Новый PIN</label>
+            <input
+              id="security-change-new-pin"
+              type="password"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              autocomplete="new-password"
+              placeholder="••••"
+            >
+          </div>
+
+          <div class="field">
+            <label for="security-change-new-pin-confirm">Повторите новый PIN</label>
+            <input
+              id="security-change-new-pin-confirm"
+              type="password"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              autocomplete="new-password"
+              placeholder="••••"
+            >
+          </div>
+
+          <button
+            id="security-change-pin"
+            class="secondary-button security-action-button"
+            type="submit"
+          >Сменить PIN</button>
+        </form>
+
+        <p
+          id="security-change-pin-status"
+          class="security-success"
+          role="status"
+          hidden
+        ></p>
+      </section>
+
+      <section
         id="security-biometric-section"
         class="security-section"
         aria-labelledby="security-biometric-title"
@@ -591,6 +828,10 @@
       <span id="undo-toast-text">Удалено.</span>
       <button id="undo-toast-button" class="undo-toast-button" type="button">Отменить</button>
     </div>
+  </div>
+
+  <div id="info-toast" class="info-toast" role="status" aria-live="polite" hidden>
+    <span id="info-toast-text"></span>
   </div>
 
   <div
@@ -644,6 +885,12 @@
       </form>
 
       <button
+        id="lock-forgot-pin"
+        class="lock-link-button"
+        type="button"
+      >Забыли PIN?</button>
+
+      <button
         id="lock-biometric"
         class="secondary-button lock-biometric-button"
         type="button"
@@ -651,6 +898,94 @@
       >Войти по отпечатку / Face ID</button>
 
       <p id="lock-message" class="lock-message" role="alert" hidden></p>
+    </div>
+
+    <div id="pin-recovery-modal" class="modal-overlay lock-recovery-overlay" hidden>
+      <div
+        class="modal-card pin-recovery-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pin-recovery-title"
+      >
+        <div class="modal-header">
+          <h2 id="pin-recovery-title">Восстановление доступа</h2>
+          <button
+            id="pin-recovery-close"
+            class="secondary-button modal-close-button"
+            type="button"
+          >Закрыть</button>
+        </div>
+
+        <div id="pin-recovery-options">
+          <p class="security-hint">
+            Если вы забыли PIN, войдите по биометрии или полностью сбросьте
+            приложение. Сохранить данные без PIN невозможно.
+          </p>
+          <button
+            id="pin-recovery-biometric"
+            class="secondary-button security-action-button pin-recovery-biometric-button"
+            type="button"
+            hidden
+          >Войти по биометрии</button>
+          <button
+            id="pin-recovery-reset"
+            class="danger-button pin-recovery-reset-button"
+            type="button"
+          >Сбросить PIN (данные будут удалены)</button>
+        </div>
+
+        <div id="pin-recovery-warning" hidden>
+          <p class="pin-recovery-warning-text">
+            Все операции, категории, шаблоны и настройки будут безвозвратно
+            удалены. Продолжить?
+          </p>
+          <div class="pin-recovery-actions">
+            <button
+              id="pin-recovery-warning-continue"
+              class="danger-button"
+              type="button"
+            >Продолжить</button>
+            <button
+              id="pin-recovery-warning-cancel"
+              class="secondary-button"
+              type="button"
+            >Отмена</button>
+          </div>
+        </div>
+
+        <div id="pin-recovery-confirm" hidden>
+          <p class="security-hint">
+            Для подтверждения введите слово <strong>УДАЛИТЬ</strong> заглавными
+            буквами.
+          </p>
+          <div class="field">
+            <label for="pin-recovery-confirm-input">Слово подтверждения</label>
+            <input
+              id="pin-recovery-confirm-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="УДАЛИТЬ"
+            >
+          </div>
+          <div class="pin-recovery-actions">
+            <button
+              id="pin-recovery-confirm-delete"
+              class="danger-button"
+              type="button"
+              disabled
+            >Удалить и сбросить</button>
+            <button
+              id="pin-recovery-back"
+              class="secondary-button"
+              type="button"
+            >Назад</button>
+          </div>
+        </div>
+
+        <p id="pin-recovery-error" class="security-modal-error" role="alert" hidden></p>
+      </div>
     </div>
   </div>
 

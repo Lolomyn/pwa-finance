@@ -1,13 +1,14 @@
 'use strict';
 
 const DB_NAME = 'expense-tracker-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAME = 'expenses';
 const SETTINGS_STORE = 'settings';
 const CATEGORIES_STORE = 'categories';
 const INITIAL_BALANCE_KEY = 'initialBalance';
 const QUICK_TEMPLATES_KEY = 'quickTemplates';
 const QUICK_TEMPLATE_LABEL_MAX = 30;
+const CATEGORY_LIMIT_MAX = 100000000;
 
 const SYSTEM_CATEGORY_NAME = 'Другое';
 const TRANSACTION_TYPES = ['expense', 'income'];
@@ -35,6 +36,7 @@ const MONTHS_FULL = [
 
 const EXPENSE_SORTS = ['date-desc', 'date-asc', 'amount-desc', 'amount-asc'];
 const CUSTOM_CHART_DAY_LIMIT = 62;
+const TAB_NAMES = ['home', 'history', 'stats', 'settings'];
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const CHART_FONT_SIZE = 9;
@@ -49,6 +51,11 @@ const PIN_MAX_ATTEMPTS = 5;
 const PIN_LOCK_DURATION = 30 * 1000;
 
 const appRoot = document.querySelector('.app');
+const tabPanels = [...document.querySelectorAll('.tab-panel[data-tab]')];
+const bottomNavButtons = [...document.querySelectorAll('[data-tab-target]')];
+const homeLastOperations = document.getElementById('home-last-operations');
+const homeLastList = document.getElementById('home-last-list');
+const homeShowAllButton = document.getElementById('home-show-all');
 const form = document.getElementById('expense-form');
 const formTitle = document.getElementById('form-title');
 const amountInput = document.getElementById('amount');
@@ -65,10 +72,17 @@ const balanceValue = document.getElementById('balance-value');
 const initialBalanceValue = document.getElementById('initial-balance-value');
 const balanceHint = document.getElementById('balance-hint');
 const editBalanceButton = document.getElementById('edit-balance');
+const editInitialBalanceButton = document.getElementById('edit-initial-balance');
+const homeLimits = document.getElementById('home-limits');
+const homeLimitsList = document.getElementById('home-limits-list');
+const manageLimitsButton = document.getElementById('manage-limits');
 const totalExpense = document.getElementById('total-expense');
 const totalIncome = document.getElementById('total-income');
 const totalNet = document.getElementById('total-net');
 const errorMessage = document.getElementById('app-error');
+const statsPanel = document.getElementById('stats-panel');
+const statsPeriodControls = document.getElementById('stats-period-controls');
+const statsTabEmpty = document.getElementById('stats-tab-empty');
 const periodTabs = document.getElementById('period-tabs');
 const customFromInput = document.getElementById('custom-from');
 const customToInput = document.getElementById('custom-to');
@@ -101,7 +115,9 @@ const backupBanner = document.getElementById('backup-banner');
 const backupBannerText = document.getElementById('backup-banner-text');
 const backupBannerExportButton = document.getElementById('backup-banner-export');
 const backupBannerHideButton = document.getElementById('backup-banner-hide');
+const lastBackupValue = document.getElementById('last-backup-value');
 const manageCategoriesButton = document.getElementById('manage-categories');
+const manageQuickTemplatesButton = document.getElementById('manage-quick-templates');
 const quickTemplatesRow = document.getElementById('quick-templates');
 const quickTemplateModal = document.getElementById('quick-template-modal');
 const quickTemplateModalClose = document.getElementById('quick-template-modal-close');
@@ -142,15 +158,51 @@ const securityBiometricHint = document.getElementById('security-biometric-hint')
 const securityEnableBiometricButton = document.getElementById('security-enable-biometric');
 const securityDisableBiometricButton = document.getElementById('security-disable-biometric');
 const securityModalError = document.getElementById('security-modal-error');
+const securityChangePinSection = document.getElementById('security-change-pin-section');
+const securityChangePinForm = document.getElementById('security-change-pin-form');
+const securityChangeOldPinInput = document.getElementById('security-change-old-pin');
+const securityChangeNewPinInput = document.getElementById('security-change-new-pin');
+const securityChangeNewPinConfirmInput = document.getElementById('security-change-new-pin-confirm');
+const securityChangePinButton = document.getElementById('security-change-pin');
+const securityChangePinStatus = document.getElementById('security-change-pin-status');
+const reconcileBalanceButton = document.getElementById('reconcile-balance');
+const balanceReconcileModal = document.getElementById('balance-reconcile-modal');
+const balanceReconcileClose = document.getElementById('balance-reconcile-close');
+const balanceReconcileForm = document.getElementById('balance-reconcile-form');
+const reconcileComputedValue = document.getElementById('reconcile-computed-value');
+const reconcileActualInput = document.getElementById('reconcile-actual');
+const reconcileSubmitButton = document.getElementById('reconcile-submit');
+const reconcileError = document.getElementById('reconcile-error');
+const reconcileResult = document.getElementById('reconcile-result');
+const reconcileResultMessage = document.getElementById('reconcile-result-message');
+const reconcileResultActions = document.getElementById('reconcile-result-actions');
+const reconcileCreateButton = document.getElementById('reconcile-create');
+const reconcileCancelButton = document.getElementById('reconcile-cancel');
 const undoToast = document.getElementById('undo-toast');
 const undoToastText = document.getElementById('undo-toast-text');
 const undoToastButton = document.getElementById('undo-toast-button');
+const infoToast = document.getElementById('info-toast');
+const infoToastText = document.getElementById('info-toast-text');
 const lockScreen = document.getElementById('lock-screen');
 const lockForm = document.getElementById('lock-form');
 const lockPinInput = document.getElementById('lock-pin');
 const lockSubmitButton = document.getElementById('lock-submit');
+const lockForgotPinButton = document.getElementById('lock-forgot-pin');
 const lockBiometricButton = document.getElementById('lock-biometric');
 const lockMessage = document.getElementById('lock-message');
+const pinRecoveryModal = document.getElementById('pin-recovery-modal');
+const pinRecoveryClose = document.getElementById('pin-recovery-close');
+const pinRecoveryOptions = document.getElementById('pin-recovery-options');
+const pinRecoveryBiometricButton = document.getElementById('pin-recovery-biometric');
+const pinRecoveryResetButton = document.getElementById('pin-recovery-reset');
+const pinRecoveryWarning = document.getElementById('pin-recovery-warning');
+const pinRecoveryWarningContinue = document.getElementById('pin-recovery-warning-continue');
+const pinRecoveryWarningCancel = document.getElementById('pin-recovery-warning-cancel');
+const pinRecoveryConfirm = document.getElementById('pin-recovery-confirm');
+const pinRecoveryConfirmInput = document.getElementById('pin-recovery-confirm-input');
+const pinRecoveryConfirmDelete = document.getElementById('pin-recovery-confirm-delete');
+const pinRecoveryBack = document.getElementById('pin-recovery-back');
+const pinRecoveryError = document.getElementById('pin-recovery-error');
 
 const amountFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2
@@ -180,15 +232,28 @@ let currentSort = 'date-desc';
 let customRange = null;
 let initialBalance = 0;
 let initialBalanceExists = false;
+let activeTab = null;
+let appDataLoaded = false;
+let statsDirty = true;
+let statsRenderedDay = null;
+let historyDirty = true;
+const tabScrollPositions = {
+  home: 0,
+  history: 0,
+  stats: 0,
+  settings: 0
+};
 let statsRequestId = 0;
 let lastChartData = null;
 let lastChartPeriod = 'month';
 let lastBalanceSeries = null;
 let lastBalancePeriod = 'month';
 let categoryModalType = 'expense';
+let categoryModalReturnFocus = null;
 let editingExpenseId = null;
 let quickTemplates = [];
 let editingQuickTemplateId = null;
+let quickTemplateModalReturnFocus = null;
 let pendingUndo = null;
 let pendingUndoCommit = null;
 let printReportAfterPrint = null;
@@ -207,6 +272,11 @@ let pinLockedUntil = 0;
 let pinLockCountdownTimer = null;
 let appHiddenAt = 0;
 let isAppLocked = false;
+let pinRecoveryReturnFocus = null;
+let reconcileDraft = null;
+let reconcileCloseTimer = null;
+let reconcileReturnFocus = null;
+let infoToastTimer = null;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -226,6 +296,7 @@ function openDB() {
 
     request.onupgradeneeded = () => {
       const database = request.result;
+      const upgradeTransaction = request.transaction;
 
       if (!database.objectStoreNames.contains(STORE_NAME)) {
         database.createObjectStore(STORE_NAME, {
@@ -253,7 +324,7 @@ function openDB() {
         });
 
         const expensesStore = database.objectStoreNames.contains(STORE_NAME)
-          ? request.transaction.objectStore(STORE_NAME)
+          ? upgradeTransaction.objectStore(STORE_NAME)
           : null;
 
         if (expensesStore) {
@@ -276,7 +347,8 @@ function openDB() {
               categoriesStore.add({
                 name,
                 type,
-                isSystem: name === SYSTEM_CATEGORY_NAME
+                isSystem: name === SYSTEM_CATEGORY_NAME,
+                monthlyLimit: null
               });
             }
 
@@ -284,6 +356,28 @@ function openDB() {
           };
         }
       }
+
+      const categoriesStore = upgradeTransaction.objectStore(CATEGORIES_STORE);
+      const limitMigrationRequest = categoriesStore.openCursor();
+
+      limitMigrationRequest.onsuccess = () => {
+        const cursor = limitMigrationRequest.result;
+
+        if (!cursor) {
+          return;
+        }
+
+        const record = cursor.value || {};
+
+        if (!Object.prototype.hasOwnProperty.call(record, 'monthlyLimit')) {
+          cursor.update({
+            ...record,
+            monthlyLimit: null
+          });
+        }
+
+        cursor.continue();
+      };
     };
 
     request.onsuccess = () => {
@@ -315,7 +409,8 @@ function normalizeTransaction(transaction) {
 
   return {
     ...record,
-    type: record.type === 'income' ? 'income' : 'expense'
+    type: record.type === 'income' ? 'income' : 'expense',
+    isAdjustment: record.isAdjustment === true
   };
 }
 
@@ -326,15 +421,39 @@ function isSystemCategory(category) {
   );
 }
 
+function normalizeMonthlyLimit(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const number = typeof value === 'number'
+    ? value
+    : Number(String(value).trim().replace(/\s/g, '').replace(',', '.'));
+
+  if (
+    !Number.isFinite(number) ||
+    number <= 0 ||
+    number > CATEGORY_LIMIT_MAX
+  ) {
+    return null;
+  }
+
+  return roundCurrency(number);
+}
+
 function normalizeCategory(record) {
   const category = record && typeof record === 'object' ? record : {};
   const name = typeof category.name === 'string' ? category.name : '';
+  const type = category.type === 'income' ? 'income' : 'expense';
 
   return {
     ...category,
     name,
-    type: category.type === 'income' ? 'income' : 'expense',
-    isSystem: category.isSystem === true || name === SYSTEM_CATEGORY_NAME
+    type,
+    isSystem: category.isSystem === true || name === SYSTEM_CATEGORY_NAME,
+    monthlyLimit: type === 'expense'
+      ? normalizeMonthlyLimit(category.monthlyLimit)
+      : null
   };
 }
 
@@ -346,7 +465,8 @@ function createDefaultCategoryRecords() {
       records.push({
         name,
         type,
-        isSystem: name === SYSTEM_CATEGORY_NAME
+        isSystem: name === SYSTEM_CATEGORY_NAME,
+        monthlyLimit: null
       });
     });
   });
@@ -509,7 +629,8 @@ function seedDefaultsIfEmpty() {
             store.add({
               name,
               type,
-              isSystem: name === SYSTEM_CATEGORY_NAME
+              isSystem: name === SYSTEM_CATEGORY_NAME,
+              monthlyLimit: null
             });
           });
         } else if (!typeCategories.some((category) => {
@@ -518,7 +639,8 @@ function seedDefaultsIfEmpty() {
           store.add({
             name: SYSTEM_CATEGORY_NAME,
             type,
-            isSystem: true
+            isSystem: true,
+            monthlyLimit: null
           });
         }
       });
@@ -613,7 +735,8 @@ function addCategory(name, type) {
       const addRequest = store.add({
         name: cleanName,
         type,
-        isSystem: false
+        isSystem: false,
+        monthlyLimit: null
       });
 
       addRequest.onsuccess = () => {
@@ -621,7 +744,8 @@ function addCategory(name, type) {
           id: addRequest.result,
           name: cleanName,
           type,
-          isSystem: false
+          isSystem: false,
+          monthlyLimit: null
         };
       };
     };
@@ -912,6 +1036,187 @@ async function deleteCategory(id) {
   await deleteCategoryRecord(category, usage > 0);
 
   return true;
+}
+
+function validateCategoryLimitValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value === 'string' && !value.trim()) {
+    return null;
+  }
+
+  const raw = typeof value === 'string'
+    ? value.trim().replace(/\s/g, '').replace(',', '.')
+    : value;
+  const number = Number(raw);
+
+  if (
+    !Number.isFinite(number) ||
+    number <= 0 ||
+    number > CATEGORY_LIMIT_MAX
+  ) {
+    throw new Error('Лимит должен быть числом больше 0 и не больше 100 000 000.');
+  }
+
+  return roundCurrency(number);
+}
+
+function getCategoryLimit(categoryName) {
+  return getCategories('expense').then((categories) => {
+    const category = categories.find((item) => item.name === categoryName);
+    return category ? category.monthlyLimit : null;
+  });
+}
+
+function setCategoryLimit(categoryId, value) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    if (!Number.isInteger(categoryId)) {
+      reject(new Error('Категория не найдена.'));
+      return;
+    }
+
+    let monthlyLimit;
+
+    try {
+      monthlyLimit = validateCategoryLimitValue(value);
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(CATEGORIES_STORE, 'readwrite');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const store = transaction.objectStore(CATEGORIES_STORE);
+    const getRequest = store.get(categoryId);
+    let updated = null;
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось сохранить лимит.'));
+    };
+
+    getRequest.onsuccess = () => {
+      const category = getRequest.result;
+
+      if (!category) {
+        transaction.abort();
+        fail(new Error('Категория не найдена.'));
+        return;
+      }
+
+      if (category.type !== 'expense') {
+        transaction.abort();
+        fail(new Error('Лимиты доступны только для расходных категорий.'));
+        return;
+      }
+
+      const updatedRecord = {
+        ...category,
+        monthlyLimit
+      };
+      const putRequest = store.put(updatedRecord);
+
+      putRequest.onsuccess = () => {
+        updated = normalizeCategory(updatedRecord);
+      };
+    };
+
+    getRequest.onerror = () => fail(getRequest.error);
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(updated);
+    };
+    transaction.onerror = () => fail(transaction.error || getRequest.error);
+    transaction.onabort = () => fail(transaction.error || getRequest.error);
+  });
+}
+
+async function getMonthLimitStats() {
+  const categories = await getAllCategories();
+  const today = getTodayISO();
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const spentByCategory = new Map();
+
+  expenses.forEach((expense) => {
+    if (getTransactionType(expense) !== 'expense' || expense.isAdjustment === true) {
+      return;
+    }
+
+    if (typeof expense.date !== 'string') {
+      return;
+    }
+
+    if (expense.date < monthStart || expense.date > today) {
+      return;
+    }
+
+    const amount = Number(expense.amount);
+
+    if (!Number.isFinite(amount)) {
+      return;
+    }
+
+    const current = spentByCategory.get(expense.category) || 0;
+    spentByCategory.set(expense.category, current + amount);
+  });
+
+  return categories
+    .filter((category) => {
+      return category.type === 'expense' && category.monthlyLimit !== null;
+    })
+    .map((category) => {
+      const limit = category.monthlyLimit;
+      const spent = roundCurrency(spentByCategory.get(category.name) || 0);
+      const remaining = roundCurrency(limit - spent);
+
+      return {
+        category,
+        limit,
+        spent,
+        remaining,
+        percent: (spent / limit) * 100,
+        over: spent > limit
+      };
+    })
+    .sort((left, right) => {
+      return right.percent - left.percent
+        || left.category.name.localeCompare(right.category.name, 'ru');
+    });
+}
+
+function getLimitColor(percent) {
+  if (percent > 100) {
+    return '#e74c3c';
+  }
+
+  if (percent > 70) {
+    return '#f39c12';
+  }
+
+  return '#27ae60';
 }
 
 function getInitialBalance() {
@@ -1770,7 +2075,10 @@ function replaceAllData(data) {
         categoriesStore.add({
           name: category.name,
           type: category.type,
-          isSystem: isSystemCategory(category)
+          isSystem: isSystemCategory(category),
+          monthlyLimit: category.type === 'expense'
+            ? normalizeMonthlyLimit(category.monthlyLimit)
+            : null
         });
       });
 
@@ -1783,7 +2091,8 @@ function replaceAllData(data) {
           createdAt: typeof item.createdAt === 'string'
             ? item.createdAt
             : fallbackCreatedAt,
-          type: item.type
+          type: item.type,
+          isAdjustment: item.isAdjustment === true
         });
       });
 
@@ -2395,6 +2704,15 @@ function createExpenseElement(expense) {
   category.className = 'expense-category';
   category.textContent = expense.category;
 
+  meta.append(category);
+
+  if (expense.isAdjustment === true) {
+    const adjustmentBadge = document.createElement('span');
+    adjustmentBadge.className = 'expense-adjustment-badge';
+    adjustmentBadge.textContent = 'корректировка';
+    meta.append(adjustmentBadge);
+  }
+
   const separator = document.createElement('span');
   separator.className = 'expense-separator';
   separator.setAttribute('aria-hidden', 'true');
@@ -2405,7 +2723,7 @@ function createExpenseElement(expense) {
   date.dateTime = expense.date;
   date.textContent = formatDate(expense.date);
 
-  meta.append(category, separator, date);
+  meta.append(separator, date);
   info.append(amount, meta);
 
   if (expense.note) {
@@ -2482,6 +2800,170 @@ function updateTotal(items) {
   totalNet.classList.toggle('is-expense', netFlow < 0);
 
   updateBalance(totals);
+}
+
+function renderBalanceLine() {
+  updateBalance(calculateTotals(expenses));
+}
+
+function formatHomeOperationDate(isoDate) {
+  if (isoDate === getTodayISO()) {
+    return '';
+  }
+
+  const date = parseISODate(isoDate);
+
+  if (!date) {
+    return String(isoDate);
+  }
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${day}.${month}`;
+}
+
+function createHomeOperationElement(expense) {
+  const item = document.createElement('li');
+  item.className = 'home-last-item';
+
+  const type = getTransactionType(expense);
+  const amount = document.createElement('span');
+  amount.className = type === 'income'
+    ? 'home-last-amount is-income'
+    : 'home-last-amount';
+  amount.textContent = formatSignedAmount(expense.amount, type);
+
+  const label = document.createElement('span');
+  label.className = 'home-last-label';
+  label.textContent = expense.category || expense.note || SYSTEM_CATEGORY_NAME;
+
+  const dateText = formatHomeOperationDate(expense.date);
+  item.append(amount, label);
+
+  if (dateText) {
+    const date = document.createElement('time');
+    date.className = 'home-last-date';
+    date.dateTime = expense.date;
+    date.textContent = dateText;
+    item.append(date);
+  }
+
+  return item;
+}
+
+function renderHomeLastOperations(items = expenses) {
+  const pendingDeleteId = getPendingExpenseDeleteId();
+  const latest = [...items]
+    .filter((expense) => expense.id !== pendingDeleteId)
+    .sort(compareExpenses)
+    .slice(0, 5);
+
+  if (latest.length === 0) {
+    homeLastList.replaceChildren();
+    homeLastOperations.hidden = true;
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  latest.forEach((expense) => {
+    fragment.append(createHomeOperationElement(expense));
+  });
+
+  homeLastList.replaceChildren(fragment);
+  homeLastOperations.hidden = false;
+}
+
+async function renderLimitsHome(container = homeLimitsList) {
+  let stats;
+
+  try {
+    stats = await getMonthLimitStats();
+  } catch (error) {
+    homeLimits.hidden = true;
+    container.replaceChildren();
+    return;
+  }
+
+  if (stats.length === 0) {
+    container.replaceChildren();
+    homeLimits.hidden = true;
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  stats.forEach((stat) => {
+    const roundedPercent = Math.round(stat.percent);
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = `month-limit-row${stat.over ? ' is-over' : ''}`;
+    row.dataset.limitCategory = stat.category.name;
+
+    const top = document.createElement('span');
+    top.className = 'month-limit-top';
+
+    const name = document.createElement('span');
+    name.className = 'month-limit-name';
+    name.textContent = stat.category.name;
+
+    const separator = document.createElement('span');
+    separator.className = 'month-limit-separator';
+    separator.setAttribute('aria-hidden', 'true');
+    separator.textContent = '·';
+
+    const amounts = document.createElement('span');
+    amounts.className = 'month-limit-amounts';
+    amounts.textContent = `${amountFormatter.format(stat.spent)} / ${amountFormatter.format(stat.limit)} ₽`;
+
+    const metrics = document.createElement('span');
+    metrics.className = 'month-limit-metrics';
+
+    const percent = document.createElement('span');
+    percent.className = 'month-limit-percent';
+    percent.textContent = `${roundedPercent}%`;
+    metrics.append(percent);
+
+    if (stat.over) {
+      const over = document.createElement('span');
+      over.className = 'month-limit-over';
+      over.textContent = `+${formatAmount(Math.abs(stat.remaining))}`;
+      metrics.append(over);
+    }
+
+    top.append(name, separator, amounts, metrics);
+
+    const bar = document.createElement('span');
+    bar.className = 'month-limit-progress';
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', '100');
+    bar.setAttribute('aria-valuenow', String(Math.min(100, roundedPercent)));
+    bar.setAttribute(
+      'aria-label',
+      `${stat.category.name}: потрачено ${formatAmount(stat.spent)} из ${formatAmount(stat.limit)}`
+    );
+
+    const fill = document.createElement('span');
+    fill.className = 'month-limit-progress-fill';
+    fill.style.width = `${Math.min(100, Math.max(0, stat.percent))}%`;
+    fill.style.backgroundColor = getLimitColor(stat.percent);
+    bar.append(fill);
+
+    row.append(top, bar);
+    fragment.append(row);
+  });
+
+  container.replaceChildren(fragment);
+  homeLimits.hidden = false;
+}
+
+async function renderHome(items = expenses) {
+  updateTotal(items);
+  renderHomeLastOperations(items);
+  updateBackupBanner();
+  updateLastBackupStatusLine();
+  await renderLimitsHome();
 }
 
 function estimateChartLabelWidth(label) {
@@ -3067,7 +3549,40 @@ function renderComparison(container, comparison) {
   container.append(title, document.createTextNode(' '), list);
 }
 
-function renderCategoryBreakdown(container, list, categories, total) {
+function renderLimitsInStats(container, limitStat) {
+  const details = document.createElement('div');
+  details.className = 'stats-limit-details';
+
+  const bar = document.createElement('div');
+  bar.className = 'month-limit-progress stats-limit-progress';
+  bar.setAttribute('role', 'progressbar');
+  bar.setAttribute('aria-valuemin', '0');
+  bar.setAttribute('aria-valuemax', '100');
+  bar.setAttribute('aria-valuenow', String(Math.min(100, Math.round(limitStat.percent))));
+  bar.setAttribute(
+    'aria-label',
+    `${limitStat.category.name}: потрачено ${formatAmount(limitStat.spent)} из ${formatAmount(limitStat.limit)}`
+  );
+
+  const fill = document.createElement('span');
+  fill.className = 'month-limit-progress-fill';
+  fill.style.width = `${Math.min(100, Math.max(0, limitStat.percent))}%`;
+  fill.style.backgroundColor = getLimitColor(limitStat.percent);
+  bar.append(fill);
+
+  const caption = document.createElement('span');
+  caption.className = limitStat.over
+    ? 'stats-limit-caption is-over'
+    : 'stats-limit-caption';
+  caption.textContent = limitStat.over
+    ? `перерасход: +${formatAmount(Math.abs(limitStat.remaining))}`
+    : `из ${formatAmount(limitStat.limit)}`;
+
+  details.append(bar, caption);
+  container.append(details);
+}
+
+function renderCategoryBreakdown(container, list, categories, total, limitStats) {
   const entries = Object.entries(categories)
     .filter(([, sum]) => Number.isFinite(sum) && sum > 0)
     .sort((a, b) => b[1] - a[1]);
@@ -3076,6 +3591,9 @@ function renderCategoryBreakdown(container, list, categories, total) {
   entries.forEach(([category, sum]) => {
     const item = document.createElement('li');
     item.className = 'stats-category';
+
+    const main = document.createElement('div');
+    main.className = 'stats-category-main';
 
     const name = document.createElement('span');
     name.className = 'stats-category-name';
@@ -3090,7 +3608,13 @@ function renderCategoryBreakdown(container, list, categories, total) {
 
     value.textContent = `${formatAmount(sum)} (${percent}%)`;
 
-    item.append(name, value);
+    main.append(name, value);
+    item.append(main);
+
+    if (limitStats && limitStats.has(category)) {
+      renderLimitsInStats(item, limitStats.get(category));
+    }
+
     fragment.append(item);
   });
 
@@ -3101,9 +3625,16 @@ function renderCategoryBreakdown(container, list, categories, total) {
   return entries.length;
 }
 
-function renderStats(result) {
+function updateStatsVisibility(hasData) {
+  statsTabEmpty.hidden = hasData;
+  statsPeriodControls.hidden = !hasData;
+  statsPanel.hidden = !hasData;
+}
+
+async function renderStats(result) {
   const netFlow = result.netFlow;
 
+  updateStatsVisibility(true);
   statsExpense.textContent = formatAmount(result.expenseTotal);
   statsIncome.textContent = formatAmount(result.incomeTotal);
   statsNet.textContent = formatNetAmount(netFlow);
@@ -3111,11 +3642,23 @@ function renderStats(result) {
   statsNet.classList.toggle('is-expense', netFlow < 0);
   statsAvg.textContent = formatAmount(result.avgPerDay);
 
+  let limitStatsByName = new Map();
+
+  try {
+    const monthLimitStats = await getMonthLimitStats();
+    limitStatsByName = new Map(
+      monthLimitStats.map((stat) => [stat.category.name, stat])
+    );
+  } catch (error) {
+    limitStatsByName = new Map();
+  }
+
   const expenseCount = renderCategoryBreakdown(
     statsExpenseGroup,
     statsExpenseCategories,
     result.expenseByCategory,
-    result.expenseTotal
+    result.expenseTotal,
+    limitStatsByName
   );
   const incomeCount = renderCategoryBreakdown(
     statsIncomeGroup,
@@ -3248,6 +3791,10 @@ function initCustomPeriod() {
   updateStatsPeriodLabel();
 }
 
+function markStatsDirty() {
+  statsDirty = true;
+}
+
 async function refreshStats() {
   const requestId = ++statsRequestId;
 
@@ -3258,7 +3805,18 @@ async function refreshStats() {
       return;
     }
 
-    renderStats(aggregate(allExpenses, getActiveStatsPeriod()));
+    if (allExpenses.length === 0) {
+      lastChartData = null;
+      lastBalanceSeries = null;
+      updateStatsVisibility(false);
+      statsDirty = false;
+      statsRenderedDay = getTodayISO();
+      return;
+    }
+
+    await renderStats(aggregate(allExpenses, getActiveStatsPeriod()));
+    statsDirty = false;
+    statsRenderedDay = getTodayISO();
   } catch (error) {
     if (requestId === statsRequestId) {
       showError('Не удалось обновить статистику. Проверьте доступ к хранилищу и попробуйте ещё раз.');
@@ -3429,8 +3987,8 @@ function updateExpenseEmptyState(items, visibleCount) {
 
   const hasFilters = hasActiveListFilters();
   emptyState.textContent = items.length > 0 || hasFilters
-    ? 'Ничего не найдено'
-    : 'Пока нет операций';
+    ? 'Ничего не найдено.'
+    : 'Пока нет операций. Добавьте первую на вкладке «Главная».';
   emptyState.hidden = false;
 }
 
@@ -3491,11 +4049,122 @@ function initExpenseListControls() {
   });
 }
 
-async function render(items) {
+function renderHistory(items = expenses) {
   renderExpenseList(items);
-  updateTotal(items);
+  historyDirty = false;
+}
 
-  await refreshStats();
+async function render(items) {
+  historyDirty = true;
+  markStatsDirty();
+  await renderHome(items);
+
+  if (activeTab === 'history') {
+    renderHistory(items);
+  } else if (activeTab === 'stats') {
+    await refreshStats();
+  }
+}
+
+function getTabFromHash() {
+  const tabName = window.location.hash.replace(/^#/, '');
+  return TAB_NAMES.includes(tabName) ? tabName : 'home';
+}
+
+function syncHash(tabName, push) {
+  const hash = `#${tabName}`;
+
+  if (window.location.hash === hash) {
+    if (!window.history.state || window.history.state.tab !== tabName) {
+      window.history.replaceState({ tab: tabName }, '', hash);
+    }
+
+    return;
+  }
+
+  const method = push ? 'pushState' : 'replaceState';
+  window.history[method]({ tab: tabName }, '', hash);
+}
+
+function onTabShow(tabName) {
+  if (!appDataLoaded) {
+    return;
+  }
+
+  if (tabName === 'home') {
+    renderHome(expenses);
+  } else if (tabName === 'history' && historyDirty) {
+    renderHistory(expenses);
+  } else if (
+    tabName === 'stats' &&
+    (statsDirty || statsRenderedDay !== getTodayISO())
+  ) {
+    refreshStats();
+  } else if (tabName === 'settings') {
+    renderBalanceLine();
+    updateLastBackupStatusLine();
+  }
+}
+
+function showTab(tabName, { push = true } = {}) {
+  const targetTab = TAB_NAMES.includes(tabName) ? tabName : 'home';
+  const previousTab = activeTab;
+  const isTabChange = previousTab !== targetTab;
+
+  if (isTabChange && previousTab) {
+    tabScrollPositions[previousTab] = window.scrollY;
+  }
+
+  activeTab = targetTab;
+
+  tabPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.tab !== targetTab;
+  });
+
+  bottomNavButtons.forEach((button) => {
+    const isActive = button.dataset.tabTarget === targetTab;
+
+    button.classList.toggle('is-active', isActive);
+
+    if (isActive) {
+      button.setAttribute('aria-current', 'page');
+    } else {
+      button.removeAttribute('aria-current');
+    }
+  });
+
+  syncHash(targetTab, push && isTabChange);
+
+  if (isTabChange) {
+    window.scrollTo(0, tabScrollPositions[targetTab] || 0);
+  }
+
+  onTabShow(targetTab);
+}
+
+function initTabNavigation() {
+  if ('scrollRestoration' in window.history) {
+    window.history.scrollRestoration = 'manual';
+  }
+
+  bottomNavButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      showTab(button.dataset.tabTarget);
+    });
+  });
+
+  const handleRouteChange = () => {
+    const tabName = getTabFromHash();
+
+    if (tabName === activeTab) {
+      return;
+    }
+
+    showTab(tabName, { push: false });
+  };
+
+  window.addEventListener('popstate', handleRouteChange);
+  window.addEventListener('hashchange', handleRouteChange);
 }
 
 function showError(message) {
@@ -3612,6 +4281,45 @@ function updateBackupBanner() {
   hideBackupBanner();
 }
 
+function updateLastBackupStatusLine() {
+  if (!lastBackupValue) {
+    return;
+  }
+
+  if (!lastBackupAt) {
+    lastBackupValue.textContent = 'никогда';
+    return;
+  }
+
+  const time = Date.parse(lastBackupAt);
+
+  if (!Number.isFinite(time)) {
+    lastBackupValue.textContent = 'никогда';
+    return;
+  }
+
+  const days = Math.max(0, Math.floor((Date.now() - time) / DAY_MS));
+
+  if (days === 0) {
+    lastBackupValue.textContent = 'сегодня';
+    return;
+  }
+
+  const lastTwo = days % 100;
+  const lastOne = days % 10;
+  let suffix = 'дней';
+
+  if (lastTwo < 11 || lastTwo > 14) {
+    if (lastOne === 1) {
+      suffix = 'день';
+    } else if (lastOne >= 2 && lastOne <= 4) {
+      suffix = 'дня';
+    }
+  }
+
+  lastBackupValue.textContent = `${days} ${suffix} назад`;
+}
+
 async function handleBackupBannerHide() {
   const hiddenUntil = new Date(Date.now() + DAY_MS).toISOString();
 
@@ -3645,7 +4353,8 @@ async function exportJSON() {
     categories: categories.map((category) => ({
       name: category.name,
       type: category.type,
-      isSystem: isSystemCategory(category)
+      isSystem: isSystemCategory(category),
+      monthlyLimit: category.type === 'expense' ? category.monthlyLimit : null
     })),
     quickTemplates: templates.map((template) => ({
       id: template.id,
@@ -3657,7 +4366,10 @@ async function exportJSON() {
       enabled: template.enabled,
       order: template.order
     })),
-    transactions: items
+    transactions: items.map((item) => {
+      const { isAdjustment, ...rest } = item;
+      return isAdjustment === true ? { ...rest, isAdjustment: true } : rest;
+    })
   }, null, 2);
 
   downloadFile(
@@ -3670,6 +4382,7 @@ async function exportJSON() {
     lastBackupAt: exportedAt
   });
   lastBackupAt = exportedAt;
+  updateLastBackupStatusLine();
   hideBackupBanner();
 }
 
@@ -4082,6 +4795,13 @@ function validateImportItem(item, index, forcedType) {
     throw new Error(`${label}: поле "createdAt" должно быть строкой.`);
   }
 
+  if (
+    Object.prototype.hasOwnProperty.call(item, 'isAdjustment') &&
+    typeof item.isAdjustment !== 'boolean'
+  ) {
+    throw new Error(`${label}: поле "isAdjustment" должно быть boolean.`);
+  }
+
   return {
     amount: item.amount,
     note: Object.prototype.hasOwnProperty.call(item, 'note') ? item.note : '',
@@ -4090,7 +4810,8 @@ function validateImportItem(item, index, forcedType) {
     createdAt: Object.prototype.hasOwnProperty.call(item, 'createdAt')
       ? item.createdAt
       : null,
-    type
+    type,
+    isAdjustment: item.isAdjustment === true
   };
 }
 
@@ -4124,11 +4845,36 @@ function validateImportCategories(list) {
       return;
     }
 
+    let monthlyLimit = null;
+
+    if (
+      entry.type === 'expense' &&
+      Object.prototype.hasOwnProperty.call(entry, 'monthlyLimit') &&
+      entry.monthlyLimit !== null
+    ) {
+      const rawLimit = entry.monthlyLimit;
+      const isValidLimit = (
+        typeof rawLimit === 'number' &&
+        Number.isFinite(rawLimit) &&
+        rawLimit > 0 &&
+        rawLimit <= CATEGORY_LIMIT_MAX
+      );
+
+      if (isValidLimit) {
+        monthlyLimit = roundCurrency(rawLimit);
+      } else {
+        console.warn(
+          `${label}: некорректное поле "monthlyLimit", лимит будет снят.`
+        );
+      }
+    }
+
     seen.add(key);
     result.push({
       name,
       type: entry.type,
-      isSystem: name === SYSTEM_CATEGORY_NAME
+      isSystem: name === SYSTEM_CATEGORY_NAME,
+      monthlyLimit
     });
   });
 
@@ -4138,7 +4884,7 @@ function validateImportCategories(list) {
 function buildImportCategories(importedCategories, items, addDefaults) {
   const map = new Map();
 
-  const add = (rawName, type, forceSystem) => {
+  const add = (rawName, type, forceSystem, monthlyLimit = null) => {
     if (!TRANSACTION_TYPES.includes(type)) {
       return null;
     }
@@ -4151,6 +4897,9 @@ function buildImportCategories(importedCategories, items, addDefaults) {
 
     const key = categoryKey(type, name);
     const isSystem = forceSystem === true || name === SYSTEM_CATEGORY_NAME;
+    const normalizedLimit = type === 'expense'
+      ? normalizeMonthlyLimit(monthlyLimit)
+      : null;
 
     if (map.has(key)) {
       const existing = map.get(key);
@@ -4159,17 +4908,26 @@ function buildImportCategories(importedCategories, items, addDefaults) {
         existing.isSystem = true;
       }
 
+      if (normalizedLimit !== null && existing.monthlyLimit === null) {
+        existing.monthlyLimit = normalizedLimit;
+      }
+
       return existing;
     }
 
-    const record = { name, type, isSystem };
+    const record = {
+      name,
+      type,
+      isSystem,
+      monthlyLimit: normalizedLimit
+    };
     map.set(key, record);
 
     return record;
   };
 
   (importedCategories || []).forEach((category) => {
-    add(category.name, category.type, category.isSystem);
+    add(category.name, category.type, category.isSystem, category.monthlyLimit);
   });
 
   if (addDefaults) {
@@ -4572,6 +5330,7 @@ async function startEditingExpense(expense) {
   const id = Number(expense.id);
 
   clearError();
+  showTab('home', { push: false });
   editingExpenseId = id;
   currentType = getTransactionType(expense);
   amountInput.value = String(expense.amount);
@@ -4669,10 +5428,32 @@ async function renderCategoryModalList() {
       info.append(badge);
     }
 
+    if (category.type === 'expense') {
+      const limit = document.createElement('span');
+      limit.className = 'category-item-limit';
+      limit.textContent = category.monthlyLimit === null
+        ? 'Лимит не задан'
+        : `Лимит: ${formatAmount(category.monthlyLimit)}/мес`;
+      info.append(limit);
+    }
+
     const actions = document.createElement('div');
     actions.className = 'category-item-actions';
 
     const actionsDisabled = isSystemCategory(category);
+
+    if (category.type === 'expense') {
+      const limitButton = document.createElement('button');
+      limitButton.type = 'button';
+      limitButton.className = 'category-action-button';
+      limitButton.dataset.categoryAction = 'limit';
+      limitButton.dataset.id = String(category.id);
+      limitButton.textContent = category.monthlyLimit === null
+        ? 'Задать лимит'
+        : 'Изменить лимит';
+      actions.append(limitButton);
+    }
+
     const renameButton = document.createElement('button');
     renameButton.type = 'button';
     renameButton.className = 'category-action-button';
@@ -4706,8 +5487,11 @@ async function renderCategoryModalList() {
   categoryModalEmpty.hidden = categories.length > 0;
 }
 
-function openCategoryModal() {
-  categoryModalType = currentType;
+function openCategoryModal(type = currentType) {
+  categoryModalType = TRANSACTION_TYPES.includes(type) ? type : currentType;
+  categoryModalReturnFocus = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : null;
   updateCategoryModalTabs();
   setCategoryModalError('');
   categoryNameInput.value = '';
@@ -4726,7 +5510,15 @@ function closeCategoryModal() {
   document.body.classList.remove('modal-open');
   setCategoryModalError('');
 
-  if (manageCategoriesButton) {
+  const returnFocus = categoryModalReturnFocus;
+  categoryModalReturnFocus = null;
+
+  if (returnFocus && returnFocus.isConnected) {
+    returnFocus.focus();
+    return;
+  }
+
+  if (manageCategoriesButton && manageCategoriesButton.offsetParent !== null) {
     manageCategoriesButton.focus();
   }
 }
@@ -4784,6 +5576,46 @@ async function handleCategoryRename(id) {
     await refreshAfterCategoryChange();
   } catch (error) {
     setCategoryModalError(error.message || 'Не удалось переименовать категорию.');
+  }
+}
+
+async function handleCategoryLimit(id) {
+  setCategoryModalError('');
+
+  let categories;
+
+  try {
+    categories = await getCategories('expense');
+  } catch (error) {
+    setCategoryModalError('Не удалось загрузить категории.');
+    return;
+  }
+
+  const category = categories.find((item) => item.id === id);
+
+  if (!category) {
+    setCategoryModalError('Категория не найдена.');
+    return;
+  }
+
+  const currentLimit = category.monthlyLimit === null
+    ? ''
+    : String(category.monthlyLimit);
+  const raw = window.prompt(
+    `Месячный лимит для «${category.name}» в рублях. Оставьте поле пустым, чтобы снять лимит:`,
+    currentLimit
+  );
+
+  if (raw === null) {
+    return;
+  }
+
+  try {
+    await setCategoryLimit(id, raw);
+    setCategoryModalError('');
+    await refreshAfterCategoryChange();
+  } catch (error) {
+    setCategoryModalError(error.message || 'Не удалось сохранить лимит.');
   }
 }
 
@@ -4883,7 +5715,9 @@ function initCategoryModal() {
       return;
     }
 
-    if (button.dataset.categoryAction === 'rename') {
+    if (button.dataset.categoryAction === 'limit') {
+      handleCategoryLimit(id);
+    } else if (button.dataset.categoryAction === 'rename') {
       handleCategoryRename(id);
     } else if (button.dataset.categoryAction === 'delete') {
       handleCategoryDelete(id);
@@ -5182,6 +6016,9 @@ async function openQuickTemplateModal() {
   }
 
   setQuickTemplateError('');
+  quickTemplateModalReturnFocus = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : null;
   quickTemplateModal.hidden = false;
   document.body.classList.add('modal-open');
   await resetQuickTemplateForm();
@@ -5200,6 +6037,14 @@ function closeQuickTemplateModal() {
   quickTemplateModal.hidden = true;
   document.body.classList.remove('modal-open');
   setQuickTemplateError('');
+
+  const returnFocus = quickTemplateModalReturnFocus;
+  quickTemplateModalReturnFocus = null;
+
+  if (returnFocus && returnFocus.isConnected) {
+    returnFocus.focus();
+    return;
+  }
 
   const focusTarget = quickTemplatesRow.querySelector(
     '.quick-template-manage, .quick-template-add'
@@ -5579,6 +6424,141 @@ function hasBiometricLogin() {
     && Boolean(securityState.credentialId);
 }
 
+async function authenticateBiometric() {
+  if (!hasBiometricLogin()) {
+    throw new Error('Биометрия недоступна.');
+  }
+
+  const credential = await navigator.credentials.get({
+    publicKey: {
+      challenge: createRandomBytes(32),
+      allowCredentials: [
+        {
+          id: base64ToBytes(securityState.credentialId),
+          type: 'public-key'
+        }
+      ],
+      userVerification: 'required',
+      timeout: 60000
+    }
+  });
+
+  if (!credential) {
+    throw new Error('Биометрия не подтвердила вход.');
+  }
+
+  return credential;
+}
+
+async function changePin(oldPin, newPin) {
+  if (!isPinConfigured()) {
+    throw new Error('PIN не настроен.');
+  }
+
+  if (!isValidPinFormat(oldPin)) {
+    throw new Error('Введите текущий PIN из 4–6 цифр.');
+  }
+
+  if (!isValidPinFormat(newPin)) {
+    throw new Error('Новый PIN должен состоять из 4–6 цифр.');
+  }
+
+  const oldPinHash = await hashPin(oldPin, securityState.pinSalt);
+
+  if (!secureCompare(oldPinHash, securityState.pinHash)) {
+    throw new Error('Неверный текущий PIN.');
+  }
+
+  const salt = createRandomSalt();
+  const pinHash = await hashPin(newPin, salt);
+
+  await setSettings({
+    pinHash,
+    pinSalt: salt
+  });
+
+  securityState = {
+    ...securityState,
+    pinHash,
+    pinSalt: salt
+  };
+
+  return true;
+}
+
+async function resetAllData() {
+  discardPendingUndo();
+
+  if (pendingUndoCommit) {
+    await pendingUndoCommit;
+  }
+
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error('База данных не открыта.'));
+      return;
+    }
+
+    let transaction;
+
+    try {
+      transaction = db.transaction(
+        [STORE_NAME, SETTINGS_STORE, CATEGORIES_STORE],
+        'readwrite'
+      );
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(error || new Error('Не удалось сбросить данные.'));
+    };
+
+    try {
+      transaction.objectStore(STORE_NAME).clear();
+      transaction.objectStore(SETTINGS_STORE).clear();
+      transaction.objectStore(CATEGORIES_STORE).clear();
+    } catch (error) {
+      try {
+        transaction.abort();
+      } catch (abortError) {
+        // Транзакция уже завершилась — данные не менялись.
+      }
+
+      reject(error);
+      return;
+    }
+
+    transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+
+      if (pendingUndo) {
+        window.clearTimeout(pendingUndo.timerId);
+        pendingUndo = null;
+      }
+
+      pendingUndoCommit = null;
+      isAppLocked = false;
+      window.location.reload();
+      resolve();
+    };
+    transaction.onerror = () => fail(transaction.error);
+    transaction.onabort = () => fail(transaction.error);
+  });
+}
+
 function setSecurityModalError(message) {
   securityModalError.textContent = message || '';
   securityModalError.hidden = !message;
@@ -5598,6 +6578,7 @@ function refreshSecurityModalUi() {
     : (biometricEnabled ? 'включена' : 'не настроена');
   securityEnablePinSection.hidden = pinEnabled;
   securityDisablePinSection.hidden = !pinEnabled;
+  securityChangePinSection.hidden = !pinEnabled;
   securityEnableBiometricButton.hidden = !biometricSupported || biometricEnabled;
   securityEnableBiometricButton.disabled = !pinEnabled;
   securityDisableBiometricButton.hidden = !biometricSupported || !biometricEnabled;
@@ -5622,6 +6603,11 @@ function openSecurityModal() {
   securityPinInput.value = '';
   securityPinConfirmInput.value = '';
   securityCurrentPinInput.value = '';
+  securityChangeOldPinInput.value = '';
+  securityChangeNewPinInput.value = '';
+  securityChangeNewPinConfirmInput.value = '';
+  securityChangePinStatus.textContent = '';
+  securityChangePinStatus.hidden = true;
   refreshSecurityModalUi();
   securityModal.hidden = false;
   document.body.classList.add('modal-open');
@@ -5643,6 +6629,7 @@ function closeSecurityModal() {
   securityModal.hidden = true;
   document.body.classList.remove('modal-open');
   setSecurityModalError('');
+  securityChangePinStatus.hidden = true;
   manageSecurityButton.focus();
 }
 
@@ -5751,6 +6738,67 @@ async function handleSecurityCurrentPinSubmit(event) {
     setSecurityModalError('Не удалось отключить PIN. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
     securityDisablePinButton.disabled = false;
+  }
+}
+
+async function handleSecurityChangePinSubmit(event) {
+  event.preventDefault();
+  setSecurityModalError('');
+  securityChangePinStatus.hidden = true;
+
+  const oldPin = securityChangeOldPinInput.value.trim();
+  const newPin = securityChangeNewPinInput.value.trim();
+  const confirmation = securityChangeNewPinConfirmInput.value.trim();
+
+  if (!isPinConfigured()) {
+    setSecurityModalError('PIN не настроен.');
+    return;
+  }
+
+  if (!isValidPinFormat(oldPin)) {
+    setSecurityModalError('Введите текущий PIN из 4–6 цифр.');
+    securityChangeOldPinInput.focus();
+    return;
+  }
+
+  if (!isValidPinFormat(newPin)) {
+    setSecurityModalError('Новый PIN должен состоять из 4–6 цифр.');
+    securityChangeNewPinInput.focus();
+    return;
+  }
+
+  if (newPin !== confirmation) {
+    setSecurityModalError('Новый PIN не совпадает.');
+    securityChangeNewPinConfirmInput.focus();
+    return;
+  }
+
+  securityChangePinButton.disabled = true;
+
+  try {
+    await changePin(oldPin, newPin);
+    securityChangeOldPinInput.value = '';
+    securityChangeNewPinInput.value = '';
+    securityChangeNewPinConfirmInput.value = '';
+    securityCurrentPinInput.value = '';
+    securityChangePinStatus.textContent = 'PIN изменён. Биометрия продолжает работать.';
+    securityChangePinStatus.hidden = false;
+    securityChangeOldPinInput.focus();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    const safeMessages = [
+      'PIN не настроен.',
+      'Введите текущий PIN из 4–6 цифр.',
+      'Новый PIN должен состоять из 4–6 цифр.',
+      'Неверный текущий PIN.'
+    ];
+    setSecurityModalError(
+      safeMessages.includes(message)
+        ? message
+        : 'Не удалось сменить PIN. Проверьте доступ к хранилищу и попробуйте ещё раз.'
+    );
+  } finally {
+    securityChangePinButton.disabled = false;
   }
 }
 
@@ -5994,24 +7042,7 @@ async function handleBiometricUnlock() {
   setLockMessage('');
 
   try {
-    const credential = await navigator.credentials.get({
-      publicKey: {
-        challenge: createRandomBytes(32),
-        allowCredentials: [
-          {
-            id: base64ToBytes(securityState.credentialId),
-            type: 'public-key'
-          }
-        ],
-        userVerification: 'required',
-        timeout: 60000
-      }
-    });
-
-    if (!credential) {
-      throw new Error('Биометрия не подтвердила вход.');
-    }
-
+    await authenticateBiometric();
     unlockApp();
   } catch (error) {
     setLockMessage('Биометрия недоступна, введите PIN');
@@ -6021,6 +7052,150 @@ async function handleBiometricUnlock() {
     }
   } finally {
     lockBiometricButton.disabled = false;
+  }
+}
+
+function setPinRecoveryError(message) {
+  pinRecoveryError.textContent = message || '';
+  pinRecoveryError.hidden = !message;
+}
+
+function setPinRecoveryStep(step) {
+  pinRecoveryOptions.hidden = step !== 'options';
+  pinRecoveryWarning.hidden = step !== 'warning';
+  pinRecoveryConfirm.hidden = step !== 'confirm';
+  setPinRecoveryError('');
+}
+
+function resetPinRecoveryFlow() {
+  pinRecoveryConfirmInput.value = '';
+  pinRecoveryConfirmInput.disabled = false;
+  pinRecoveryConfirmDelete.disabled = true;
+  pinRecoveryConfirmDelete.textContent = 'Удалить и сбросить';
+  pinRecoveryBiometricButton.disabled = false;
+  setPinRecoveryStep('options');
+}
+
+function openPinRecoveryModal() {
+  if (!isAppLocked) {
+    return;
+  }
+
+  pinRecoveryReturnFocus = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : lockForgotPinButton;
+  resetPinRecoveryFlow();
+  pinRecoveryBiometricButton.hidden = securityState.biometricEnabled !== true;
+  pinRecoveryModal.hidden = false;
+  document.body.classList.add('modal-open');
+
+  window.setTimeout(() => {
+    const focusTarget = pinRecoveryBiometricButton.hidden
+      ? pinRecoveryResetButton
+      : pinRecoveryBiometricButton;
+    focusTarget.focus();
+  }, 0);
+}
+
+function closePinRecoveryModal({ restoreFocus = true } = {}) {
+  if (pinRecoveryModal.hidden) {
+    return;
+  }
+
+  pinRecoveryModal.hidden = true;
+  document.body.classList.remove('modal-open');
+  setPinRecoveryError('');
+  pinRecoveryConfirmInput.value = '';
+  pinRecoveryConfirmDelete.disabled = true;
+
+  const returnFocus = pinRecoveryReturnFocus;
+  pinRecoveryReturnFocus = null;
+
+  if (restoreFocus) {
+    if (returnFocus instanceof HTMLElement && returnFocus.isConnected) {
+      returnFocus.focus();
+    } else if (!lockPinInput.disabled) {
+      lockPinInput.focus();
+    }
+  }
+}
+
+function handlePinRecoveryResetStart() {
+  setPinRecoveryStep('warning');
+  pinRecoveryWarningContinue.focus();
+}
+
+function handlePinRecoveryWarningContinue() {
+  setPinRecoveryStep('confirm');
+  pinRecoveryConfirmInput.value = '';
+  pinRecoveryConfirmDelete.disabled = true;
+  pinRecoveryConfirmInput.focus();
+}
+
+function handlePinRecoveryWarningCancel() {
+  setPinRecoveryStep('options');
+  pinRecoveryResetButton.focus();
+}
+
+function handlePinRecoveryBack() {
+  setPinRecoveryStep('warning');
+  pinRecoveryWarningContinue.focus();
+}
+
+function handlePinRecoveryInput() {
+  pinRecoveryConfirmDelete.disabled = pinRecoveryConfirmInput.value !== 'УДАЛИТЬ';
+  setPinRecoveryError('');
+}
+
+async function handlePinRecoveryBiometric() {
+  if (!securityState.biometricEnabled) {
+    setPinRecoveryError('Биометрия недоступна.');
+    return;
+  }
+
+  pinRecoveryBiometricButton.disabled = true;
+
+  try {
+    await authenticateBiometric();
+    closePinRecoveryModal({ restoreFocus: false });
+    unlockApp();
+  } catch (error) {
+    closePinRecoveryModal({ restoreFocus: false });
+    setLockMessage('Биометрия недоступна');
+
+    if (!lockPinInput.disabled) {
+      lockPinInput.focus();
+    }
+  } finally {
+    pinRecoveryBiometricButton.disabled = false;
+  }
+}
+
+async function handlePinRecoveryDelete() {
+  if (pinRecoveryConfirmInput.value !== 'УДАЛИТЬ') {
+    setPinRecoveryError('Введите слово УДАЛИТЬ заглавными буквами.');
+    pinRecoveryConfirmInput.focus();
+    return;
+  }
+
+  setPinRecoveryError('');
+  pinRecoveryConfirmDelete.disabled = true;
+  pinRecoveryConfirmInput.disabled = true;
+  pinRecoveryConfirmDelete.textContent = 'Удаление…';
+
+  try {
+    pinRecoveryModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    await resetAllData();
+  } catch (error) {
+    pinRecoveryModal.hidden = false;
+    document.body.classList.add('modal-open');
+    pinRecoveryConfirmInput.disabled = false;
+    pinRecoveryConfirmDelete.disabled = false;
+    pinRecoveryConfirmDelete.textContent = 'Удалить и сбросить';
+    setPinRecoveryError(
+      'Не удалось удалить данные. Проверьте доступ к хранилищу и попробуйте ещё раз.'
+    );
   }
 }
 
@@ -6058,17 +7233,41 @@ function initSecurityUi() {
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !securityModal.hidden) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    if (!pinRecoveryModal.hidden) {
+      closePinRecoveryModal();
+      return;
+    }
+
+    if (!securityModal.hidden) {
       closeSecurityModal();
     }
   });
 
   securityPinForm.addEventListener('submit', handleSecurityPinSubmit);
   securityCurrentPinForm.addEventListener('submit', handleSecurityCurrentPinSubmit);
+  securityChangePinForm.addEventListener('submit', handleSecurityChangePinSubmit);
   securityEnableBiometricButton.addEventListener('click', handleEnableBiometric);
   securityDisableBiometricButton.addEventListener('click', handleDisableBiometric);
   lockForm.addEventListener('submit', handleLockSubmit);
+  lockForgotPinButton.addEventListener('click', openPinRecoveryModal);
   lockBiometricButton.addEventListener('click', handleBiometricUnlock);
+  pinRecoveryClose.addEventListener('click', () => closePinRecoveryModal());
+  pinRecoveryModal.addEventListener('click', (event) => {
+    if (event.target === pinRecoveryModal) {
+      closePinRecoveryModal();
+    }
+  });
+  pinRecoveryBiometricButton.addEventListener('click', handlePinRecoveryBiometric);
+  pinRecoveryResetButton.addEventListener('click', handlePinRecoveryResetStart);
+  pinRecoveryWarningContinue.addEventListener('click', handlePinRecoveryWarningContinue);
+  pinRecoveryWarningCancel.addEventListener('click', handlePinRecoveryWarningCancel);
+  pinRecoveryBack.addEventListener('click', handlePinRecoveryBack);
+  pinRecoveryConfirmInput.addEventListener('input', handlePinRecoveryInput);
+  pinRecoveryConfirmDelete.addEventListener('click', handlePinRecoveryDelete);
   document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
@@ -6113,17 +7312,226 @@ async function handleEditBalance() {
   }
 
   editBalanceButton.disabled = true;
+  editInitialBalanceButton.disabled = true;
 
   try {
     await setInitialBalance(value);
 
     initialBalance = value;
-    updateBalance(calculateTotals(expenses));
+    renderBalanceLine();
+    markStatsDirty();
   } catch (error) {
     showError('Не удалось сохранить начальный баланс. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
     editBalanceButton.disabled = false;
+    editInitialBalanceButton.disabled = false;
   }
+}
+
+function getCurrentBalance() {
+  const totals = calculateTotals(expenses);
+  return roundCurrency(initialBalance + totals.incomeTotal - totals.expenseTotal);
+}
+
+function setReconcileError(message) {
+  reconcileError.textContent = message || '';
+  reconcileError.hidden = !message;
+}
+
+function clearReconcileCloseTimer() {
+  if (reconcileCloseTimer !== null) {
+    window.clearTimeout(reconcileCloseTimer);
+    reconcileCloseTimer = null;
+  }
+}
+
+function resetReconcileView() {
+  clearReconcileCloseTimer();
+  reconcileDraft = null;
+  balanceReconcileForm.hidden = false;
+  reconcileResult.hidden = true;
+  reconcileResultActions.hidden = true;
+  reconcileResultMessage.textContent = '';
+  reconcileResultMessage.classList.remove('is-difference');
+  reconcileActualInput.value = '';
+  reconcileCreateButton.disabled = false;
+  reconcileSubmitButton.disabled = false;
+  setReconcileError('');
+}
+
+async function openBalanceReconcileModal() {
+  if (isAppLocked) {
+    return;
+  }
+
+  if (pendingUndo) {
+    await settlePendingUndoForNewAction();
+  }
+
+  if (isAppLocked) {
+    return;
+  }
+
+  reconcileReturnFocus = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : reconcileBalanceButton;
+  resetReconcileView();
+
+  const computed = getCurrentBalance();
+  reconcileDraft = {
+    computed,
+    actual: null,
+    diff: 0
+  };
+  reconcileComputedValue.textContent = formatAmount(computed);
+  balanceReconcileModal.hidden = false;
+  document.body.classList.add('modal-open');
+
+  window.setTimeout(() => {
+    reconcileActualInput.focus();
+  }, 0);
+}
+
+function closeBalanceReconcileModal({ restoreFocus = true } = {}) {
+  if (balanceReconcileModal.hidden) {
+    return;
+  }
+
+  balanceReconcileModal.hidden = true;
+  document.body.classList.remove('modal-open');
+  resetReconcileView();
+
+  const returnFocus = reconcileReturnFocus;
+  reconcileReturnFocus = null;
+
+  if (restoreFocus) {
+    if (returnFocus instanceof HTMLElement && returnFocus.isConnected) {
+      returnFocus.focus();
+    } else {
+      reconcileBalanceButton.focus();
+    }
+  }
+}
+
+function handleReconcileSubmit(event) {
+  event.preventDefault();
+  setReconcileError('');
+  clearReconcileCloseTimer();
+
+  const actual = parseBalanceInput(reconcileActualInput.value);
+
+  if (actual === null) {
+    setReconcileError('Введите фактический остаток числом. Значение может быть отрицательным.');
+    reconcileActualInput.focus();
+    return;
+  }
+
+  const computed = reconcileDraft ? reconcileDraft.computed : getCurrentBalance();
+  const diff = roundCurrency(actual - computed);
+
+  reconcileDraft = {
+    computed,
+    actual,
+    diff
+  };
+  reconcileComputedValue.textContent = formatAmount(computed);
+  balanceReconcileForm.hidden = true;
+  reconcileResult.hidden = false;
+
+  if (Math.abs(diff) < 1) {
+    reconcileResultMessage.textContent = 'Баланс совпадает';
+    reconcileResultMessage.classList.remove('is-difference');
+    reconcileResultActions.hidden = true;
+    reconcileCreateButton.disabled = true;
+    reconcileCloseTimer = window.setTimeout(() => {
+      reconcileCloseTimer = null;
+      closeBalanceReconcileModal();
+    }, 1500);
+    return;
+  }
+
+  reconcileResultMessage.textContent = `Расхождение: ${formatNetAmount(diff)}`;
+  reconcileResultMessage.classList.add('is-difference');
+  reconcileResultActions.hidden = false;
+  reconcileCreateButton.disabled = false;
+  reconcileCreateButton.focus();
+}
+
+async function handleCreateAdjustment() {
+  if (!reconcileDraft || Math.abs(reconcileDraft.diff) < 1) {
+    return;
+  }
+
+  const diff = reconcileDraft.diff;
+  const amount = roundCurrency(Math.abs(diff));
+  const type = diff > 0 ? 'income' : 'expense';
+
+  if (amount <= 0) {
+    setReconcileError('Сумма корректировки должна быть больше нуля.');
+    return;
+  }
+
+  reconcileCreateButton.disabled = true;
+  setReconcileError('');
+
+  try {
+    await settlePendingUndoForNewAction();
+
+    const categories = await getCategories(type);
+    const systemCategory = categories.find((category) => category.isSystem === true)
+      || categories.find((category) => category.name === SYSTEM_CATEGORY_NAME);
+
+    if (!systemCategory) {
+      throw new Error('Системная категория «Другое» не найдена.');
+    }
+
+    const adjustment = {
+      amount,
+      note: 'Корректировка баланса',
+      category: systemCategory.name,
+      date: getTodayISO(),
+      type,
+      createdAt: new Date().toISOString(),
+      isAdjustment: true
+    };
+
+    const id = await addExpense(adjustment);
+    expenses.push({ id, ...adjustment });
+
+    try {
+      await render(expenses);
+    } catch (renderError) {
+      showError('Корректировка создана, но не удалось обновить экран. Перезагрузите приложение.');
+    }
+
+    closeBalanceReconcileModal();
+    showInfoToast(`Баланс сверен: ${formatNetAmount(diff)}`);
+  } catch (error) {
+    reconcileCreateButton.disabled = false;
+    setReconcileError(
+      error instanceof Error && error.message === 'Системная категория «Другое» не найдена.'
+        ? error.message
+        : 'Не удалось создать корректировку. Проверьте доступ к хранилищу и попробуйте ещё раз.'
+    );
+  }
+}
+
+function initBalanceReconcileUi() {
+  reconcileBalanceButton.addEventListener('click', openBalanceReconcileModal);
+  balanceReconcileClose.addEventListener('click', () => closeBalanceReconcileModal());
+  balanceReconcileModal.addEventListener('click', (event) => {
+    if (event.target === balanceReconcileModal) {
+      closeBalanceReconcileModal();
+    }
+  });
+  balanceReconcileForm.addEventListener('submit', handleReconcileSubmit);
+  reconcileCreateButton.addEventListener('click', handleCreateAdjustment);
+  reconcileCancelButton.addEventListener('click', () => closeBalanceReconcileModal());
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !balanceReconcileModal.hidden) {
+      closeBalanceReconcileModal();
+    }
+  });
 }
 
 function showUndoToast(message) {
@@ -6139,6 +7547,20 @@ function hideUndoToast() {
   undoToast.hidden = true;
   undoToast.classList.remove('is-visible');
   document.body.classList.remove('undo-toast-visible');
+}
+
+function showInfoToast(message) {
+  if (infoToastTimer !== null) {
+    window.clearTimeout(infoToastTimer);
+    infoToastTimer = null;
+  }
+
+  infoToastText.textContent = message || '';
+  infoToast.hidden = false;
+  infoToastTimer = window.setTimeout(() => {
+    infoToastTimer = null;
+    infoToast.hidden = true;
+  }, 3500);
 }
 
 function startPendingUndo(options) {
@@ -6297,7 +7719,11 @@ async function deleteExpense(id) {
     commitErrorMessage: 'Не удалось удалить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.',
     undoErrorMessage: 'Не удалось отменить удаление. Попробуйте ещё раз.',
     undo: async () => {
-      renderExpenseList(expenses);
+      renderHome(expenses);
+
+      if (activeTab === 'history') {
+        renderHistory(expenses);
+      }
     },
     commit: async () => {
       await deleteExpenseRecord(expense.id);
@@ -6431,6 +7857,21 @@ async function init() {
   expenseList.addEventListener('click', handleExpenseListClick);
   undoToastButton.addEventListener('click', undoPendingUndo);
   editBalanceButton.addEventListener('click', handleEditBalance);
+  editInitialBalanceButton.addEventListener('click', handleEditBalance);
+  homeShowAllButton.addEventListener('click', () => showTab('history'));
+  manageLimitsButton.addEventListener('click', () => openCategoryModal('expense'));
+  homeLimits.addEventListener('click', (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (target.closest('[data-limit-category]')) {
+      showTab('stats');
+    }
+  });
+  manageQuickTemplatesButton.addEventListener('click', openQuickTemplateModal);
   exportJsonButton.addEventListener('click', handleExportJson);
   exportCsvButton.addEventListener('click', handleExportCsv);
   reportPdfButton.addEventListener('click', printReport);
@@ -6446,6 +7887,9 @@ async function init() {
   initCategoryModal();
   initQuickTemplateUi();
   initSecurityUi();
+  initBalanceReconcileUi();
+  initTabNavigation();
+  showTab(getTabFromHash(), { push: false });
 
   window.addEventListener('resize', () => {
     if (lastChartData) {
@@ -6482,6 +7926,7 @@ async function init() {
     initialBalance = balance;
     await refreshCategoryUi();
     await refreshQuickTemplatesUi();
+    appDataLoaded = true;
     await render(expenses);
     updateBackupBanner();
   } catch (error) {
