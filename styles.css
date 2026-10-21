@@ -151,6 +151,24 @@ h2 {
   font-size: 13px;
 }
 
+.today-line {
+  margin-top: 6px;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0.8;
+}
+
+.today-line-expense,
+.today-line-income {
+  display: block;
+}
+
+.today-line-income {
+  color: var(--income);
+}
+
 .balance-edit-button {
   flex-shrink: 0;
   padding: 10px 14px;
@@ -903,6 +921,33 @@ button:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.month-forecast {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eef2f6;
+}
+
+.month-forecast-title {
+  margin: 0;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.month-forecast-value {
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-forecast-note {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .stats-row {
   display: flex;
   align-items: baseline;
@@ -1274,6 +1319,68 @@ button:focus-visible {
 
 .backup-banner-close:hover {
   background: rgba(91, 67, 0, 0.09);
+}
+
+.spend-nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  color: #344054;
+  background: #f2f4f7;
+  border: 1px solid #d0d5dd;
+  border-left: 4px solid #98a2b3;
+  border-radius: 10px;
+  box-shadow: 0 5px 16px rgba(52, 64, 84, 0.06);
+}
+
+.spend-nudge-text {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.spend-nudge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.spend-nudge-open,
+.spend-nudge-hide {
+  padding: 8px 11px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.spend-nudge-open {
+  color: #344054;
+  background: #ffffff;
+  border: 1px solid #cfd6e0;
+}
+
+.spend-nudge-open:hover {
+  background: #e9edf3;
+}
+
+.spend-nudge-hide {
+  color: #475467;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.spend-nudge-hide:hover {
+  background: #e4e7ec;
 }
 
 .empty-state {

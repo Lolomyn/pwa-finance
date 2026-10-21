@@ -7,6 +7,7 @@ const SETTINGS_STORE = 'settings';
 const CATEGORIES_STORE = 'categories';
 const INITIAL_BALANCE_KEY = 'initialBalance';
 const QUICK_TEMPLATES_KEY = 'quickTemplates';
+const LAST_NUDGE_HIDDEN_UNTIL_KEY = 'lastNudgeHiddenUntil';
 const QUICK_TEMPLATE_LABEL_MAX = 30;
 const CATEGORY_LIMIT_MAX = 100000000;
 
@@ -115,6 +116,12 @@ const backupBanner = document.getElementById('backup-banner');
 const backupBannerText = document.getElementById('backup-banner-text');
 const backupBannerExportButton = document.getElementById('backup-banner-export');
 const backupBannerHideButton = document.getElementById('backup-banner-hide');
+const spendNudge = document.getElementById('spend-nudge');
+const spendNudgeText = document.getElementById('spend-nudge-text');
+const spendNudgeOpenButton = document.getElementById('spend-nudge-open');
+const spendNudgeHideButton = document.getElementById('spend-nudge-hide');
+const todayLine = document.getElementById('today-line');
+const monthForecast = document.getElementById('month-forecast');
 const lastBackupValue = document.getElementById('last-backup-value');
 const manageCategoriesButton = document.getElementById('manage-categories');
 const manageQuickTemplatesButton = document.getElementById('manage-quick-templates');
@@ -260,6 +267,7 @@ let printReportAfterPrint = null;
 let printReportTimer = null;
 let lastBackupAt = null;
 let backupBannerHiddenUntil = null;
+let lastNudgeHiddenUntil = null;
 let securityState = {
   pinEnabled: false,
   pinHash: '',
@@ -1786,6 +1794,7 @@ function loadStoredPreferences() {
   return getSettings([
     'lastBackupAt',
     'backupBannerHiddenUntil',
+    LAST_NUDGE_HIDDEN_UNTIL_KEY,
     'pinHash',
     'pinSalt',
     'pinEnabled',
@@ -1799,6 +1808,9 @@ function loadStoredPreferences() {
     lastBackupAt = typeof values.lastBackupAt === 'string' ? values.lastBackupAt : null;
     backupBannerHiddenUntil = typeof values.backupBannerHiddenUntil === 'string'
       ? values.backupBannerHiddenUntil
+      : null;
+    lastNudgeHiddenUntil = typeof values[LAST_NUDGE_HIDDEN_UNTIL_KEY] === 'string'
+      ? values[LAST_NUDGE_HIDDEN_UNTIL_KEY]
       : null;
     securityState = {
       pinEnabled,
@@ -2070,6 +2082,7 @@ function replaceAllData(data) {
     try {
       categoriesStore.clear();
       store.clear();
+      settingsStore.delete(LAST_NUDGE_HIDDEN_UNTIL_KEY);
 
       (data.categories || []).forEach((category) => {
         categoriesStore.add({
@@ -2958,10 +2971,232 @@ async function renderLimitsHome(container = homeLimitsList) {
   homeLimits.hidden = false;
 }
 
+function getTodayTotals() {
+  const today = getTodayISO();
+  const pendingDeleteId = getPendingExpenseDeleteId();
+  let expense = 0;
+  let income = 0;
+
+  expenses.forEach((item) => {
+    if (item.id === pendingDeleteId || item.date !== today) {
+      return;
+    }
+
+    const amount = Number(item.amount);
+
+    if (!Number.isFinite(amount)) {
+      return;
+    }
+
+    if (getTransactionType(item) === 'income') {
+      income += amount;
+    } else {
+      expense += amount;
+    }
+  });
+
+  return {
+    expense: roundCurrency(expense),
+    income: roundCurrency(income)
+  };
+}
+
+function renderTodayLine(container) {
+  if (!container) {
+    return;
+  }
+
+  const totals = getTodayTotals();
+  const fragment = document.createDocumentFragment();
+  const expenseLine = document.createElement('span');
+  expenseLine.className = 'today-line-expense';
+  expenseLine.textContent = totals.expense > 0
+    ? `Сегодня потрачено: ${formatAmount(totals.expense)}`
+    : 'Сегодня ещё нет расходов';
+  fragment.append(expenseLine);
+
+  if (totals.income > 0) {
+    const incomeLine = document.createElement('span');
+    incomeLine.className = 'today-line-income';
+    incomeLine.textContent = `Сегодня получено: ${formatAmount(totals.income)}`;
+    fragment.append(incomeLine);
+  }
+
+  container.replaceChildren(fragment);
+}
+
+function getMonthExpenseAndForecast() {
+  const today = new Date();
+  const daysPassed = today.getDate();
+  const daysInMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + 1,
+    0
+  ).getDate();
+  const monthStartIso = formatISODate(
+    new Date(today.getFullYear(), today.getMonth(), 1)
+  );
+  const todayIso = getTodayISO();
+  const pendingDeleteId = getPendingExpenseDeleteId();
+  let rawMonthExpense = 0;
+
+  expenses.forEach((item) => {
+    if (item.id === pendingDeleteId) {
+      return;
+    }
+
+    if (getTransactionType(item) !== 'expense' || !isValidDate(item.date)) {
+      return;
+    }
+
+    if (item.date < monthStartIso || item.date > todayIso) {
+      return;
+    }
+
+    const amount = Number(item.amount);
+
+    if (Number.isFinite(amount)) {
+      rawMonthExpense += amount;
+    }
+  });
+
+  const monthExpense = roundCurrency(rawMonthExpense);
+  const avgPerDay = daysPassed > 0 ? monthExpense / daysPassed : 0;
+  const forecast = daysPassed > 0
+    ? roundCurrency(avgPerDay * daysInMonth)
+    : 0;
+
+  return {
+    monthExpense,
+    avgPerDay,
+    daysPassed,
+    daysInMonth,
+    forecast
+  };
+}
+
+function renderMonthForecast(container) {
+  if (!container) {
+    return;
+  }
+
+  const data = getMonthExpenseAndForecast();
+
+  if (data.daysPassed === 0 || data.monthExpense <= 0) {
+    container.replaceChildren();
+    container.hidden = true;
+    return;
+  }
+
+  const title = document.createElement('p');
+  title.className = 'month-forecast-title';
+  title.append(document.createTextNode('Прогноз до конца месяца: '));
+
+  const value = document.createElement('strong');
+  value.className = 'month-forecast-value';
+  value.textContent = `~${formatAmount(data.forecast)}`;
+  title.append(value);
+
+  const note = document.createElement('p');
+  note.className = 'month-forecast-note';
+  note.textContent = `на основе среднего за ${data.daysPassed} дней · (текущий месяц)`;
+
+  container.replaceChildren(title, note);
+  container.hidden = false;
+}
+
+function getLastExpenseDate() {
+  let latest = null;
+
+  expenses.forEach((item) => {
+    if (!isValidDate(item.date)) {
+      return;
+    }
+
+    if (!latest || item.date > latest) {
+      latest = item.date;
+    }
+  });
+
+  return latest;
+}
+
+function getDaysSinceISODate(isoDate) {
+  const date = parseISODate(isoDate);
+
+  if (!date) {
+    return 0;
+  }
+
+  const today = new Date();
+  const todayDay = Date.UTC(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  ) / DAY_MS;
+  const dateDay = Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  ) / DAY_MS;
+
+  return Math.max(0, Math.floor(todayDay - dateDay));
+}
+
+function shouldShowNudge() {
+  const lastDate = getLastExpenseDate();
+
+  if (!lastDate) {
+    return false;
+  }
+
+  const daysSince = getDaysSinceISODate(lastDate);
+
+  if (daysSince <= 2) {
+    return false;
+  }
+
+  const hiddenUntilTime = Date.parse(lastNudgeHiddenUntil || '');
+
+  if (Number.isFinite(hiddenUntilTime)) {
+    if (Date.now() < hiddenUntilTime) {
+      return false;
+    }
+
+    const hasOperationAfterHide = expenses.some((item) => {
+      const createdAt = Date.parse(item.createdAt || '');
+      return Number.isFinite(createdAt) && createdAt > hiddenUntilTime;
+    });
+
+    if (hasOperationAfterHide) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function renderNudgeBanner(container) {
+  if (!container) {
+    return;
+  }
+
+  if (!shouldShowNudge() || !backupBanner.hidden) {
+    container.hidden = true;
+    return;
+  }
+
+  const daysSince = getDaysSinceISODate(getLastExpenseDate());
+  spendNudgeText.textContent = `Вы не вносили траты ${daysSince} дн. Всё в порядке?`;
+  container.hidden = false;
+}
+
 async function renderHome(items = expenses) {
   updateTotal(items);
   renderHomeLastOperations(items);
+  renderTodayLine(todayLine);
   updateBackupBanner();
+  renderNudgeBanner(spendNudge);
   updateLastBackupStatusLine();
   await renderLimitsHome();
 }
@@ -3641,6 +3876,7 @@ async function renderStats(result) {
   statsNet.classList.toggle('is-income', netFlow >= 0);
   statsNet.classList.toggle('is-expense', netFlow < 0);
   statsAvg.textContent = formatAmount(result.avgPerDay);
+  renderMonthForecast(monthForecast);
 
   let limitStatsByName = new Map();
 
@@ -3808,6 +4044,7 @@ async function refreshStats() {
     if (allExpenses.length === 0) {
       lastChartData = null;
       lastBalanceSeries = null;
+      renderMonthForecast(monthForecast);
       updateStatsVisibility(false);
       statsDirty = false;
       statsRenderedDay = getTodayISO();
@@ -4335,6 +4572,31 @@ async function handleBackupBannerHide() {
     showError('Не удалось скрыть напоминание. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
     backupBannerHideButton.disabled = false;
+  }
+}
+
+function openOperationForm() {
+  formPanel.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
+}
+
+async function handleNudgeHide() {
+  const hiddenUntil = new Date(Date.now() + DAY_MS).toISOString();
+
+  spendNudgeHideButton.disabled = true;
+
+  try {
+    await setSettings({
+      [LAST_NUDGE_HIDDEN_UNTIL_KEY]: hiddenUntil
+    });
+    lastNudgeHiddenUntil = hiddenUntil;
+    spendNudge.hidden = true;
+  } catch (error) {
+    showError('Не удалось скрыть напоминание. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+  } finally {
+    spendNudgeHideButton.disabled = false;
   }
 }
 
@@ -5211,6 +5473,7 @@ async function handleImportFileChange(event) {
 
     initialBalance = importedData.balance;
     initialBalanceExists = true;
+    lastNudgeHiddenUntil = null;
     currentFilter = '';
     closeCategoryModal();
     expenses = await getAllExpenses();
@@ -7879,6 +8142,8 @@ async function init() {
   importFileInput.addEventListener('change', handleImportFileChange);
   backupBannerExportButton.addEventListener('click', handleExportJson);
   backupBannerHideButton.addEventListener('click', handleBackupBannerHide);
+  spendNudgeOpenButton.addEventListener('click', openOperationForm);
+  spendNudgeHideButton.addEventListener('click', handleNudgeHide);
   initTypeTabs();
   initPeriodTabs();
   initCustomPeriod();

@@ -35,11 +35,20 @@
         </div>
       </section>
 
+      <section id="spend-nudge" class="spend-nudge" aria-label="Напоминание внести траты" hidden>
+        <p id="spend-nudge-text" class="spend-nudge-text"></p>
+        <div class="spend-nudge-actions">
+          <button id="spend-nudge-open" class="spend-nudge-open" type="button">Открыть форму</button>
+          <button id="spend-nudge-hide" class="spend-nudge-hide" type="button">Скрыть на сегодня</button>
+        </div>
+      </section>
+
       <section class="balance home-balance" aria-labelledby="balance-title" aria-live="polite">
         <div class="balance-info">
           <span id="balance-title" class="balance-label">Баланс:</span>
           <strong id="balance-value" class="balance-value">0 ₽</strong>
           <p id="balance-hint" class="balance-hint">Задайте начальный баланс</p>
+          <div id="today-line" class="today-line"></div>
         </div>
         <button id="edit-balance" class="balance-edit-button" type="button">Изменить</button>
       </section>
@@ -271,6 +280,7 @@
           <div class="stats-card">
             <span class="stats-label">Средний расход в день:</span>
             <strong id="stats-avg" class="stats-value">0 ₽</strong>
+            <div id="month-forecast" class="month-forecast" hidden></div>
           </div>
         </div>
 
