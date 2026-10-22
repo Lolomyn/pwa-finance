@@ -3,16 +3,123 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#2c3e50">
+  <meta name="theme-color" content="#f4f5f7">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Расходы">
+  <meta
+    name="description"
+    content="Локальный офлайн-трекер доходов и расходов: категории, лимиты, статистика, быстрые шаблоны и резервные копии."
+  >
   <title>Мои расходы</title>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles-modern.css">
   <script src="app.js" defer></script>
 </head>
 <body>
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-home" viewBox="0 0 24 24">
+      <path d="M3 10.8 12 3l9 7.8"/>
+      <path d="M5.5 9.5V20h13V9.5"/>
+      <path d="M9.5 20v-5.5h5V20"/>
+    </symbol>
+    <symbol id="i-list" viewBox="0 0 24 24">
+      <path d="M9 6h11M9 12h11M9 18h11"/>
+      <path d="M4 6h.01M4 12h.01M4 18h.01"/>
+    </symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24">
+      <path d="M3 20V12M9 20V5M15 20v-8M21 20H3"/>
+    </symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24">
+      <path d="M4 7h16M4 17h16"/>
+      <circle cx="9" cy="7" r="2.3"/>
+      <circle cx="15" cy="17" r="2.3"/>
+    </symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24">
+      <path d="M4 20h4L18.5 9.5a2.83 2.83 0 0 0-4-4L4 16v4Z"/>
+      <path d="m13.5 6.5 4 4"/>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V5h6v2M6.5 7 7.5 20h9L17.5 7"/>
+      <path d="M10 11v5M14 11v5"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14"/>
+    </symbol>
+    <symbol id="i-x" viewBox="0 0 24 24">
+      <path d="m6 6 12 12M18 6 6 18"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24">
+      <path d="m5 12 4 4L19 6"/>
+    </symbol>
+    <symbol id="i-download" viewBox="0 0 24 24">
+      <path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>
+    </symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24">
+      <path d="M12 20V9M7 14l5-5 5 5M5 4h14"/>
+    </symbol>
+    <symbol id="i-code" viewBox="0 0 24 24">
+      <path d="m8 8-3 4 3 4M16 8l3 4-3 4M13 6l-2 12"/>
+    </symbol>
+    <symbol id="i-sheet" viewBox="0 0 24 24">
+      <rect x="4" y="4" width="16" height="16" rx="2"/>
+      <path d="M4 10h16M10 4v16"/>
+    </symbol>
+    <symbol id="i-document" viewBox="0 0 24 24">
+      <path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8l-5-5Z"/>
+      <path d="M14 3v5h5M8.5 13h7M8.5 17h5"/>
+    </symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24">
+      <path d="M4 7h16M4 17h16"/>
+      <circle cx="9" cy="7" r="2.1"/>
+      <circle cx="16" cy="17" r="2.1"/>
+    </symbol>
+    <symbol id="i-tags" viewBox="0 0 24 24">
+      <path d="M3 11V4.5A1.5 1.5 0 0 1 4.5 3H11l10 10-8 8L3 11Z"/>
+      <circle cx="7.5" cy="7.5" r="1.1"/>
+    </symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24">
+      <path d="m13 2-8 12h6l-1 8 8-12h-6l1-8Z"/>
+    </symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24">
+      <path d="M12 3 5 6v5c0 4.6 3 8.3 7 10 4-1.7 7-5.4 7-10V6l-7-3Z"/>
+      <path d="m9 12 2 2 4-4"/>
+    </symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24">
+      <path d="M12 4v16M7 20h10M5 7h14"/>
+      <path d="M5 7 2.5 13h5L5 7ZM19 7l-2.5 6h5L19 7Z"/>
+    </symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24">
+      <path d="M5 12h14M14 7l5 5-5 5"/>
+    </symbol>
+    <symbol id="i-chevron-up" viewBox="0 0 24 24">
+      <path d="m6 15 6-6 6 6"/>
+    </symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24">
+      <path d="m6 9 6 6 6-6"/>
+    </symbol>
+    <symbol id="i-power" viewBox="0 0 24 24">
+      <path d="M12 3v9M6.3 6.4a8 8 0 1 0 11.4 0"/>
+    </symbol>
+    <symbol id="i-fingerprint" viewBox="0 0 24 24">
+      <path d="M12 11a3 3 0 0 0-3 3v2"/>
+      <path d="M12 6a8 8 0 0 0-8 8"/>
+      <path d="M20 14a8 8 0 0 0-4-6.9"/>
+      <path d="M15 21a12 12 0 0 0 .5-3 3.5 3.5 0 0 0-7 0c0 1 .1 2 .4 3"/>
+      <path d="M4.6 9A9 9 0 0 1 18 7.3"/>
+    </symbol>
+    <symbol id="i-search" viewBox="0 0 24 24">
+      <circle cx="10.5" cy="10.5" r="6.5"/>
+      <path d="m16 16 4 4"/>
+    </symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24">
+      <rect x="3" y="5" width="18" height="16" rx="3"/>
+      <path d="M8 3v4M16 3v4M3 10h18"/>
+    </symbol>
+  </svg>
+
   <main id="app" class="app">
     <p id="app-error" class="app-error" role="alert" hidden></p>
 
@@ -24,39 +131,89 @@
       <section id="backup-banner" class="backup-banner" aria-label="Напоминание о резервной копии" hidden>
         <p id="backup-banner-text" class="backup-banner-text"></p>
         <div class="backup-banner-actions">
-          <button id="backup-banner-export" class="backup-banner-export" type="button">Экспорт</button>
+          <button
+            id="backup-banner-export"
+            class="icon-button icon-button--compact backup-banner-export"
+            type="button"
+            aria-label="Экспорт JSON"
+            title="Экспорт JSON"
+            data-tooltip="Экспорт JSON"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg>
+          </button>
           <button
             id="backup-banner-hide"
-            class="backup-banner-close"
+            class="icon-button icon-button--compact backup-banner-close"
             type="button"
             aria-label="Скрыть до завтра"
             title="Скрыть до завтра"
-          >×</button>
+            data-tooltip="Скрыть до завтра"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+          </button>
         </div>
       </section>
 
       <section id="spend-nudge" class="spend-nudge" aria-label="Напоминание внести траты" hidden>
         <p id="spend-nudge-text" class="spend-nudge-text"></p>
         <div class="spend-nudge-actions">
-          <button id="spend-nudge-open" class="spend-nudge-open" type="button">Открыть форму</button>
-          <button id="spend-nudge-hide" class="spend-nudge-hide" type="button">Скрыть на сегодня</button>
+          <button
+            id="spend-nudge-open"
+            class="icon-button icon-button--compact icon-button--soft spend-nudge-open"
+            type="button"
+            aria-label="Открыть форму"
+            title="Открыть форму"
+            data-tooltip="Открыть форму"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
+          </button>
+          <button
+            id="spend-nudge-hide"
+            class="icon-button icon-button--compact spend-nudge-hide"
+            type="button"
+            aria-label="Скрыть на сегодня"
+            title="Скрыть на сегодня"
+            data-tooltip="Скрыть на сегодня"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+          </button>
         </div>
       </section>
 
       <section class="balance home-balance" aria-labelledby="balance-title" aria-live="polite">
         <div class="balance-info">
-          <span id="balance-title" class="balance-label">Баланс:</span>
+          <span id="balance-title" class="balance-label">Текущий баланс</span>
           <strong id="balance-value" class="balance-value">0 ₽</strong>
           <p id="balance-hint" class="balance-hint">Задайте начальный баланс</p>
           <div id="today-line" class="today-line"></div>
         </div>
-        <button id="edit-balance" class="balance-edit-button" type="button">Изменить</button>
+        <button
+          id="edit-balance"
+          class="icon-button balance-edit-button"
+          type="button"
+          aria-label="Изменить начальный баланс"
+          title="Изменить начальный баланс"
+          data-tooltip="Изменить баланс"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pencil"></use></svg>
+        </button>
       </section>
 
       <section id="home-limits" class="home-limits" aria-labelledby="home-limits-title" hidden>
-        <h2 id="home-limits-title">Лимиты на месяц</h2>
+        <div class="section-heading">
+          <h2 id="home-limits-title">Лимиты на месяц</h2>
+          <button
+            id="manage-limits"
+            class="icon-button icon-button--small"
+            type="button"
+            aria-label="Настроить лимиты"
+            title="Настроить лимиты"
+            data-tooltip="Настроить лимиты"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg>
+          </button>
+        </div>
         <div id="home-limits-list" class="home-limits-list"></div>
-        <button id="manage-limits" class="home-limits-manage" type="button">Настроить лимиты</button>
       </section>
 
       <div
@@ -100,14 +257,16 @@
             >
           </div>
 
-          <div class="field">
-            <label for="category">Категория</label>
-            <select id="category" name="category" required></select>
-          </div>
+          <div class="form-field-grid">
+            <div class="field">
+              <label for="category">Категория</label>
+              <select id="category" name="category" required></select>
+            </div>
 
-          <div class="field">
-            <label for="date">Дата операции</label>
-            <input id="date" name="date" type="date" required>
+            <div class="field">
+              <label for="date">Дата</label>
+              <input id="date" name="date" type="date" required>
+            </div>
           </div>
 
           <div class="field">
@@ -121,16 +280,40 @@
           </div>
 
           <div class="form-actions">
-            <button class="submit-button" type="submit">Добавить расход</button>
-            <button id="cancel-edit" class="cancel-edit-button" type="button" hidden>Отмена</button>
+            <button class="submit-button" type="submit">
+              <svg class="icon" aria-hidden="true" focusable="false"><use id="submit-button-icon" href="#i-plus"></use></svg>
+              <span id="submit-button-label">Добавить</span>
+            </button>
+            <button
+              id="cancel-edit"
+              class="icon-button icon-button--soft cancel-edit-button"
+              type="button"
+              aria-label="Отменить редактирование"
+              title="Отменить редактирование"
+              data-tooltip="Отменить"
+              hidden
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+            </button>
           </div>
         </form>
       </section>
 
       <section id="home-last-operations" class="home-last" aria-labelledby="home-last-title" hidden>
-        <h2 id="home-last-title">Последние операции</h2>
+        <div class="section-heading">
+          <h2 id="home-last-title">Последние операции</h2>
+          <button
+            id="home-show-all"
+            class="icon-button icon-button--small icon-button--soft"
+            type="button"
+            aria-label="Показать всю историю"
+            title="Показать всю историю"
+            data-tooltip="Вся история"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg>
+          </button>
+        </div>
         <ul id="home-last-list" class="home-last-list"></ul>
-        <button id="home-show-all" class="home-show-all" type="button">Показать все →</button>
       </section>
     </section>
 
@@ -142,12 +325,15 @@
       <div class="expense-controls">
         <div class="field expense-search-field">
           <label for="expense-search">Поиск</label>
-          <input
-            id="expense-search"
-            type="search"
-            placeholder="Поиск по заметке, категории, сумме"
-            autocomplete="off"
-          >
+          <div class="search-field-wrap">
+            <svg class="icon search-field-icon" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg>
+            <input
+              id="expense-search"
+              type="search"
+              placeholder="Поиск по операциям"
+              autocomplete="off"
+            >
+          </div>
         </div>
 
         <div class="expense-controls-row">
@@ -219,29 +405,37 @@
           >Всё</button>
         </div>
 
-        <div class="period-custom" aria-label="Произвольный период статистики">
-          <label class="period-date-field">
-            <span>С</span>
-            <input id="custom-from" type="date" aria-label="Начало периода">
-          </label>
-          <span class="period-custom-dash" aria-hidden="true">—</span>
-          <label class="period-date-field">
-            <span>По</span>
-            <input id="custom-to" type="date" aria-label="Конец периода">
-          </label>
-          <div class="period-custom-actions">
-            <button id="custom-apply" class="secondary-button period-custom-button" type="button">Применить</button>
-            <button id="custom-reset" class="secondary-button period-custom-button" type="button">Сбросить</button>
-          </div>
-        </div>
+        <details class="custom-period-details">
+          <summary class="custom-period-summary">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg>
+            <span>Свой период</span>
+            <svg class="icon custom-period-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron-down"></use></svg>
+          </summary>
 
-        <p id="custom-range-error" class="period-custom-error" role="alert" hidden></p>
+          <div class="period-custom" aria-label="Произвольный период статистики">
+            <label class="period-date-field">
+              <span>С</span>
+              <input id="custom-from" type="date" aria-label="Начало периода">
+            </label>
+            <span class="period-custom-dash" aria-hidden="true">—</span>
+            <label class="period-date-field">
+              <span>По</span>
+              <input id="custom-to" type="date" aria-label="Конец периода">
+            </label>
+            <div class="period-custom-actions">
+              <button id="custom-apply" class="secondary-button period-custom-button" type="button">Применить</button>
+              <button id="custom-reset" class="secondary-button period-custom-button" type="button">Сбросить</button>
+            </div>
+          </div>
+
+          <p id="custom-range-error" class="period-custom-error" role="alert" hidden></p>
+        </details>
         <p id="stats-period-label" class="stats-period-label" hidden></p>
       </div>
 
       <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
         <div class="total stats-total" aria-live="polite">
-          <span class="total-title">Итого за всё время:</span>
+          <span class="total-title">Итого за всё время</span>
 
           <div class="total-row">
             <span class="total-label">Всего расходов:</span>
@@ -329,48 +523,149 @@
 
       <div class="settings-list">
         <section class="settings-card" aria-labelledby="settings-balance-title">
-          <h2 id="settings-balance-title">Начальный баланс</h2>
-          <p class="settings-hint">Баланс на момент начала учёта. Используется в расчёте текущего баланса.</p>
+          <div class="settings-card-head">
+            <div class="settings-card-copy">
+              <h2 id="settings-balance-title">Начальный баланс</h2>
+              <p class="settings-hint">Стартовый остаток для расчёта текущего баланса.</p>
+            </div>
+            <button
+              id="reconcile-balance"
+              class="icon-button settings-card-action"
+              type="button"
+              aria-label="Сверить баланс с реальностью"
+              title="Сверить баланс с реальностью"
+              data-tooltip="Сверка баланса"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-scale"></use></svg>
+            </button>
+          </div>
           <div class="settings-balance-row">
             <strong id="initial-balance-value" class="settings-balance-value">0 ₽</strong>
-            <button id="edit-initial-balance" class="secondary-button settings-action-button" type="button">Изменить</button>
+            <button
+              id="edit-initial-balance"
+              class="icon-button icon-button--soft"
+              type="button"
+              aria-label="Изменить начальный баланс"
+              title="Изменить начальный баланс"
+              data-tooltip="Изменить"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pencil"></use></svg>
+            </button>
           </div>
-          <button
-            id="reconcile-balance"
-            class="secondary-button settings-action-button settings-reconcile-button"
-            type="button"
-          >Сверить с реальностью</button>
         </section>
 
         <section class="settings-card" aria-labelledby="settings-categories-title">
-          <h2 id="settings-categories-title">Категории</h2>
-          <p class="settings-hint">Добавление, переименование и удаление категорий расходов и доходов.</p>
-          <button id="manage-categories" class="secondary-button settings-action-button" type="button">Управление категориями</button>
+          <div class="settings-card-head">
+            <div class="settings-card-copy">
+              <h2 id="settings-categories-title">Категории</h2>
+              <p class="settings-hint">Расходы и доходы по категориям.</p>
+            </div>
+            <button
+              id="manage-categories"
+              class="icon-button settings-card-action"
+              type="button"
+              aria-label="Управление категориями"
+              title="Управление категориями"
+              data-tooltip="Категории"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-tags"></use></svg>
+            </button>
+          </div>
         </section>
 
         <section class="settings-card" aria-labelledby="settings-templates-title">
-          <h2 id="settings-templates-title">Быстрые шаблоны</h2>
-          <p class="settings-hint">Частые операции, которые добавляются одним нажатием на главной.</p>
-          <button id="manage-quick-templates" class="secondary-button settings-action-button" type="button">Управление шаблонами</button>
+          <div class="settings-card-head">
+            <div class="settings-card-copy">
+              <h2 id="settings-templates-title">Быстрые шаблоны</h2>
+              <p class="settings-hint">Частые операции в один тап с главной.</p>
+            </div>
+            <button
+              id="manage-quick-templates"
+              class="icon-button settings-card-action"
+              type="button"
+              aria-label="Управление шаблонами"
+              title="Управление шаблонами"
+              data-tooltip="Шаблоны"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-zap"></use></svg>
+            </button>
+          </div>
         </section>
 
         <section class="settings-card" aria-labelledby="settings-security-title">
-          <h2 id="settings-security-title">Безопасность</h2>
-          <p class="settings-hint">PIN-код и вход по биометрии для защиты приложения.</p>
-          <button id="manage-security" class="secondary-button settings-action-button" type="button">Настроить безопасность</button>
+          <div class="settings-card-head">
+            <div class="settings-card-copy">
+              <h2 id="settings-security-title">Безопасность</h2>
+              <p class="settings-hint">PIN и биометрия для защиты данных.</p>
+            </div>
+            <button
+              id="manage-security"
+              class="icon-button settings-card-action"
+              type="button"
+              aria-label="Настроить безопасность"
+              title="Настроить безопасность"
+              data-tooltip="Безопасность"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shield"></use></svg>
+            </button>
+          </div>
         </section>
 
         <section class="settings-card" aria-labelledby="backup-title">
-          <h2 id="backup-title">Резервное копирование</h2>
-          <p class="settings-hint backup-status" aria-live="polite">
-            Последняя копия: <strong id="last-backup-value">никогда</strong>
-          </p>
+          <div class="settings-card-head">
+            <div class="settings-card-copy">
+              <h2 id="backup-title">Резервное копирование</h2>
+              <p class="settings-hint backup-status" aria-live="polite">
+                Последняя копия: <strong id="last-backup-value">никогда</strong>
+              </p>
+            </div>
+          </div>
 
           <div class="backup-actions">
-            <button id="export-json" class="secondary-button" type="button">Экспорт в JSON</button>
-            <button id="export-csv" class="secondary-button" type="button">Экспорт в CSV</button>
-            <button id="report-pdf" class="secondary-button" type="button">Отчёт PDF</button>
-            <button id="import-json" class="secondary-button" type="button">Импорт из JSON</button>
+            <button
+              id="export-json"
+              class="utility-button"
+              type="button"
+              aria-label="Экспорт в JSON"
+              title="Экспорт в JSON"
+              data-tooltip="Экспорт в JSON"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-code"></use></svg>
+              <span>JSON</span>
+            </button>
+            <button
+              id="export-csv"
+              class="utility-button"
+              type="button"
+              aria-label="Экспорт в CSV"
+              title="Экспорт в CSV"
+              data-tooltip="Экспорт в CSV"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sheet"></use></svg>
+              <span>CSV</span>
+            </button>
+            <button
+              id="report-pdf"
+              class="utility-button"
+              type="button"
+              aria-label="Отчёт PDF"
+              title="Отчёт PDF"
+              data-tooltip="Отчёт PDF"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-document"></use></svg>
+              <span>PDF</span>
+            </button>
+            <button
+              id="import-json"
+              class="utility-button"
+              type="button"
+              aria-label="Импорт из JSON"
+              title="Импорт из JSON"
+              data-tooltip="Импорт из JSON"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg>
+              <span>Импорт</span>
+            </button>
           </div>
 
           <input
@@ -387,7 +682,7 @@
           <h2 id="settings-about-title">О приложении</h2>
           <p class="settings-hint">Версия 1.0</p>
           <p class="settings-hint">
-            Локальный офлайн-трекер доходов и расходов. Данные хранятся только на этом устройстве.
+            Локальный офлайн-трекер. Данные хранятся только на этом устройстве.
           </p>
         </section>
       </div>
@@ -401,9 +696,7 @@
       data-tab-target="home"
       aria-current="page"
     >
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-        <path d="M12 3.1 2.5 11.2c-.4.3-.2 1 .3 1h1.9v8.3c0 .5.4.9.9.9h4.1v-6h4.6v6h4.1c.5 0 .9-.4.9-.9v-8.3h1.9c.5 0 .7-.7.3-1L12 3.1z"/>
-      </svg>
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-home"></use></svg>
       <span>Главная</span>
     </button>
     <button
@@ -411,9 +704,7 @@
       class="bottom-nav-button"
       data-tab-target="history"
     >
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-        <path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2z"/>
-      </svg>
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg>
       <span>История</span>
     </button>
     <button
@@ -421,9 +712,7 @@
       class="bottom-nav-button"
       data-tab-target="stats"
     >
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-        <path d="M4 20V10h3v10H4zm6 0V4h3v16h-3zm6 0v-7h3v7h-3z"/>
-      </svg>
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-chart"></use></svg>
       <span>Статистика</span>
     </button>
     <button
@@ -431,9 +720,7 @@
       class="bottom-nav-button"
       data-tab-target="settings"
     >
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-        <path d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm7.43-2.53c.04-.32.07-.65.07-.97s-.03-.65-.08-.97l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.49.49 0 0 0 .12.64l2.11 1.65c-.04.32-.08.66-.08.98s.03.65.08.97l-2.11 1.65a.49.49 0 0 0-.12.64l2 3.46c.13.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.49.42h4c.24 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.49 0 .61-.22l2-3.46a.49.49 0 0 0-.12-.64l-2.11-1.65z"/>
-      </svg>
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-settings"></use></svg>
       <span>Настройки</span>
     </button>
   </nav>
@@ -449,9 +736,14 @@
         <h2 id="category-modal-title">Категории</h2>
         <button
           id="category-modal-close"
-          class="secondary-button modal-close-button"
+          class="icon-button icon-button--soft modal-close-button"
           type="button"
-        >Закрыть</button>
+          aria-label="Закрыть"
+          title="Закрыть"
+          data-tooltip="Закрыть"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+        </button>
       </div>
 
       <div
@@ -487,7 +779,15 @@
           aria-label="Новая категория"
           autocomplete="off"
         >
-        <button class="category-add-button" type="submit">Добавить</button>
+        <button
+          class="icon-button category-add-button"
+          type="submit"
+          aria-label="Добавить категорию"
+          title="Добавить категорию"
+          data-tooltip="Добавить"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
+        </button>
       </form>
 
       <p id="category-modal-error" class="category-modal-error" role="alert" hidden></p>
@@ -505,9 +805,14 @@
         <h2 id="quick-template-modal-title">Шаблоны быстрых трат</h2>
         <button
           id="quick-template-modal-close"
-          class="secondary-button modal-close-button"
+          class="icon-button icon-button--soft modal-close-button"
           type="button"
-        >Закрыть</button>
+          aria-label="Закрыть"
+          title="Закрыть"
+          data-tooltip="Закрыть"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+        </button>
       </div>
 
       <ul id="quick-template-list" class="quick-template-list"></ul>
@@ -561,7 +866,7 @@
           <input
             id="quick-template-note"
             type="text"
-            placeholder="По умолчанию совпадает с названием"
+            placeholder="Как в названии"
             autocomplete="off"
           >
         </div>
@@ -577,10 +882,15 @@
           <button class="submit-button" type="submit">Сохранить</button>
           <button
             id="quick-template-cancel"
-            class="cancel-edit-button"
+            class="icon-button icon-button--soft cancel-edit-button"
             type="button"
+            aria-label="Отменить редактирование шаблона"
+            title="Отменить редактирование"
+            data-tooltip="Отменить"
             hidden
-          >Отмена</button>
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+          </button>
         </div>
       </form>
     </div>
@@ -597,9 +907,14 @@
         <h2 id="balance-reconcile-title">Сверка баланса</h2>
         <button
           id="balance-reconcile-close"
-          class="secondary-button modal-close-button"
+          class="icon-button icon-button--soft modal-close-button"
           type="button"
-        >Закрыть</button>
+          aria-label="Закрыть"
+          title="Закрыть"
+          data-tooltip="Закрыть"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+        </button>
       </div>
 
       <p class="reconcile-computed">
@@ -649,9 +964,14 @@
         <h2 id="security-modal-title">Безопасность</h2>
         <button
           id="security-modal-close"
-          class="secondary-button modal-close-button"
+          class="icon-button icon-button--soft modal-close-button"
           type="button"
-        >Закрыть</button>
+          aria-label="Закрыть"
+          title="Закрыть"
+          data-tooltip="Закрыть"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+        </button>
       </div>
 
       <div class="security-status">
@@ -891,7 +1211,7 @@
           >
         </div>
 
-        <button id="lock-submit" class="lock-submit-button" type="submit">Разблокировать</button>
+        <button id="lock-submit" class="lock-submit-button" type="submit">Войти</button>
       </form>
 
       <button
@@ -905,7 +1225,10 @@
         class="secondary-button lock-biometric-button"
         type="button"
         hidden
-      >Войти по отпечатку / Face ID</button>
+      >
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-fingerprint"></use></svg>
+        <span>Биометрия</span>
+      </button>
 
       <p id="lock-message" class="lock-message" role="alert" hidden></p>
     </div>
@@ -921,9 +1244,14 @@
           <h2 id="pin-recovery-title">Восстановление доступа</h2>
           <button
             id="pin-recovery-close"
-            class="secondary-button modal-close-button"
+            class="icon-button icon-button--soft modal-close-button"
             type="button"
-          >Закрыть</button>
+            aria-label="Закрыть"
+            title="Закрыть"
+            data-tooltip="Закрыть"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+          </button>
         </div>
 
         <div id="pin-recovery-options">

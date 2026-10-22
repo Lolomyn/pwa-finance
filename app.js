@@ -64,6 +64,8 @@ const categoryInput = document.getElementById('category');
 const dateInput = document.getElementById('date');
 const noteInput = document.getElementById('note');
 const submitButton = form.querySelector('button[type="submit"]');
+const submitButtonLabel = document.getElementById('submit-button-label');
+const submitButtonIcon = document.getElementById('submit-button-icon');
 const cancelEditButton = document.getElementById('cancel-edit');
 const formPanel = form.closest('.panel');
 const typeTabs = document.getElementById('type-tabs');
@@ -2696,6 +2698,35 @@ function formatDate(isoDate) {
   return dateFormatter.format(date);
 }
 
+function createIcon(name, className = 'icon') {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+
+  svg.setAttribute('class', className);
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  use.setAttribute('href', `#i-${name}`);
+  svg.append(use);
+
+  return svg;
+}
+
+function setIconButton(button, iconName, label, extraClass = '') {
+  button.classList.add('icon-button', 'icon-button--small');
+  button.classList.remove('secondary-button');
+
+  if (extraClass) {
+    button.classList.add(...extraClass.split(' ').filter(Boolean));
+  }
+
+  button.replaceChildren(createIcon(iconName));
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.dataset.tooltip = label;
+
+  return button;
+}
+
 function createExpenseElement(expense) {
   const item = document.createElement('li');
   item.className = 'expense-item';
@@ -2749,17 +2780,19 @@ function createExpenseElement(expense) {
   const actions = document.createElement('div');
   actions.className = 'expense-actions';
 
+  const operationDescription = `«${expense.category}» на ${formatAmount(expense.amount)}`;
+
   const editButton = document.createElement('button');
   editButton.type = 'button';
   editButton.className = 'edit-button expense-action-button';
   editButton.dataset.id = String(expense.id);
-  editButton.textContent = 'Изменить';
+  setIconButton(editButton, 'pencil', `Редактировать операцию ${operationDescription}`);
 
   const deleteButton = document.createElement('button');
   deleteButton.type = 'button';
   deleteButton.className = 'delete-button expense-action-button';
   deleteButton.dataset.id = String(expense.id);
-  deleteButton.textContent = 'Удалить';
+  setIconButton(deleteButton, 'trash', `Удалить операцию ${operationDescription}`, 'icon-button--danger');
 
   actions.append(editButton, deleteButton);
   item.append(info, actions);
@@ -4190,7 +4223,7 @@ function createExpenseGroup(date, groupItems, todayIso, yesterdayIso) {
   const section = document.createElement('section');
   section.className = 'expense-group';
 
-  const title = document.createElement('h3');
+  const title = document.createElement('h2');
   title.className = 'expense-group-title';
   title.textContent = getExpenseDateGroupTitle(date, todayIso, yesterdayIso);
 
@@ -5498,10 +5531,11 @@ function updateFormModeUi() {
   const isEditing = editingExpenseId !== null;
   const isIncome = currentType === 'income';
 
-  formTitle.textContent = isEditing ? 'Редактирование операции' : 'Новая операция';
-  submitButton.textContent = isEditing
-    ? 'Сохранить изменения'
+  formTitle.textContent = isEditing ? 'Редактирование' : 'Новая операция';
+  submitButtonLabel.textContent = isEditing
+    ? 'Сохранить'
     : (isIncome ? 'Добавить доход' : 'Добавить расход');
+  submitButtonIcon.setAttribute('href', isEditing ? '#i-check' : '#i-plus');
   cancelEditButton.hidden = !isEditing;
   formPanel.classList.toggle('is-editing', isEditing);
 }
@@ -5711,9 +5745,13 @@ async function renderCategoryModalList() {
       limitButton.className = 'category-action-button';
       limitButton.dataset.categoryAction = 'limit';
       limitButton.dataset.id = String(category.id);
-      limitButton.textContent = category.monthlyLimit === null
-        ? 'Задать лимит'
-        : 'Изменить лимит';
+      setIconButton(
+        limitButton,
+        'sliders',
+        category.monthlyLimit === null
+          ? `Задать лимит для категории «${category.name}»`
+          : `Изменить лимит для категории «${category.name}»`
+      );
       actions.append(limitButton);
     }
 
@@ -5722,23 +5760,38 @@ async function renderCategoryModalList() {
     renameButton.className = 'category-action-button';
     renameButton.dataset.categoryAction = 'rename';
     renameButton.dataset.id = String(category.id);
-    renameButton.textContent = 'Переименовать';
+    setIconButton(
+      renameButton,
+      'pencil',
+      actionsDisabled
+        ? `Системную категорию «${category.name}» нельзя переименовать`
+        : `Переименовать категорию «${category.name}»`
+    );
     renameButton.disabled = actionsDisabled;
 
     if (actionsDisabled) {
       renameButton.title = 'Системная категория';
+      renameButton.removeAttribute('data-tooltip');
     }
 
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
-    deleteButton.className = 'category-action-button category-action-button--danger';
+    deleteButton.className = 'category-action-button';
     deleteButton.dataset.categoryAction = 'delete';
     deleteButton.dataset.id = String(category.id);
-    deleteButton.textContent = 'Удалить';
+    setIconButton(
+      deleteButton,
+      'trash',
+      actionsDisabled
+        ? `Системную категорию «${category.name}» нельзя удалить`
+        : `Удалить категорию «${category.name}»`,
+      'icon-button--danger'
+    );
     deleteButton.disabled = actionsDisabled;
 
     if (actionsDisabled) {
       deleteButton.title = 'Системная категория';
+      deleteButton.removeAttribute('data-tooltip');
     }
 
     actions.append(renameButton, deleteButton);
@@ -6135,40 +6188,53 @@ async function renderQuickTemplateModalList() {
 
     actions.className = 'quick-template-item-actions';
 
-    const createActionButton = (action, text, className) => {
+    const createActionButton = (action, iconName, label, className) => {
       const button = document.createElement('button');
 
       button.type = 'button';
       button.className = className || 'quick-template-action-button';
       button.dataset.quickTemplateAction = action;
       button.dataset.id = template.id;
-      button.textContent = text;
+      setIconButton(button, iconName, label);
 
       return button;
     };
 
-    const upButton = createActionButton('up', 'Вверх');
+    const upButton = createActionButton(
+      'up',
+      'chevron-up',
+      `Переместить шаблон «${template.label}» выше`
+    );
 
     upButton.disabled = index === 0;
 
-    const downButton = createActionButton('down', 'Вниз');
+    const downButton = createActionButton(
+      'down',
+      'chevron-down',
+      `Переместить шаблон «${template.label}» ниже`
+    );
 
     downButton.disabled = index === quickTemplates.length - 1;
 
-    const editButton = createActionButton('edit', 'Изменить');
+    const editButton = createActionButton(
+      'edit',
+      'pencil',
+      `Редактировать шаблон «${template.label}»`
+    );
     const deleteButton = createActionButton(
       'delete',
-      'Удалить',
+      'trash',
+      `Удалить шаблон «${template.label}»`,
       'quick-template-action-button quick-template-action-button--danger'
     );
     const toggleButton = createActionButton(
       'toggle',
-      template.enabled ? 'Вкл' : 'Выкл',
+      'power',
+      template.enabled
+        ? `Отключить шаблон «${template.label}»`
+        : `Включить шаблон «${template.label}»`,
       `quick-template-action-button quick-template-toggle${template.enabled ? '' : ' is-off'}`
     );
-
-    toggleButton.setAttribute('aria-pressed', String(template.enabled));
-    toggleButton.title = template.enabled ? 'Отключить шаблон' : 'Включить шаблон';
 
     actions.append(upButton, downButton, editButton, deleteButton, toggleButton);
     item.append(info, actions);
@@ -6200,7 +6266,13 @@ async function renderQuickTemplateRow() {
     addButton.type = 'button';
     addButton.className = 'quick-template-add';
     addButton.dataset.quickTemplateAction = 'manage';
-    addButton.textContent = '+ Добавить шаблон';
+    addButton.setAttribute('aria-label', 'Добавить шаблон');
+    addButton.title = 'Добавить шаблон';
+    addButton.dataset.tooltip = 'Добавить шаблон';
+
+    const addLabel = document.createElement('span');
+    addLabel.textContent = 'Шаблон';
+    addButton.append(createIcon('plus'), addLabel);
     fragment.append(addButton);
   } else {
     activeTemplates.forEach((template) => {
@@ -6246,9 +6318,7 @@ async function renderQuickTemplateRow() {
     manageButton.type = 'button';
     manageButton.className = 'quick-template-manage';
     manageButton.dataset.quickTemplateAction = 'manage';
-    manageButton.setAttribute('aria-label', 'Управление шаблонами');
-    manageButton.title = 'Управление шаблонами';
-    manageButton.textContent = '⚙';
+    setIconButton(manageButton, 'sliders', 'Управление шаблонами');
     fragment.append(manageButton);
   }
 
