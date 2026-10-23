@@ -1,21 +1,34 @@
 'use strict';
 
-const CACHE_NAME = 'expense-tracker-v18';
+const CACHE_NAME = 'expense-tracker-v21';
 const PRECACHE_URLS = [
   './',
   './index.html',
   './styles.css',
   './styles-modern.css',
+  './styles-preview.css',
   './app.js',
   './manifest.json',
   './icons/icon.svg'
 ];
 
+async function precacheAssets() {
+  const cache = await caches.open(CACHE_NAME);
+
+  await Promise.all(PRECACHE_URLS.map(async (url) => {
+    const response = await fetch(url, { cache: 'reload' });
+
+    if (!response.ok) {
+      throw new Error(`Не удалось загрузить ${url} для офлайн-кэша.`);
+    }
+
+    await cache.put(url, response);
+  }));
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
+    precacheAssets().then(() => self.skipWaiting())
   );
 });
 

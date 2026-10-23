@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f4f5f7">
+  <meta name="theme-color" content="#F6F3EE">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Расходы">
@@ -16,6 +16,7 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="styles-modern.css">
+  <link rel="stylesheet" href="styles-preview.css">
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -120,610 +121,668 @@
     </symbol>
   </svg>
 
-  <main id="app" class="app">
-    <p id="app-error" class="app-error" role="alert" hidden></p>
-
-    <section data-tab="home" class="tab-panel" id="tab-home">
-      <header class="app-header tab-header">
-        <h1>Мои расходы</h1>
-      </header>
-
-      <section id="backup-banner" class="backup-banner" aria-label="Напоминание о резервной копии" hidden>
-        <p id="backup-banner-text" class="backup-banner-text"></p>
-        <div class="backup-banner-actions">
-          <button
-            id="backup-banner-export"
-            class="icon-button icon-button--compact backup-banner-export"
-            type="button"
-            aria-label="Экспорт JSON"
-            title="Экспорт JSON"
-            data-tooltip="Экспорт JSON"
-          >
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg>
-          </button>
-          <button
-            id="backup-banner-hide"
-            class="icon-button icon-button--compact backup-banner-close"
-            type="button"
-            aria-label="Скрыть до завтра"
-            title="Скрыть до завтра"
-            data-tooltip="Скрыть до завтра"
-          >
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
-          </button>
-        </div>
-      </section>
-
-      <section id="spend-nudge" class="spend-nudge" aria-label="Напоминание внести траты" hidden>
-        <p id="spend-nudge-text" class="spend-nudge-text"></p>
-        <div class="spend-nudge-actions">
-          <button
-            id="spend-nudge-open"
-            class="icon-button icon-button--compact icon-button--soft spend-nudge-open"
-            type="button"
-            aria-label="Открыть форму"
-            title="Открыть форму"
-            data-tooltip="Открыть форму"
-          >
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
-          </button>
-          <button
-            id="spend-nudge-hide"
-            class="icon-button icon-button--compact spend-nudge-hide"
-            type="button"
-            aria-label="Скрыть на сегодня"
-            title="Скрыть на сегодня"
-            data-tooltip="Скрыть на сегодня"
-          >
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
-          </button>
-        </div>
-      </section>
-
-      <section class="balance home-balance" aria-labelledby="balance-title" aria-live="polite">
-        <div class="balance-info">
-          <span id="balance-title" class="balance-label">Текущий баланс</span>
-          <strong id="balance-value" class="balance-value">0 ₽</strong>
-          <p id="balance-hint" class="balance-hint">Задайте начальный баланс</p>
-          <div id="today-line" class="today-line"></div>
+  <div id="app" class="app">
+    <header class="sticky-top">
+      <div class="ph">
+        <div class="ph-copy">
+          <div class="ph-date" id="header-date">Сегодня</div>
+          <h1 class="ph-title" id="view-title">Мои расходы</h1>
         </div>
         <button
-          id="edit-balance"
-          class="icon-button balance-edit-button"
+          id="header-avatar"
+          class="avatar"
           type="button"
-          aria-label="Изменить начальный баланс"
-          title="Изменить начальный баланс"
-          data-tooltip="Изменить баланс"
-        >
-          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pencil"></use></svg>
-        </button>
-      </section>
+          aria-label="Открыть настройки"
+          title="Настройки"
+        >₽</button>
+      </div>
 
-      <section id="home-limits" class="home-limits" aria-labelledby="home-limits-title" hidden>
-        <div class="section-heading">
-          <h2 id="home-limits-title">Лимиты на месяц</h2>
-          <button
-            id="manage-limits"
-            class="icon-button icon-button--small"
-            type="button"
-            aria-label="Настроить лимиты"
-            title="Настроить лимиты"
-            data-tooltip="Настроить лимиты"
-          >
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg>
-          </button>
-        </div>
-        <div id="home-limits-list" class="home-limits-list"></div>
-      </section>
+      <nav class="fnav" aria-label="Основная навигация">
+        <button type="button" class="fnav-button is-active" data-tab-target="home" aria-current="page">Обзор</button>
+        <button type="button" class="fnav-button" data-tab-target="history">История</button>
+        <button type="button" class="fnav-button" data-tab-target="stats">Анализ</button>
+        <button type="button" class="fnav-button" data-tab-target="settings">Ещё</button>
+      </nav>
+    </header>
 
-      <div
-        id="quick-templates"
-        class="quick-templates"
-        aria-label="Быстрые шаблоны"
-      ></div>
+    <p id="app-error" class="app-error" role="alert" hidden></p>
 
-      <section class="panel" aria-labelledby="form-title">
-        <h2 id="form-title">Новая операция</h2>
-
-        <form id="expense-form" novalidate>
-          <div id="type-tabs" class="type-switch" role="tablist" aria-label="Тип операции">
+    <main class="views">
+      <section data-tab="home" class="tab-panel" id="tab-home">
+        <section id="backup-banner" class="backup-banner" aria-label="Напоминание о резервной копии" hidden>
+          <p id="backup-banner-text" class="backup-banner-text"></p>
+          <div class="backup-banner-actions">
             <button
+              id="backup-banner-export"
+              class="icon-button icon-button--compact backup-banner-export"
               type="button"
-              class="type-button is-active"
-              data-type="expense"
-              role="tab"
-              aria-selected="true"
-            >Расход</button>
-            <button
-              type="button"
-              class="type-button"
-              data-type="income"
-              role="tab"
-              aria-selected="false"
-            >Доход</button>
-          </div>
-
-          <div class="field">
-            <label for="amount">Сумма</label>
-            <input
-              id="amount"
-              name="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              inputmode="decimal"
-              placeholder="Сумма"
-              required
+              aria-label="Экспорт JSON"
+              title="Экспорт JSON"
+              data-tooltip="Экспорт JSON"
             >
-          </div>
-
-          <div class="form-field-grid">
-            <div class="field">
-              <label for="category">Категория</label>
-              <select id="category" name="category" required></select>
-            </div>
-
-            <div class="field">
-              <label for="date">Дата</label>
-              <input id="date" name="date" type="date" required>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="note">Заметка</label>
-            <input
-              id="note"
-              name="note"
-              type="text"
-              placeholder="Заметка (необязательно)"
-            >
-          </div>
-
-          <div class="form-actions">
-            <button class="submit-button" type="submit">
-              <svg class="icon" aria-hidden="true" focusable="false"><use id="submit-button-icon" href="#i-plus"></use></svg>
-              <span id="submit-button-label">Добавить</span>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg>
             </button>
             <button
-              id="cancel-edit"
-              class="icon-button icon-button--soft cancel-edit-button"
+              id="backup-banner-hide"
+              class="icon-button icon-button--compact backup-banner-close"
               type="button"
-              aria-label="Отменить редактирование"
-              title="Отменить редактирование"
-              data-tooltip="Отменить"
-              hidden
+              aria-label="Скрыть до завтра"
+              title="Скрыть до завтра"
+              data-tooltip="Скрыть до завтра"
             >
               <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
             </button>
           </div>
-        </form>
-      </section>
+        </section>
 
-      <section id="home-last-operations" class="home-last" aria-labelledby="home-last-title" hidden>
-        <div class="section-heading">
-          <h2 id="home-last-title">Последние операции</h2>
-          <button
-            id="home-show-all"
-            class="icon-button icon-button--small icon-button--soft"
-            type="button"
-            aria-label="Показать всю историю"
-            title="Показать всю историю"
-            data-tooltip="Вся история"
-          >
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg>
-          </button>
-        </div>
-        <ul id="home-last-list" class="home-last-list"></ul>
-      </section>
-    </section>
-
-    <section data-tab="history" class="tab-panel" id="tab-history" hidden>
-      <header class="app-header tab-header">
-        <h1>История операций</h1>
-      </header>
-
-      <div class="expense-controls">
-        <div class="field expense-search-field">
-          <label for="expense-search">Поиск</label>
-          <div class="search-field-wrap">
-            <svg class="icon search-field-icon" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg>
-            <input
-              id="expense-search"
-              type="search"
-              placeholder="Поиск по операциям"
-              autocomplete="off"
-            >
-          </div>
-        </div>
-
-        <div class="expense-controls-row">
-          <div class="field expenses-filter">
-            <label for="category-filter">Фильтр по категории</label>
-            <select id="category-filter">
-              <option value="">Все категории</option>
-            </select>
-          </div>
-
-          <div class="field expense-sort-field">
-            <label for="expense-sort">Сортировка</label>
-            <select id="expense-sort">
-              <option value="date-desc" selected>Сначала новые</option>
-              <option value="date-asc">Сначала старые</option>
-              <option value="amount-desc">Сумма: по убыванию</option>
-              <option value="amount-asc">Сумма: по возрастанию</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <p id="empty-state" class="empty-state">Пока нет операций. Добавьте первую на вкладке «Главная».</p>
-      <div id="expense-list" class="expense-list"></div>
-    </section>
-
-    <section data-tab="stats" class="tab-panel" id="tab-stats" hidden>
-      <header class="app-header tab-header">
-        <h1 id="stats-title">Статистика</h1>
-      </header>
-
-      <p id="stats-tab-empty" class="stats-tab-empty" hidden>
-        Нет данных. Добавьте операции на вкладке «Главная».
-      </p>
-
-      <div id="stats-period-controls">
-        <div id="period-tabs" class="period-tabs" role="tablist" aria-label="Период статистики">
-          <button
-            type="button"
-            class="period-tab"
-            data-period="week"
-            role="tab"
-            aria-selected="false"
-            aria-controls="stats-panel"
-          >Неделя</button>
-          <button
-            type="button"
-            class="period-tab is-active"
-            data-period="month"
-            role="tab"
-            aria-selected="true"
-            aria-controls="stats-panel"
-          >Месяц</button>
-          <button
-            type="button"
-            class="period-tab"
-            data-period="year"
-            role="tab"
-            aria-selected="false"
-            aria-controls="stats-panel"
-          >Год</button>
-          <button
-            type="button"
-            class="period-tab"
-            data-period="all"
-            role="tab"
-            aria-selected="false"
-            aria-controls="stats-panel"
-          >Всё</button>
-        </div>
-
-        <details class="custom-period-details">
-          <summary class="custom-period-summary">
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg>
-            <span>Свой период</span>
-            <svg class="icon custom-period-chevron" aria-hidden="true" focusable="false"><use href="#i-chevron-down"></use></svg>
-          </summary>
-
-          <div class="period-custom" aria-label="Произвольный период статистики">
-            <label class="period-date-field">
-              <span>С</span>
-              <input id="custom-from" type="date" aria-label="Начало периода">
-            </label>
-            <span class="period-custom-dash" aria-hidden="true">—</span>
-            <label class="period-date-field">
-              <span>По</span>
-              <input id="custom-to" type="date" aria-label="Конец периода">
-            </label>
-            <div class="period-custom-actions">
-              <button id="custom-apply" class="secondary-button period-custom-button" type="button">Применить</button>
-              <button id="custom-reset" class="secondary-button period-custom-button" type="button">Сбросить</button>
-            </div>
-          </div>
-
-          <p id="custom-range-error" class="period-custom-error" role="alert" hidden></p>
-        </details>
-        <p id="stats-period-label" class="stats-period-label" hidden></p>
-      </div>
-
-      <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
-        <div class="total stats-total" aria-live="polite">
-          <span class="total-title">Итого за всё время</span>
-
-          <div class="total-row">
-            <span class="total-label">Всего расходов:</span>
-            <strong id="total-expense" class="total-row-value is-expense">0 ₽</strong>
-          </div>
-
-          <div class="total-row">
-            <span class="total-label">Всего доходов:</span>
-            <strong id="total-income" class="total-row-value is-income">0 ₽</strong>
-          </div>
-
-          <div class="total-row">
-            <span class="total-label">Чистый поток:</span>
-            <strong id="total-net" class="total-row-value is-income">0 ₽</strong>
-          </div>
-        </div>
-
-        <div class="stats-cards">
-          <div class="stats-card">
-            <div class="stats-row">
-              <span class="stats-label stats-label--inline">Расходы:</span>
-              <strong id="stats-expense" class="stats-flow-value is-expense">0 ₽</strong>
-            </div>
-
-            <div class="stats-row">
-              <span class="stats-label stats-label--inline">Доходы:</span>
-              <strong id="stats-income" class="stats-flow-value is-income">0 ₽</strong>
-            </div>
-
-            <div class="stats-row">
-              <span class="stats-label stats-label--inline">Чистый поток:</span>
-              <strong id="stats-net" class="stats-flow-value is-income">0 ₽</strong>
-            </div>
-          </div>
-
-          <div class="stats-card">
-            <span class="stats-label">Средний расход в день:</span>
-            <strong id="stats-avg" class="stats-value">0 ₽</strong>
-            <div id="month-forecast" class="month-forecast" hidden></div>
-          </div>
-        </div>
-
-        <div class="stats-card stats-card--chart">
-          <span class="stats-label">Динамика:</span>
-          <div id="stats-chart" class="stats-chart"></div>
-          <div class="chart-legend" aria-label="Легенда графика">
-            <span class="chart-legend-item">
-              <span class="chart-legend-swatch chart-legend-swatch--income" aria-hidden="true"></span>
-              Доход
-            </span>
-            <span class="chart-legend-item">
-              <span class="chart-legend-swatch chart-legend-swatch--expense" aria-hidden="true"></span>
-              Расход
-            </span>
-          </div>
-        </div>
-
-        <div class="stats-card stats-card--chart stats-card--balance">
-          <span id="balance-chart-title" class="stats-label">Баланс по дням</span>
-          <div id="stats-balance-chart" class="stats-chart stats-chart--balance"></div>
-        </div>
-
-        <div id="stats-comparison" class="stats-card stats-card--comparison" hidden></div>
-
-        <div class="stats-card stats-card--categories">
-          <div id="stats-expense-group" class="stats-category-group" hidden>
-            <span class="stats-label stats-label--expense">Расходы по категориям:</span>
-            <ul id="stats-expense-categories" class="stats-categories"></ul>
-          </div>
-
-          <div id="stats-income-group" class="stats-category-group" hidden>
-            <span class="stats-label stats-label--income">Доходы по категориям:</span>
-            <ul id="stats-income-categories" class="stats-categories"></ul>
-          </div>
-
-          <p id="stats-empty" class="stats-empty">Нет данных за период</p>
-        </div>
-      </div>
-    </section>
-
-    <section data-tab="settings" class="tab-panel" id="tab-settings" hidden>
-      <header class="app-header tab-header">
-        <h1>Настройки</h1>
-      </header>
-
-      <div class="settings-list">
-        <section class="settings-card" aria-labelledby="settings-balance-title">
-          <div class="settings-card-head">
-            <div class="settings-card-copy">
-              <h2 id="settings-balance-title">Начальный баланс</h2>
-              <p class="settings-hint">Стартовый остаток для расчёта текущего баланса.</p>
-            </div>
+        <section id="spend-nudge" class="spend-nudge" aria-label="Напоминание внести траты" hidden>
+          <p id="spend-nudge-text" class="spend-nudge-text"></p>
+          <div class="spend-nudge-actions">
             <button
-              id="reconcile-balance"
-              class="icon-button settings-card-action"
+              id="spend-nudge-open"
+              class="icon-button icon-button--compact icon-button--soft spend-nudge-open"
               type="button"
-              aria-label="Сверить баланс с реальностью"
-              title="Сверить баланс с реальностью"
-              data-tooltip="Сверка баланса"
+              aria-label="Открыть форму"
+              title="Открыть форму"
+              data-tooltip="Открыть форму"
             >
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-scale"></use></svg>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
+            </button>
+            <button
+              id="spend-nudge-hide"
+              class="icon-button icon-button--compact spend-nudge-hide"
+              type="button"
+              aria-label="Скрыть на сегодня"
+              title="Скрыть на сегодня"
+              data-tooltip="Скрыть на сегодня"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
             </button>
           </div>
-          <div class="settings-balance-row">
-            <strong id="initial-balance-value" class="settings-balance-value">0 ₽</strong>
+        </section>
+
+        <section class="hero home-balance" aria-labelledby="balance-title" aria-live="polite">
+          <div class="hero-top">
+            <span id="balance-title" class="hero-lbl">Текущий баланс</span>
             <button
-              id="edit-initial-balance"
-              class="icon-button icon-button--soft"
+              id="edit-balance"
+              class="hero-edit"
               type="button"
               aria-label="Изменить начальный баланс"
               title="Изменить начальный баланс"
-              data-tooltip="Изменить"
             >
               <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pencil"></use></svg>
             </button>
           </div>
+          <strong id="balance-value" class="hero-num">0 <span class="cur">₽</span></strong>
+          <p id="balance-hint" class="hero-hint">Задайте начальный баланс</p>
+          <div id="today-line" class="hero-trend"></div>
         </section>
 
-        <section class="settings-card" aria-labelledby="settings-categories-title">
-          <div class="settings-card-head">
-            <div class="settings-card-copy">
-              <h2 id="settings-categories-title">Категории</h2>
-              <p class="settings-hint">Расходы и доходы по категориям.</p>
-            </div>
+        <div class="metrics" aria-label="Показатели месяца">
+          <button
+            class="metric primary"
+            id="metric-limits-card"
+            type="button"
+            aria-label="Настроить лимиты по категориям"
+          >
+            <span class="metric-lbl">Лимиты</span>
+            <strong class="metric-val" id="metric-limits-value">—</strong>
+            <span class="metric-sub" id="metric-limits-sub">Настроить</span>
+            <span class="metric-bar" aria-hidden="true"><i id="metric-limits-bar"></i></span>
+          </button>
+
+          <button
+            class="metric"
+            id="metric-expenses-card"
+            type="button"
+            aria-label="Открыть анализ расходов"
+          >
+            <span class="metric-lbl">Расходы</span>
+            <strong class="metric-val" id="metric-expenses-value">0 ₽</strong>
+            <span class="metric-sub" id="metric-expenses-sub">за этот месяц</span>
+          </button>
+
+          <button
+            class="metric dark"
+            id="metric-income-card"
+            type="button"
+            aria-label="Открыть анализ доходов"
+          >
+            <span class="metric-lbl">Доходы</span>
+            <strong class="metric-val" id="metric-income-value">0 ₽</strong>
+            <span class="metric-sub">за этот месяц</span>
+          </button>
+        </div>
+
+        <section id="home-limits" class="home-limits" aria-labelledby="home-limits-title" hidden>
+          <div class="feed-head">
+            <h2 id="home-limits-title">Лимиты по категориям</h2>
             <button
-              id="manage-categories"
-              class="icon-button settings-card-action"
+              id="manage-limits"
+              class="link-button"
               type="button"
-              aria-label="Управление категориями"
-              title="Управление категориями"
-              data-tooltip="Категории"
-            >
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-tags"></use></svg>
-            </button>
+            >Настроить</button>
           </div>
+          <div id="home-limits-list" class="home-limits-list"></div>
         </section>
 
-        <section class="settings-card" aria-labelledby="settings-templates-title">
-          <div class="settings-card-head">
-            <div class="settings-card-copy">
-              <h2 id="settings-templates-title">Быстрые шаблоны</h2>
-              <p class="settings-hint">Частые операции в один тап с главной.</p>
-            </div>
+        <section class="quick-templates-section" aria-labelledby="quick-templates-title">
+          <div class="feed-head">
+            <h2 id="quick-templates-title">Быстрый ввод</h2>
+          </div>
+          <div class="quick-templates-wrap">
+            <div
+              id="quick-templates"
+              class="quick-templates"
+              aria-label="Быстрые шаблоны"
+            ></div>
             <button
-              id="manage-quick-templates"
-              class="icon-button settings-card-action"
+              id="quick-template-manage"
+              class="quick-template-manage"
               type="button"
               aria-label="Управление шаблонами"
               title="Управление шаблонами"
-              data-tooltip="Шаблоны"
+              data-tooltip="Управление шаблонами"
+              hidden
             >
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-zap"></use></svg>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg>
             </button>
           </div>
         </section>
 
-        <section class="settings-card" aria-labelledby="settings-security-title">
-          <div class="settings-card-head">
-            <div class="settings-card-copy">
-              <h2 id="settings-security-title">Безопасность</h2>
-              <p class="settings-hint">PIN и биометрия для защиты данных.</p>
-            </div>
+        <section id="home-last-operations" class="home-last" aria-labelledby="home-last-title" hidden>
+          <div class="feed-head">
+            <h2 id="home-last-title">Последние</h2>
             <button
-              id="manage-security"
-              class="icon-button settings-card-action"
+              id="home-show-all"
+              class="link-button"
               type="button"
-              aria-label="Настроить безопасность"
-              title="Настроить безопасность"
-              data-tooltip="Безопасность"
-            >
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shield"></use></svg>
-            </button>
+            >Все →</button>
           </div>
+          <div id="home-last-list" class="home-last-list"></div>
         </section>
+      </section>
 
-        <section class="settings-card" aria-labelledby="backup-title">
-          <div class="settings-card-head">
-            <div class="settings-card-copy">
-              <h2 id="backup-title">Резервное копирование</h2>
-              <p class="settings-hint backup-status" aria-live="polite">
-                Последняя копия: <strong id="last-backup-value">никогда</strong>
-              </p>
+      <section data-tab="history" class="tab-panel" id="tab-history" hidden>
+        <div class="history-toolbar">
+          <div class="search" role="search">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg>
+            <input
+              id="expense-search"
+              type="search"
+              placeholder="Поиск по операциям"
+              aria-label="Поиск по операциям"
+              autocomplete="off"
+            >
+          </div>
+
+          <div class="history-filterbar">
+            <div class="filters" role="group" aria-label="Тип операций">
+              <button type="button" class="filter is-active" data-history-type="all" aria-pressed="true">Все</button>
+              <button type="button" class="filter" data-history-type="expense" aria-pressed="false">Расходы</button>
+              <button type="button" class="filter" data-history-type="income" aria-pressed="false">Доходы</button>
+            </div>
+
+            <details class="history-more">
+              <summary class="filter filter--more">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg>
+                <span>Фильтры</span>
+              </summary>
+              <div class="history-more-body">
+                <div class="field">
+                  <label for="category-filter">Категория</label>
+                  <select id="category-filter">
+                    <option value="">Все категории</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="expense-sort">Сортировка</label>
+                  <select id="expense-sort">
+                    <option value="date-desc" selected>Сначала новые</option>
+                    <option value="date-asc">Сначала старые</option>
+                    <option value="amount-desc">Сумма: по убыванию</option>
+                    <option value="amount-asc">Сумма: по возрастанию</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <p id="empty-state" class="empty-state">Пока нет операций. Нажмите «+», чтобы добавить первую.</p>
+        <div id="expense-list" class="expense-list"></div>
+      </section>
+
+      <section data-tab="stats" class="tab-panel" id="tab-stats" hidden>
+        <p id="stats-tab-empty" class="empty-state" hidden>
+          Нет данных. Добавьте операции на вкладке «Обзор».
+        </p>
+
+        <div id="stats-period-controls" class="stats-controls">
+          <div class="stats-period-row">
+            <div id="period-tabs" class="filters period-tabs" role="tablist" aria-label="Период статистики">
+              <button
+                type="button"
+                class="filter period-tab"
+                data-period="week"
+                role="tab"
+                aria-selected="false"
+                aria-controls="stats-panel"
+              >Неделя</button>
+              <button
+                type="button"
+                class="filter period-tab is-active"
+                data-period="month"
+                role="tab"
+                aria-selected="true"
+                aria-controls="stats-panel"
+              >Месяц</button>
+              <button
+                type="button"
+                class="filter period-tab"
+                data-period="year"
+                role="tab"
+                aria-selected="false"
+                aria-controls="stats-panel"
+              >Год</button>
+              <button
+                type="button"
+                class="filter period-tab"
+                data-period="all"
+                role="tab"
+                aria-selected="false"
+                aria-controls="stats-panel"
+              >Всё</button>
+            </div>
+
+            <details class="custom-period-details history-more">
+              <summary class="filter filter--more">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg>
+                <span>Свой период</span>
+              </summary>
+
+              <div class="history-more-body period-custom" aria-label="Произвольный период статистики">
+                <label class="period-date-field">
+                  <span>С</span>
+                  <input id="custom-from" type="date" aria-label="Начало периода">
+                </label>
+                <label class="period-date-field">
+                  <span>По</span>
+                  <input id="custom-to" type="date" aria-label="Конец периода">
+                </label>
+                <div class="period-custom-actions">
+                  <button id="custom-apply" class="secondary-button period-custom-button" type="button">Применить</button>
+                  <button id="custom-reset" class="secondary-button period-custom-button" type="button">Сбросить</button>
+                </div>
+                <p id="custom-range-error" class="period-custom-error" role="alert" hidden></p>
+              </div>
+            </details>
+          </div>
+          <p id="stats-period-label" class="stats-period-label" hidden></p>
+        </div>
+
+        <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
+          <section class="stats-hero" aria-live="polite">
+            <div class="stats-lbl">Расходы за период</div>
+            <div class="stats-num"><strong id="stats-expense">0 ₽</strong></div>
+          </section>
+
+          <div class="stats-mini-grid">
+            <div class="stat-mini">
+              <span class="metric-lbl">Доходы</span>
+              <strong id="stats-income" class="stat-mini-value is-income">0 ₽</strong>
+            </div>
+            <div class="stat-mini">
+              <span class="metric-lbl">Чистый поток</span>
+              <strong id="stats-net" class="stat-mini-value is-income">0 ₽</strong>
+            </div>
+            <div class="stat-mini">
+              <span class="metric-lbl">Средний день</span>
+              <strong id="stats-avg" class="stat-mini-value">0 ₽</strong>
+            </div>
+            <div class="stat-mini stat-mini--forecast">
+              <div id="month-forecast" class="month-forecast" hidden></div>
             </div>
           </div>
 
-          <div class="backup-actions">
-            <button
-              id="export-json"
-              class="utility-button"
-              type="button"
-              aria-label="Экспорт в JSON"
-              title="Экспорт в JSON"
-              data-tooltip="Экспорт в JSON"
-            >
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-code"></use></svg>
-              <span>JSON</span>
-            </button>
-            <button
-              id="export-csv"
-              class="utility-button"
-              type="button"
-              aria-label="Экспорт в CSV"
-              title="Экспорт в CSV"
-              data-tooltip="Экспорт в CSV"
-            >
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sheet"></use></svg>
-              <span>CSV</span>
-            </button>
-            <button
-              id="report-pdf"
-              class="utility-button"
-              type="button"
-              aria-label="Отчёт PDF"
-              title="Отчёт PDF"
-              data-tooltip="Отчёт PDF"
-            >
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-document"></use></svg>
-              <span>PDF</span>
-            </button>
-            <button
-              id="import-json"
-              class="utility-button"
-              type="button"
-              aria-label="Импорт из JSON"
-              title="Импорт из JSON"
-              data-tooltip="Импорт из JSON"
-            >
-              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg>
-              <span>Импорт</span>
-            </button>
+          <div class="stats-card stats-alltime" aria-live="polite">
+            <h2 class="card-title">Итого за всё время</h2>
+            <div class="total-row">
+              <span class="total-label">Всего расходов</span>
+              <strong id="total-expense" class="total-row-value is-expense">0 ₽</strong>
+            </div>
+            <div class="total-row">
+              <span class="total-label">Всего доходов</span>
+              <strong id="total-income" class="total-row-value is-income">0 ₽</strong>
+            </div>
+            <div class="total-row">
+              <span class="total-label">Чистый поток</span>
+              <strong id="total-net" class="total-row-value is-income">0 ₽</strong>
+            </div>
           </div>
 
-          <input
-            id="import-file"
-            type="file"
-            accept="application/json,.json"
-            hidden
+          <div class="stats-card stats-card--chart">
+            <div class="card-head">
+              <h2 class="card-title">Динамика</h2>
+              <div class="chart-legend" aria-label="Легенда графика">
+                <span class="chart-legend-item">
+                  <span class="chart-legend-swatch chart-legend-swatch--income" aria-hidden="true"></span>
+                  Доход
+                </span>
+                <span class="chart-legend-item">
+                  <span class="chart-legend-swatch chart-legend-swatch--expense" aria-hidden="true"></span>
+                  Расход
+                </span>
+              </div>
+            </div>
+            <div id="stats-chart" class="stats-chart"></div>
+          </div>
+
+          <div class="stats-card stats-card--chart stats-card--balance">
+            <h2 id="balance-chart-title" class="card-title">Баланс по дням</h2>
+            <div id="stats-balance-chart" class="stats-chart stats-chart--balance"></div>
+          </div>
+
+          <div id="stats-comparison" class="stats-card stats-card--comparison" hidden></div>
+
+          <div class="stats-card stats-card--categories">
+            <div class="card-head">
+              <h2 class="card-title">По категориям</h2>
+            </div>
+
+            <div id="stats-expense-group" class="stats-category-group" hidden>
+              <h3 class="stats-label stats-label--expense">Расходы</h3>
+              <ul id="stats-expense-categories" class="stats-categories"></ul>
+            </div>
+
+            <div id="stats-income-group" class="stats-category-group" hidden>
+              <h3 class="stats-label stats-label--income">Доходы</h3>
+              <ul id="stats-income-categories" class="stats-categories"></ul>
+            </div>
+
+            <p id="stats-empty" class="stats-empty">Нет данных за период</p>
+          </div>
+        </div>
+      </section>
+
+      <section data-tab="settings" class="tab-panel" id="tab-settings" hidden>
+        <div class="settings-list">
+          <section class="set-group" aria-labelledby="settings-balance-title">
+            <h2 id="settings-balance-title" class="set-lbl">Финансы</h2>
+
+            <div class="set set--split">
+              <span class="set-ic" style="background:#FFE8E2" aria-hidden="true">💰</span>
+              <button id="edit-initial-balance" class="set-main" type="button">
+                <span class="set-name">Начальный баланс</span>
+                <span class="set-sub">Стартовый остаток</span>
+              </button>
+              <strong id="initial-balance-value" class="set-val">0 ₽</strong>
+              <button
+                id="reconcile-balance"
+                class="set-action"
+                type="button"
+                aria-label="Сверить баланс с реальностью"
+                title="Сверить баланс"
+              >
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-scale"></use></svg>
+              </button>
+            </div>
+
+            <button id="manage-categories" class="set" type="button">
+              <span class="set-ic" style="background:#E6DEFF" aria-hidden="true">🏷️</span>
+              <span class="set-body">
+                <span class="set-name">Категории</span>
+                <span class="set-sub">Расходы, доходы и лимиты</span>
+              </span>
+              <span class="set-chev" aria-hidden="true">›</span>
+            </button>
+
+            <button id="manage-quick-templates" class="set" type="button">
+              <span class="set-ic" style="background:#D6F5DF" aria-hidden="true">⚡</span>
+              <span class="set-body">
+                <span class="set-name">Быстрые шаблоны</span>
+                <span class="set-sub">Частые операции в один тап</span>
+              </span>
+              <span class="set-chev" aria-hidden="true">›</span>
+            </button>
+          </section>
+
+          <section class="set-group" aria-labelledby="settings-security-title">
+            <h2 id="settings-security-title" class="set-lbl">Безопасность</h2>
+            <button id="manage-security" class="set" type="button">
+              <span class="set-ic" style="background:#FFE2CC" aria-hidden="true">🔒</span>
+              <span class="set-body">
+                <span class="set-name">PIN и биометрия</span>
+                <span class="set-sub">Защита приложения при входе</span>
+              </span>
+              <span class="set-chev" aria-hidden="true">›</span>
+            </button>
+          </section>
+
+          <section class="set-group" aria-labelledby="backup-title">
+            <h2 id="backup-title" class="set-lbl">Данные</h2>
+            <p class="backup-status" aria-live="polite">
+              Последняя копия: <strong id="last-backup-value">никогда</strong>
+            </p>
+
+            <button id="export-json" class="set" type="button">
+              <span class="set-ic" style="background:#E6DEFF" aria-hidden="true">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-code"></use></svg>
+              </span>
+              <span class="set-body">
+                <span class="set-name">Экспорт JSON</span>
+                <span class="set-sub">Полная резервная копия</span>
+              </span>
+              <span class="set-chev" aria-hidden="true">›</span>
+            </button>
+
+            <button id="export-csv" class="set" type="button">
+              <span class="set-ic" style="background:#D6F5DF" aria-hidden="true">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sheet"></use></svg>
+              </span>
+              <span class="set-body">
+                <span class="set-name">Экспорт CSV</span>
+                <span class="set-sub">Таблица для Excel</span>
+              </span>
+              <span class="set-chev" aria-hidden="true">›</span>
+            </button>
+
+            <button id="report-pdf" class="set" type="button">
+              <span class="set-ic" style="background:#FFF2CC" aria-hidden="true">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-document"></use></svg>
+              </span>
+              <span class="set-body">
+                <span class="set-name">Отчёт PDF</span>
+                <span class="set-sub">Печать или сохранение</span>
+              </span>
+              <span class="set-chev" aria-hidden="true">›</span>
+            </button>
+
+            <button id="import-json" class="set" type="button">
+              <span class="set-ic" style="background:#D6E6FF" aria-hidden="true">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg>
+              </span>
+              <span class="set-body">
+                <span class="set-name">Импорт JSON</span>
+                <span class="set-sub">Заменить все текущие данные</span>
+              </span>
+              <span class="set-chev" aria-hidden="true">›</span>
+            </button>
+
+            <input
+              id="import-file"
+              type="file"
+              accept="application/json,.json"
+              hidden
+            >
+          </section>
+
+          <section class="set-group" aria-labelledby="settings-about-title">
+            <h2 id="settings-about-title" class="set-lbl">О приложении</h2>
+            <div class="set set--static">
+              <span class="set-ic" style="background:#FFD6DD" aria-hidden="true">₽</span>
+              <span class="set-body">
+                <span class="set-name">Мои расходы</span>
+                <span class="set-sub">Локальный офлайн-трекер · версия 1.0</span>
+              </span>
+            </div>
+            <p class="settings-note">Данные хранятся только на этом устройстве.</p>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <button class="fab" id="fab" type="button" aria-label="Добавить операцию" title="Добавить операцию">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+
+  <div id="operation-modal" class="modal-overlay operation-overlay" hidden>
+    <div
+      class="modal-card compose-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="form-title"
+      tabindex="-1"
+    >
+      <form id="expense-form" novalidate>
+        <div class="compose-head">
+          <button
+            id="operation-modal-close"
+            class="close-btn"
+            type="button"
+            aria-label="Закрыть"
+            title="Закрыть"
           >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+          </button>
+          <h2 id="form-title" class="compose-title">Новая операция</h2>
+          <span class="compose-head-spacer" aria-hidden="true"></span>
+        </div>
 
-          <p class="backup-hint">Импорт заменяет все текущие данные.</p>
-        </section>
+        <div id="type-tabs" class="seg" role="tablist" aria-label="Тип операции">
+          <button
+            type="button"
+            class="seg-button type-button is-active"
+            data-type="expense"
+            role="tab"
+            aria-selected="true"
+          >Расход</button>
+          <button
+            type="button"
+            class="seg-button type-button"
+            data-type="income"
+            role="tab"
+            aria-selected="false"
+          >Доход</button>
+        </div>
 
-        <section class="settings-card" aria-labelledby="settings-about-title">
-          <h2 id="settings-about-title">О приложении</h2>
-          <p class="settings-hint">Версия 1.0</p>
-          <p class="settings-hint">
-            Локальный офлайн-трекер. Данные хранятся только на этом устройстве.
-          </p>
-        </section>
+        <div class="compose-display">
+          <div id="compose-amount-display" class="compose-amt is-empty" tabindex="-1" aria-live="polite">0<span class="cur">₽</span></div>
+          <div id="compose-category-display" class="compose-cat">Выберите категорию</div>
+        </div>
+
+        <div id="compose-category-pills" class="cat-scroll" role="group" aria-label="Категория"></div>
+
+        <div class="keypad" id="compose-keypad" aria-label="Цифровая клавиатура">
+          <button type="button" class="key" data-key="7" aria-label="7">7</button>
+          <button type="button" class="key" data-key="8" aria-label="8">8</button>
+          <button type="button" class="key" data-key="9" aria-label="9">9</button>
+          <button type="button" class="key" data-key="4" aria-label="4">4</button>
+          <button type="button" class="key" data-key="5" aria-label="5">5</button>
+          <button type="button" class="key" data-key="6" aria-label="6">6</button>
+          <button type="button" class="key" data-key="1" aria-label="1">1</button>
+          <button type="button" class="key" data-key="2" aria-label="2">2</button>
+          <button type="button" class="key" data-key="3" aria-label="3">3</button>
+          <button type="button" class="key" data-key="." aria-label="Десятичный разделитель">,</button>
+          <button type="button" class="key" data-key="0" aria-label="0">0</button>
+          <button type="button" class="key action" data-key="backspace" aria-label="Удалить последнюю цифру">⌫</button>
+        </div>
+
+        <div class="visually-hidden">
+          <label for="amount">Сумма</label>
+          <input
+            id="amount"
+            name="amount"
+            type="number"
+            step="0.01"
+            min="0.01"
+            inputmode="decimal"
+            placeholder="Сумма"
+            tabindex="-1"
+            required
+          >
+          <label for="category">Категория</label>
+          <select id="category" name="category" required></select>
+        </div>
+
+        <div class="compose-meta">
+          <label class="compose-field" for="date">
+            <span>Дата</span>
+            <input id="date" name="date" type="date" required>
+          </label>
+          <label class="compose-field" for="note">
+            <span>Заметка</span>
+            <input
+              id="note"
+              name="note"
+              type="text"
+              placeholder="Необязательно"
+              maxlength="120"
+            >
+          </label>
+        </div>
+
+        <p id="compose-error" class="form-error" role="alert" hidden></p>
+
+        <div class="compose-actions">
+          <button class="btn-submit" type="submit">
+            <svg class="icon" aria-hidden="true" focusable="false"><use id="submit-button-icon" href="#i-check"></use></svg>
+            <span id="submit-button-label">Сохранить</span>
+          </button>
+
+          <button id="cancel-edit" class="compose-cancel" type="button" hidden>Отменить редактирование</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="transaction-detail-modal" class="modal-overlay" hidden>
+    <div
+      class="modal-card transaction-detail-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="transaction-detail-title"
+      tabindex="-1"
+    >
+      <div class="modal-header">
+        <h2 id="transaction-detail-title">Операция</h2>
+        <button
+          id="transaction-detail-close"
+          class="icon-button icon-button--soft modal-close-button"
+          type="button"
+          aria-label="Закрыть"
+          title="Закрыть"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+        </button>
       </div>
-    </section>
-  </main>
 
-  <nav id="bottom-nav" class="bottom-nav" aria-label="Основная навигация">
-    <button
-      type="button"
-      class="bottom-nav-button is-active"
-      data-tab-target="home"
-      aria-current="page"
-    >
-      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-home"></use></svg>
-      <span>Главная</span>
-    </button>
-    <button
-      type="button"
-      class="bottom-nav-button"
-      data-tab-target="history"
-    >
-      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg>
-      <span>История</span>
-    </button>
-    <button
-      type="button"
-      class="bottom-nav-button"
-      data-tab-target="stats"
-    >
-      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-chart"></use></svg>
-      <span>Статистика</span>
-    </button>
-    <button
-      type="button"
-      class="bottom-nav-button"
-      data-tab-target="settings"
-    >
-      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-settings"></use></svg>
-      <span>Настройки</span>
-    </button>
-  </nav>
+      <div class="detail-hero">
+        <div id="transaction-detail-icon" class="detail-ic" aria-hidden="true"></div>
+        <div id="transaction-detail-amount" class="detail-amt"></div>
+        <div id="transaction-detail-meta" class="detail-meta"></div>
+      </div>
+
+      <p id="transaction-detail-note" class="detail-note" hidden></p>
+
+      <div class="detail-actions">
+        <button id="transaction-detail-edit" class="btn btn-primary" type="button">Редактировать</button>
+        <button id="transaction-detail-delete" class="btn btn-danger" type="button">Удалить</button>
+      </div>
+    </div>
+  </div>
 
   <div id="category-modal" class="modal-overlay" hidden>
     <div
@@ -891,6 +950,52 @@
           >
             <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
           </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="value-modal" class="modal-overlay value-modal-overlay" hidden>
+    <div
+      class="modal-card value-modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="value-modal-title"
+      aria-describedby="value-modal-subtitle"
+    >
+      <div class="modal-header">
+        <div class="value-modal-heading">
+          <h2 id="value-modal-title">Значение</h2>
+          <p id="value-modal-subtitle" class="value-modal-subtitle"></p>
+        </div>
+        <button
+          id="value-modal-close"
+          class="icon-button icon-button--soft modal-close-button"
+          type="button"
+          aria-label="Закрыть"
+          title="Закрыть"
+          data-tooltip="Закрыть"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+
+      <form id="value-modal-form" novalidate>
+        <label class="compose-field value-modal-field" for="value-modal-input">
+          <span id="value-modal-label">Значение</span>
+          <input
+            id="value-modal-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+          >
+        </label>
+
+        <p id="value-modal-error" class="form-error" role="alert" hidden></p>
+
+        <div class="value-modal-actions">
+          <button id="value-modal-cancel" class="secondary-button" type="button">Отмена</button>
+          <button class="submit-button" type="submit">Сохранить</button>
         </div>
       </form>
     </div>
@@ -1333,7 +1438,7 @@
         return;
       }
 
-      navigator.serviceWorker.register('./sw.js').catch((error) => {
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch((error) => {
         console.error('Не удалось зарегистрировать service worker:', error);
       });
     });

@@ -18,6 +18,55 @@ const DEFAULT_CATEGORIES = {
   income: ['Зарплата', 'Фриланс', 'Подарок', 'Инвестиции', SYSTEM_CATEGORY_NAME]
 };
 
+const TAB_TITLES = {
+  home: 'Мои расходы',
+  history: 'История',
+  stats: 'Анализ',
+  settings: 'Настройки'
+};
+
+const CATEGORY_VISUALS = new Map([
+  ['еда', { icon: '🛒', bg: '#d6f5df', fg: '#146c3c' }],
+  ['продукты', { icon: '🛒', bg: '#d6f5df', fg: '#146c3c' }],
+  ['кафе', { icon: '☕', bg: '#ffe2cc', fg: '#9a470c' }],
+  ['ресторан', { icon: '🍽️', bg: '#ffe2cc', fg: '#9a470c' }],
+  ['транспорт', { icon: '🚕', bg: '#d6e6ff', fg: '#1d4f9e' }],
+  ['такси', { icon: '🚕', bg: '#d6e6ff', fg: '#1d4f9e' }],
+  ['жильё', { icon: '🏠', bg: '#e6deff', fg: '#5137a8' }],
+  ['жилье', { icon: '🏠', bg: '#e6deff', fg: '#5137a8' }],
+  ['жкх', { icon: '💡', bg: '#fff2cc', fg: '#7a5b00' }],
+  ['развлечения', { icon: '🎮', bg: '#ffd6e7', fg: '#9b2350' }],
+  ['одежда', { icon: '👕', bg: '#fff2cc', fg: '#7a5b00' }],
+  ['здоровье', { icon: '💊', bg: '#ffd6dd', fg: '#a61b37' }],
+  ['аптека', { icon: '💊', bg: '#ffd6dd', fg: '#a61b37' }],
+  ['спорт', { icon: '🏋️', bg: '#d6f2ee', fg: '#0d625a' }],
+  ['образование', { icon: '📚', bg: '#d6e6ff', fg: '#1d4f9e' }],
+  ['связь', { icon: '📱', bg: '#d6f2ee', fg: '#0d625a' }],
+  ['подписки', { icon: '🔁', bg: '#e6deff', fg: '#5137a8' }],
+  ['путешествия', { icon: '✈️', bg: '#d6e6ff', fg: '#1d4f9e' }],
+  ['питомцы', { icon: '🐾', bg: '#ffe2cc', fg: '#9a470c' }],
+  ['ремонт', { icon: '🛠️', bg: '#eeeae3', fg: '#6f6a63' }],
+  ['страховка', { icon: '🛡️', bg: '#d6e6ff', fg: '#1d4f9e' }],
+  ['налоги', { icon: '🧾', bg: '#eeeae3', fg: '#6f6a63' }],
+  ['другое', { icon: '📦', bg: '#eeeae3', fg: '#6f6a63' }],
+  ['прочее', { icon: '📦', bg: '#eeeae3', fg: '#6f6a63' }],
+  ['зарплата', { icon: '💼', bg: '#d6f5df', fg: '#146c3c' }],
+  ['фриланс', { icon: '💻', bg: '#d6e6ff', fg: '#1d4f9e' }],
+  ['подарок', { icon: '🎁', bg: '#ffe2cc', fg: '#9a470c' }],
+  ['инвестиции', { icon: '📈', bg: '#e6deff', fg: '#5137a8' }],
+  ['проценты', { icon: '📈', bg: '#e6deff', fg: '#5137a8' }],
+  ['бизнес', { icon: '💼', bg: '#d6f5df', fg: '#146c3c' }]
+]);
+
+const CATEGORY_FALLBACK_VISUALS = [
+  { icon: '🏷️', bg: '#ffe8e2', fg: '#a9351b' },
+  { icon: '🏷️', bg: '#e6deff', fg: '#5137a8' },
+  { icon: '🏷️', bg: '#d6e6ff', fg: '#1d4f9e' },
+  { icon: '🏷️', bg: '#fff2cc', fg: '#7a5b00' },
+  { icon: '🏷️', bg: '#d6f2ee', fg: '#0d625a' },
+  { icon: '🏷️', bg: '#ffd6e7', fg: '#9b2350' }
+];
+
 const PERIODS = ['week', 'month', 'year', 'all'];
 const PERIOD_DAYS = {
   week: 7,
@@ -67,7 +116,7 @@ const submitButton = form.querySelector('button[type="submit"]');
 const submitButtonLabel = document.getElementById('submit-button-label');
 const submitButtonIcon = document.getElementById('submit-button-icon');
 const cancelEditButton = document.getElementById('cancel-edit');
-const formPanel = form.closest('.panel');
+const formPanel = form.closest('.compose-card, .panel');
 const typeTabs = document.getElementById('type-tabs');
 const expenseList = document.getElementById('expense-list');
 const emptyState = document.getElementById('empty-state');
@@ -128,6 +177,7 @@ const lastBackupValue = document.getElementById('last-backup-value');
 const manageCategoriesButton = document.getElementById('manage-categories');
 const manageQuickTemplatesButton = document.getElementById('manage-quick-templates');
 const quickTemplatesRow = document.getElementById('quick-templates');
+const quickTemplateManageButton = document.getElementById('quick-template-manage');
 const quickTemplateModal = document.getElementById('quick-template-modal');
 const quickTemplateModalClose = document.getElementById('quick-template-modal-close');
 const quickTemplateList = document.getElementById('quick-template-list');
@@ -192,6 +242,17 @@ const undoToastText = document.getElementById('undo-toast-text');
 const undoToastButton = document.getElementById('undo-toast-button');
 const infoToast = document.getElementById('info-toast');
 const infoToastText = document.getElementById('info-toast-text');
+const valueModal = document.getElementById('value-modal');
+const valueModalCard = valueModal ? valueModal.querySelector('.value-modal-card') : null;
+const valueModalTitle = document.getElementById('value-modal-title');
+const valueModalSubtitle = document.getElementById('value-modal-subtitle');
+const valueModalLabel = document.getElementById('value-modal-label');
+const valueModalInput = document.getElementById('value-modal-input');
+const valueModalForm = document.getElementById('value-modal-form');
+const valueModalError = document.getElementById('value-modal-error');
+const valueModalClose = document.getElementById('value-modal-close');
+const valueModalCancel = document.getElementById('value-modal-cancel');
+let valueModalState = null;
 const lockScreen = document.getElementById('lock-screen');
 const lockForm = document.getElementById('lock-form');
 const lockPinInput = document.getElementById('lock-pin');
@@ -212,6 +273,37 @@ const pinRecoveryConfirmInput = document.getElementById('pin-recovery-confirm-in
 const pinRecoveryConfirmDelete = document.getElementById('pin-recovery-confirm-delete');
 const pinRecoveryBack = document.getElementById('pin-recovery-back');
 const pinRecoveryError = document.getElementById('pin-recovery-error');
+const viewTitle = document.getElementById('view-title');
+const headerDate = document.getElementById('header-date');
+const headerAvatar = document.getElementById('header-avatar');
+const fab = document.getElementById('fab');
+const operationModal = document.getElementById('operation-modal');
+const operationModalClose = document.getElementById('operation-modal-close');
+const composeCard = operationModal.querySelector('.compose-card');
+const composeAmountDisplay = document.getElementById('compose-amount-display');
+const composeCategoryDisplay = document.getElementById('compose-category-display');
+const composeCategoryPills = document.getElementById('compose-category-pills');
+const composeKeypad = document.getElementById('compose-keypad');
+const composeError = document.getElementById('compose-error');
+const metricLimitsCard = document.getElementById('metric-limits-card');
+const metricLimitsValue = document.getElementById('metric-limits-value');
+const metricLimitsSub = document.getElementById('metric-limits-sub');
+const metricLimitsBar = document.getElementById('metric-limits-bar');
+const metricExpensesCard = document.getElementById('metric-expenses-card');
+const metricExpensesValue = document.getElementById('metric-expenses-value');
+const metricExpensesSub = document.getElementById('metric-expenses-sub');
+const metricIncomeCard = document.getElementById('metric-income-card');
+const metricIncomeValue = document.getElementById('metric-income-value');
+const transactionDetailModal = document.getElementById('transaction-detail-modal');
+const transactionDetailCard = transactionDetailModal.querySelector('.transaction-detail-card');
+const transactionDetailClose = document.getElementById('transaction-detail-close');
+const transactionDetailIcon = document.getElementById('transaction-detail-icon');
+const transactionDetailAmount = document.getElementById('transaction-detail-amount');
+const transactionDetailMeta = document.getElementById('transaction-detail-meta');
+const transactionDetailNote = document.getElementById('transaction-detail-note');
+const transactionDetailEdit = document.getElementById('transaction-detail-edit');
+const transactionDetailDelete = document.getElementById('transaction-detail-delete');
+const historyTypeButtons = [...document.querySelectorAll('[data-history-type]')];
 
 const amountFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2
@@ -238,6 +330,7 @@ let currentPeriod = 'month';
 let currentFilter = '';
 let currentSearch = '';
 let currentSort = 'date-desc';
+let currentTypeFilter = 'all';
 let customRange = null;
 let initialBalance = 0;
 let initialBalanceExists = false;
@@ -260,6 +353,11 @@ let lastBalancePeriod = 'month';
 let categoryModalType = 'expense';
 let categoryModalReturnFocus = null;
 let editingExpenseId = null;
+let composeAmountRaw = '';
+let composeReturnFocus = null;
+let isSavingOperation = false;
+let detailExpenseId = null;
+let detailReturnFocus = null;
 let quickTemplates = [];
 let editingQuickTemplateId = null;
 let quickTemplateModalReturnFocus = null;
@@ -1219,14 +1317,14 @@ async function getMonthLimitStats() {
 
 function getLimitColor(percent) {
   if (percent > 100) {
-    return '#e74c3c';
+    return '#c54122';
   }
 
   if (percent > 70) {
-    return '#f39c12';
+    return '#a85a00';
   }
 
-  return '#27ae60';
+  return '#1b8048';
 }
 
 function getInitialBalance() {
@@ -2197,6 +2295,70 @@ function formatAmount(amount) {
   return `${amountFormatter.format(Number.isFinite(value) ? value : 0)} ₽`;
 }
 
+function normalizeCategoryName(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+}
+
+function getCategoryVisual(name) {
+  const normalized = normalizeCategoryName(name);
+
+  if (CATEGORY_VISUALS.has(normalized)) {
+    return CATEGORY_VISUALS.get(normalized);
+  }
+
+  let hash = 0;
+
+  for (const character of normalized) {
+    hash = (hash * 31 + character.codePointAt(0)) % CATEGORY_FALLBACK_VISUALS.length;
+  }
+
+  return CATEGORY_FALLBACK_VISUALS[Math.abs(hash)];
+}
+
+function createCategoryIcon(name, extraClass = '') {
+  const visual = getCategoryVisual(name);
+  const icon = document.createElement('span');
+
+  icon.className = `category-icon${extraClass ? ` ${extraClass}` : ''}`;
+  icon.style.background = visual.bg;
+  icon.style.color = visual.fg;
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = visual.icon;
+
+  return icon;
+}
+
+function setMoneyValue(element, value) {
+  const currency = document.createElement('span');
+
+  currency.className = 'cur';
+  currency.textContent = '₽';
+  element.replaceChildren(
+    document.createTextNode(amountFormatter.format(Number(value) || 0)),
+    document.createTextNode(' '),
+    currency
+  );
+}
+
+function getOperationsWord(count) {
+  const value = Math.abs(Number(count) || 0);
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return 'операция';
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return 'операции';
+  }
+
+  return 'операций';
+}
+
 function formatSignedAmount(amount, type) {
   const sign = type === 'income' ? '+' : '−';
   return `${sign} ${formatAmount(Math.abs(Number(amount) || 0))}`;
@@ -2729,25 +2891,30 @@ function setIconButton(button, iconName, label, extraClass = '') {
 
 function createExpenseElement(expense) {
   const item = document.createElement('li');
+  const type = getTransactionType(expense);
+  const note = String(expense.note || '').trim();
+  const operationDescription = `«${expense.category}» на ${formatAmount(expense.amount)}`;
   item.className = 'expense-item';
 
-  const info = document.createElement('div');
+  const main = document.createElement('button');
+  main.type = 'button';
+  main.className = 'expense-main';
+  main.dataset.transactionId = String(expense.id);
+  main.setAttribute('aria-label', `Открыть операцию ${operationDescription}`);
+  main.setAttribute('aria-haspopup', 'dialog');
+
+  const info = document.createElement('span');
   info.className = 'expense-info';
 
-  const type = getTransactionType(expense);
-  const amount = document.createElement('span');
-  amount.className = type === 'income'
-    ? 'expense-amount is-income'
-    : 'expense-amount';
-  amount.textContent = formatSignedAmount(expense.amount, type);
+  const title = document.createElement('span');
+  title.className = 'expense-title';
+  title.textContent = note || expense.category || SYSTEM_CATEGORY_NAME;
 
-  const meta = document.createElement('div');
+  const meta = document.createElement('span');
   meta.className = 'expense-meta';
 
   const category = document.createElement('span');
-  category.className = 'expense-category';
-  category.textContent = expense.category;
-
+  category.textContent = note ? expense.category : (type === 'income' ? 'Доход' : 'Расход');
   meta.append(category);
 
   if (expense.isAdjustment === true) {
@@ -2760,7 +2927,6 @@ function createExpenseElement(expense) {
   const separator = document.createElement('span');
   separator.className = 'expense-separator';
   separator.setAttribute('aria-hidden', 'true');
-  separator.textContent = '•';
 
   const date = document.createElement('time');
   date.className = 'expense-date';
@@ -2768,19 +2934,18 @@ function createExpenseElement(expense) {
   date.textContent = formatDate(expense.date);
 
   meta.append(separator, date);
-  info.append(amount, meta);
 
-  if (expense.note) {
-    const note = document.createElement('p');
-    note.className = 'expense-note';
-    note.textContent = expense.note;
-    info.append(note);
-  }
+  const amount = document.createElement('span');
+  amount.className = type === 'income'
+    ? 'expense-amount is-income'
+    : 'expense-amount';
+  amount.textContent = formatSignedAmount(expense.amount, type);
+
+  info.append(title, meta);
+  main.append(createCategoryIcon(expense.category), info, amount);
 
   const actions = document.createElement('div');
   actions.className = 'expense-actions';
-
-  const operationDescription = `«${expense.category}» на ${formatAmount(expense.amount)}`;
 
   const editButton = document.createElement('button');
   editButton.type = 'button';
@@ -2795,7 +2960,7 @@ function createExpenseElement(expense) {
   setIconButton(deleteButton, 'trash', `Удалить операцию ${operationDescription}`, 'icon-button--danger');
 
   actions.append(editButton, deleteButton);
-  item.append(info, actions);
+  item.append(main, actions);
   return item;
 }
 
@@ -2829,7 +2994,7 @@ function updateBalance(totals) {
     initialBalance + totals.incomeTotal - totals.expenseTotal
   );
 
-  balanceValue.textContent = formatAmount(balance);
+  setMoneyValue(balanceValue, balance);
   balanceValue.classList.toggle('is-negative', balance < 0);
   initialBalanceValue.textContent = formatAmount(initialBalance);
   balanceHint.hidden = initialBalanceExists;
@@ -2869,30 +3034,44 @@ function formatHomeOperationDate(isoDate) {
 }
 
 function createHomeOperationElement(expense) {
-  const item = document.createElement('li');
-  item.className = 'home-last-item';
-
   const type = getTransactionType(expense);
+  const note = String(expense.note || '').trim();
+  const item = document.createElement('button');
+  item.type = 'button';
+  item.className = 'home-last-item transaction-card';
+  item.dataset.expenseId = String(expense.id);
+  item.setAttribute('aria-label', `Открыть операцию «${expense.category}» на ${formatAmount(expense.amount)}`);
+  item.setAttribute('aria-haspopup', 'dialog');
+
+  const info = document.createElement('span');
+  info.className = 'tx-info';
+
+  const title = document.createElement('span');
+  title.className = 'tx-title';
+  title.textContent = note || expense.category || SYSTEM_CATEGORY_NAME;
+
+  const sub = document.createElement('span');
+  sub.className = 'tx-sub';
+
+  const category = document.createElement('span');
+  category.textContent = note ? expense.category : (type === 'income' ? 'Доход' : 'Расход');
+  sub.append(category);
+
+  if (expense.isAdjustment === true) {
+    const adjustmentBadge = document.createElement('span');
+    adjustmentBadge.className = 'expense-adjustment-badge';
+    adjustmentBadge.textContent = 'корректировка';
+    sub.append(adjustmentBadge);
+  }
+
   const amount = document.createElement('span');
   amount.className = type === 'income'
-    ? 'home-last-amount is-income'
-    : 'home-last-amount';
+    ? 'tx-amt is-income'
+    : 'tx-amt';
   amount.textContent = formatSignedAmount(expense.amount, type);
 
-  const label = document.createElement('span');
-  label.className = 'home-last-label';
-  label.textContent = expense.category || expense.note || SYSTEM_CATEGORY_NAME;
-
-  const dateText = formatHomeOperationDate(expense.date);
-  item.append(amount, label);
-
-  if (dateText) {
-    const date = document.createElement('time');
-    date.className = 'home-last-date';
-    date.dateTime = expense.date;
-    date.textContent = dateText;
-    item.append(date);
-  }
+  info.append(title, sub);
+  item.append(createCategoryIcon(expense.category), info, amount);
 
   return item;
 }
@@ -2910,10 +3089,46 @@ function renderHomeLastOperations(items = expenses) {
     return;
   }
 
-  const fragment = document.createDocumentFragment();
+  const todayIso = getTodayISO();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayIso = formatISODate(yesterday);
+  const groups = new Map();
 
   latest.forEach((expense) => {
-    fragment.append(createHomeOperationElement(expense));
+    if (!groups.has(expense.date)) {
+      groups.set(expense.date, []);
+    }
+
+    groups.get(expense.date).push(expense);
+  });
+
+  const fragment = document.createDocumentFragment();
+
+  groups.forEach((groupItems, date) => {
+    const group = document.createElement('section');
+    group.className = 'tx-group';
+
+    const head = document.createElement('div');
+    head.className = 'expense-group-title';
+
+    const label = document.createElement('span');
+    label.textContent = getExpenseDateGroupTitle(date, todayIso, yesterdayIso);
+
+    const count = document.createElement('span');
+    count.className = 'expense-group-count';
+    count.textContent = `${groupItems.length} ${getOperationsWord(groupItems.length)}`;
+    head.append(label, count);
+
+    const list = document.createElement('div');
+    list.className = 'tx-list';
+
+    groupItems.forEach((expense) => {
+      list.append(createHomeOperationElement(expense));
+    });
+
+    group.append(head, list);
+    fragment.append(group);
   });
 
   homeLastList.replaceChildren(fragment);
@@ -2928,13 +3143,13 @@ async function renderLimitsHome(container = homeLimitsList) {
   } catch (error) {
     homeLimits.hidden = true;
     container.replaceChildren();
-    return;
+    return [];
   }
 
   if (stats.length === 0) {
     container.replaceChildren();
     homeLimits.hidden = true;
-    return;
+    return [];
   }
 
   const fragment = document.createDocumentFragment();
@@ -2943,44 +3158,30 @@ async function renderLimitsHome(container = homeLimitsList) {
     const roundedPercent = Math.round(stat.percent);
     const row = document.createElement('button');
     row.type = 'button';
-    row.className = `month-limit-row${stat.over ? ' is-over' : ''}`;
+    row.className = `limit-card${stat.over ? ' is-over' : ''}`;
     row.dataset.limitCategory = stat.category.name;
 
-    const top = document.createElement('span');
-    top.className = 'month-limit-top';
+    const head = document.createElement('span');
+    head.className = 'limit-head';
 
     const name = document.createElement('span');
-    name.className = 'month-limit-name';
+    name.className = 'limit-name';
     name.textContent = stat.category.name;
 
-    const separator = document.createElement('span');
-    separator.className = 'month-limit-separator';
-    separator.setAttribute('aria-hidden', 'true');
-    separator.textContent = '·';
+    const percent = document.createElement('span');
+    percent.className = `limit-percent${stat.over ? ' limit-over' : ''}`;
+    percent.textContent = `${roundedPercent}%`;
+
+    head.append(createCategoryIcon(stat.category.name, 'category-icon--sm'), name, percent);
 
     const amounts = document.createElement('span');
-    amounts.className = 'month-limit-amounts';
-    amounts.textContent = `${amountFormatter.format(stat.spent)} / ${amountFormatter.format(stat.limit)} ₽`;
-
-    const metrics = document.createElement('span');
-    metrics.className = 'month-limit-metrics';
-
-    const percent = document.createElement('span');
-    percent.className = 'month-limit-percent';
-    percent.textContent = `${roundedPercent}%`;
-    metrics.append(percent);
-
-    if (stat.over) {
-      const over = document.createElement('span');
-      over.className = 'month-limit-over';
-      over.textContent = `+${formatAmount(Math.abs(stat.remaining))}`;
-      metrics.append(over);
-    }
-
-    top.append(name, separator, amounts, metrics);
+    amounts.className = 'limit-amounts';
+    amounts.textContent = stat.over
+      ? `${amountFormatter.format(stat.spent)} из ${amountFormatter.format(stat.limit)} ₽ · перерасход ${formatAmount(Math.abs(stat.remaining))}`
+      : `${amountFormatter.format(stat.spent)} из ${amountFormatter.format(stat.limit)} ₽`;
 
     const bar = document.createElement('span');
-    bar.className = 'month-limit-progress';
+    bar.className = 'limit-progress';
     bar.setAttribute('role', 'progressbar');
     bar.setAttribute('aria-valuemin', '0');
     bar.setAttribute('aria-valuemax', '100');
@@ -2991,17 +3192,112 @@ async function renderLimitsHome(container = homeLimitsList) {
     );
 
     const fill = document.createElement('span');
-    fill.className = 'month-limit-progress-fill';
+    fill.className = 'limit-progress-fill';
     fill.style.width = `${Math.min(100, Math.max(0, stat.percent))}%`;
     fill.style.backgroundColor = getLimitColor(stat.percent);
     bar.append(fill);
 
-    row.append(top, bar);
+    row.append(head, amounts, bar);
     fragment.append(row);
   });
 
   container.replaceChildren(fragment);
   homeLimits.hidden = false;
+  return stats;
+}
+
+function getCurrentMonthTotals() {
+  const today = getTodayISO();
+  const monthPrefix = today.slice(0, 7);
+  const pendingDeleteId = getPendingExpenseDeleteId();
+  let expense = 0;
+  let income = 0;
+  let expenseCount = 0;
+  let incomeCount = 0;
+
+  expenses.forEach((item) => {
+    if (
+      item.id === pendingDeleteId
+      || typeof item.date !== 'string'
+      || !item.date.startsWith(monthPrefix)
+      || item.date > today
+    ) {
+      return;
+    }
+
+    const amount = Number(item.amount);
+
+    if (!Number.isFinite(amount)) {
+      return;
+    }
+
+    if (getTransactionType(item) === 'income') {
+      income += amount;
+      incomeCount += 1;
+    } else {
+      expense += amount;
+      expenseCount += 1;
+    }
+  });
+
+  return {
+    expense: roundCurrency(expense),
+    income: roundCurrency(income),
+    expenseCount,
+    incomeCount
+  };
+}
+
+function updateHomeMetrics(limitStats = []) {
+  const totals = getCurrentMonthTotals();
+
+  if (metricExpensesValue) {
+    metricExpensesValue.textContent = formatAmount(totals.expense);
+  }
+
+  if (metricExpensesSub) {
+    metricExpensesSub.textContent = totals.expenseCount > 0
+      ? `${totals.expenseCount} ${getOperationsWord(totals.expenseCount)} за месяц`
+      : 'за этот месяц';
+  }
+
+  if (metricIncomeValue) {
+    metricIncomeValue.textContent = formatAmount(totals.income);
+  }
+
+  if (!metricLimitsValue || !metricLimitsSub || !metricLimitsBar) {
+    return;
+  }
+
+  if (limitStats.length === 0) {
+    metricLimitsValue.textContent = '—';
+    metricLimitsSub.textContent = 'Настроить лимиты';
+    metricLimitsBar.style.width = '0%';
+    metricLimitsCard?.setAttribute('aria-label', 'Настроить лимиты по категориям');
+    return;
+  }
+
+  const totalLimit = roundCurrency(
+    limitStats.reduce((sum, stat) => sum + Number(stat.limit || 0), 0)
+  );
+  const totalSpent = roundCurrency(
+    limitStats.reduce((sum, stat) => sum + Number(stat.spent || 0), 0)
+  );
+  const percent = totalLimit > 0 ? (totalSpent / totalLimit) * 100 : 0;
+  const overCount = limitStats.filter((stat) => stat.over).length;
+  const categoryWord = overCount === 1
+    ? 'категория'
+    : (overCount >= 2 && overCount <= 4 ? 'категории' : 'категорий');
+
+  metricLimitsValue.textContent = formatAmount(totalLimit);
+  metricLimitsSub.textContent = overCount > 0
+    ? `Лимит превышен: ${overCount} ${categoryWord}`
+    : `${formatAmount(totalSpent)} использовано`;
+  metricLimitsBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+  metricLimitsCard?.setAttribute(
+    'aria-label',
+    `Лимиты: потрачено ${formatAmount(totalSpent)} из ${formatAmount(totalLimit)}. Настроить`
+  );
 }
 
 function getTodayTotals() {
@@ -3231,7 +3527,8 @@ async function renderHome(items = expenses) {
   updateBackupBanner();
   renderNudgeBanner(spendNudge);
   updateLastBackupStatusLine();
-  await renderLimitsHome();
+  const limitStats = await renderLimitsHome();
+  updateHomeMetrics(limitStats);
 }
 
 function estimateChartLabelWidth(label) {
@@ -3284,7 +3581,7 @@ function getChartLabelIndices(chartData, period, plotWidth) {
 }
 
 function createChartBar(x, y, width, height, type, label, value) {
-  const color = type === 'income' ? '#27ae60' : '#e74c3c';
+  const color = type === 'income' ? '#1b8048' : '#c54122';
   let shape;
 
   if (height > 0) {
@@ -3416,7 +3713,7 @@ function renderBarChart(container, chartData, period) {
     text.setAttribute('x', x.toFixed(2));
     text.setAttribute('y', (height - 8).toFixed(2));
     text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', '#666666');
+    text.setAttribute('fill', '#6f6a63');
     text.setAttribute('font-size', String(CHART_FONT_SIZE));
     text.classList.add('bar-chart-label');
     text.textContent = point.label;
@@ -3555,7 +3852,7 @@ function renderBalanceChart(container, series, period = 'month') {
   ];
 
   area.setAttribute('points', areaPoints.join(' '));
-  area.setAttribute('fill', '#2c3e50');
+  area.setAttribute('fill', '#141416');
   area.setAttribute('fill-opacity', '0.12');
   area.classList.add('balance-chart-area');
   svg.append(area);
@@ -3567,7 +3864,7 @@ function renderBalanceChart(container, series, period = 'month') {
     zeroLine.setAttribute('x2', chartRight.toFixed(2));
     zeroLine.setAttribute('y1', yFor(0).toFixed(2));
     zeroLine.setAttribute('y2', yFor(0).toFixed(2));
-    zeroLine.setAttribute('stroke', '#e74c3c');
+    zeroLine.setAttribute('stroke', '#c54122');
     zeroLine.setAttribute('stroke-width', '1.5');
     zeroLine.setAttribute('stroke-dasharray', '4 3');
     zeroLine.classList.add('balance-chart-zero-line');
@@ -3580,7 +3877,7 @@ function renderBalanceChart(container, series, period = 'month') {
     .map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`)
     .join(' '));
   line.setAttribute('fill', 'none');
-  line.setAttribute('stroke', '#2c3e50');
+  line.setAttribute('stroke', '#141416');
   line.setAttribute('stroke-width', '2');
   line.setAttribute('stroke-linejoin', 'round');
   line.classList.add('balance-chart-line');
@@ -3617,7 +3914,7 @@ function renderBalanceChart(container, series, period = 'month') {
     text.setAttribute('x', x.toFixed(2));
     text.setAttribute('y', (height - 8).toFixed(2));
     text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', '#666666');
+    text.setAttribute('fill', '#6f6a63');
     text.setAttribute('font-size', String(CHART_FONT_SIZE));
     text.classList.add('balance-chart-label');
     text.textContent = points[index].label;
@@ -3860,27 +4157,41 @@ function renderCategoryBreakdown(container, list, categories, total, limitStats)
     const item = document.createElement('li');
     item.className = 'stats-category';
 
-    const main = document.createElement('div');
-    main.className = 'stats-category-main';
+    const visual = getCategoryVisual(category);
+    const body = document.createElement('div');
+    body.className = 'stats-category-body';
+
+    const top = document.createElement('div');
+    top.className = 'stats-category-top';
 
     const name = document.createElement('span');
     name.className = 'stats-category-name';
-    name.textContent = `${category} —`;
-
-    const value = document.createElement('span');
-    value.className = 'stats-category-value';
+    name.textContent = category;
 
     const percent = total > 0
       ? Math.round((sum / total) * 100)
       : 0;
 
-    value.textContent = `${formatAmount(sum)} (${percent}%)`;
+    const value = document.createElement('span');
+    value.className = 'stats-category-value';
+    value.textContent = `${formatAmount(sum)} · ${percent}%`;
 
-    main.append(name, value);
-    item.append(main);
+    top.append(name, value);
+
+    const bar = document.createElement('div');
+    bar.className = 'stats-category-bar';
+    bar.setAttribute('aria-hidden', 'true');
+
+    const fill = document.createElement('i');
+    fill.style.width = `${Math.min(100, Math.max(2, percent))}%`;
+    fill.style.backgroundColor = visual.fg;
+    bar.append(fill);
+
+    body.append(top, bar);
+    item.append(createCategoryIcon(category, 'category-icon--sm'), body);
 
     if (limitStats && limitStats.has(category)) {
-      renderLimitsInStats(item, limitStats.get(category));
+      renderLimitsInStats(body, limitStats.get(category));
     }
 
     fragment.append(item);
@@ -3903,7 +4214,7 @@ async function renderStats(result) {
   const netFlow = result.netFlow;
 
   updateStatsVisibility(true);
-  statsExpense.textContent = formatAmount(result.expenseTotal);
+  setMoneyValue(statsExpense, result.expenseTotal);
   statsIncome.textContent = formatAmount(result.incomeTotal);
   statsNet.textContent = formatNetAmount(netFlow);
   statsNet.classList.toggle('is-income', netFlow >= 0);
@@ -4031,6 +4342,7 @@ function applyCustomRange() {
   clearCustomRangeError();
   updatePeriodTabs();
   updateStatsPeriodLabel();
+  customApplyButton.closest('details')?.removeAttribute('open');
   refreshStats();
 }
 
@@ -4039,6 +4351,7 @@ function resetCustomRange() {
   clearCustomRangeFields();
   updatePeriodTabs();
   updateStatsPeriodLabel();
+  customResetButton.closest('details')?.removeAttribute('open');
   refreshStats();
 }
 
@@ -4175,7 +4488,7 @@ function matchesExpenseSearch(expense, query) {
 }
 
 function hasActiveListFilters() {
-  return Boolean(currentSearch.trim() || currentFilter);
+  return Boolean(currentSearch.trim() || currentFilter || currentTypeFilter !== 'all');
 }
 
 function getVisibleExpenses(items) {
@@ -4184,6 +4497,10 @@ function getVisibleExpenses(items) {
 
   return items.filter((expense) => {
     if (expense.id === pendingDeleteId) {
+      return false;
+    }
+
+    if (currentTypeFilter !== 'all' && getTransactionType(expense) !== currentTypeFilter) {
       return false;
     }
 
@@ -4225,7 +4542,14 @@ function createExpenseGroup(date, groupItems, todayIso, yesterdayIso) {
 
   const title = document.createElement('h2');
   title.className = 'expense-group-title';
-  title.textContent = getExpenseDateGroupTitle(date, todayIso, yesterdayIso);
+
+  const label = document.createElement('span');
+  label.textContent = getExpenseDateGroupTitle(date, todayIso, yesterdayIso);
+
+  const count = document.createElement('span');
+  count.className = 'expense-group-count';
+  count.textContent = `${groupItems.length} ${getOperationsWord(groupItems.length)}`;
+  title.append(label, count);
 
   const list = document.createElement('ul');
   list.className = 'expense-items';
@@ -4258,7 +4582,7 @@ function updateExpenseEmptyState(items, visibleCount) {
   const hasFilters = hasActiveListFilters();
   emptyState.textContent = items.length > 0 || hasFilters
     ? 'Ничего не найдено.'
-    : 'Пока нет операций. Добавьте первую на вкладке «Главная».';
+    : 'Пока нет операций. Добавьте первую на вкладке «Обзор».';
   emptyState.hidden = false;
 }
 
@@ -4317,11 +4641,52 @@ function initExpenseListControls() {
     expenseSortSelect.value = currentSort;
     renderExpenseList(expenses);
   });
+
+  historyTypeButtons.forEach((button) => {
+    const isActive = button.dataset.historyType === currentTypeFilter;
+
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+
+    button.addEventListener('click', () => {
+      const nextType = button.dataset.historyType;
+
+      if (!['all', 'expense', 'income'].includes(nextType)) {
+        return;
+      }
+
+      currentTypeFilter = nextType;
+      historyTypeButtons.forEach((item) => {
+        const active = item.dataset.historyType === currentTypeFilter;
+
+        item.classList.toggle('is-active', active);
+        item.setAttribute('aria-pressed', String(active));
+      });
+      renderExpenseList(expenses);
+    });
+  });
 }
 
 function renderHistory(items = expenses) {
   renderExpenseList(items);
   historyDirty = false;
+}
+
+function updateHeaderDate() {
+  if (!headerDate) {
+    return;
+  }
+
+  const now = new Date();
+  const dateText = new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'long'
+  }).format(now);
+  const weekday = new Intl.DateTimeFormat('ru-RU', {
+    weekday: 'long'
+  }).format(now);
+
+  headerDate.textContent = `${dateText} · ${weekday}`;
 }
 
 async function render(items) {
@@ -4386,6 +4751,18 @@ function showTab(tabName, { push = true } = {}) {
   }
 
   activeTab = targetTab;
+
+  if (viewTitle) {
+    viewTitle.textContent = TAB_TITLES[targetTab] || TAB_TITLES.home;
+  }
+
+  if (fab) {
+    fab.hidden = targetTab !== 'home' && targetTab !== 'history';
+  }
+
+  document.title = targetTab === 'home'
+    ? 'Мои расходы'
+    : `${TAB_TITLES[targetTab] || 'Мои расходы'} · Мои расходы`;
 
   tabPanels.forEach((panel) => {
     panel.hidden = panel.dataset.tab !== targetTab;
@@ -4609,10 +4986,7 @@ async function handleBackupBannerHide() {
 }
 
 function openOperationForm() {
-  formPanel.scrollIntoView({
-    behavior: 'smooth',
-    block: 'start'
-  });
+  openComposeForNew();
 }
 
 async function handleNudgeHide() {
@@ -5527,17 +5901,431 @@ async function handleImportFileChange(event) {
   }
 }
 
+function setComposeError(message = '') {
+  if (!composeError) {
+    return;
+  }
+
+  composeError.textContent = message;
+  composeError.hidden = !message;
+}
+
+function formatComposeAmount(rawValue) {
+  if (!rawValue) {
+    return '0';
+  }
+
+  const [integerPart, fractionPart] = String(rawValue).split('.');
+  const formattedInteger = Number(integerPart || 0).toLocaleString('ru-RU');
+
+  return fractionPart === undefined
+    ? formattedInteger
+    : `${formattedInteger},${fractionPart}`;
+}
+
+function syncComposeAmountDisplay() {
+  if (!composeAmountDisplay || !amountInput) {
+    return;
+  }
+
+  const displayText = formatComposeAmount(composeAmountRaw);
+  const currency = document.createElement('span');
+  currency.className = 'cur';
+  currency.textContent = '₽';
+
+  composeAmountDisplay.replaceChildren(
+    document.createTextNode(displayText),
+    document.createTextNode(' '),
+    currency
+  );
+
+  const normalizedValue = composeAmountRaw.endsWith('.')
+    ? composeAmountRaw.slice(0, -1)
+    : composeAmountRaw;
+  amountInput.value = normalizedValue;
+
+  const parsedAmount = Number(composeAmountRaw);
+  const hasAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
+
+  composeAmountDisplay.classList.toggle('is-empty', !composeAmountRaw || parsedAmount === 0);
+  submitButton.disabled = isSavingOperation || !hasAmount;
+}
+
+function syncComposeCategoryDisplay() {
+  if (!composeCategoryDisplay || !categoryInput) {
+    return;
+  }
+
+  const selectedCategory = categoryInput.value;
+  const hasOptions = [...categoryInput.options].some((option) => option.value && !option.disabled);
+
+  composeCategoryDisplay.textContent = selectedCategory
+    || (hasOptions ? 'Выберите категорию' : 'Добавьте категорию в настройках');
+
+  if (composeCategoryPills) {
+    composeCategoryPills.querySelectorAll('[data-category-name]').forEach((button) => {
+      const isActive = button.dataset.categoryName === selectedCategory;
+
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+  }
+}
+
+function syncComposeFormUi() {
+  syncComposeAmountDisplay();
+  syncComposeCategoryDisplay();
+}
+
+function renderComposeCategoryPills() {
+  if (!composeCategoryPills || !categoryInput) {
+    return;
+  }
+
+  const categories = [...categoryInput.options]
+    .filter((option) => option.value && !option.disabled)
+    .map((option) => option.value);
+  const fragment = document.createDocumentFragment();
+
+  if (categories.length === 0) {
+    const empty = document.createElement('span');
+    empty.className = 'compose-category-placeholder';
+    empty.textContent = 'Добавьте категорию в настройках';
+    composeCategoryPills.replaceChildren(empty);
+    syncComposeCategoryDisplay();
+    return;
+  }
+
+  categories.forEach((name) => {
+    const button = document.createElement('button');
+    const isActive = name === categoryInput.value;
+
+    button.type = 'button';
+    button.className = `cat-pill${isActive ? ' is-active' : ''}`;
+    button.dataset.categoryName = name;
+    button.setAttribute('aria-pressed', String(isActive));
+
+    const label = document.createElement('span');
+    label.textContent = name;
+
+    button.append(createCategoryIcon(name, 'category-icon--pill'), label);
+    fragment.append(button);
+  });
+
+  composeCategoryPills.replaceChildren(fragment);
+  syncComposeCategoryDisplay();
+}
+
+function openComposeSheet({ returnFocus = document.activeElement } = {}) {
+  if (!operationModal || !operationModal.hidden || isAppLocked) {
+    return;
+  }
+
+  composeReturnFocus = returnFocus instanceof Element ? returnFocus : null;
+  composeCard.scrollTop = 0;
+  operationModal.hidden = false;
+  document.body.classList.add('modal-open');
+  window.requestAnimationFrame(() => {
+    composeCard.focus({ preventScroll: true });
+  });
+}
+
+async function closeComposeSheet({ reset = true, restoreFocus = true } = {}) {
+  if (!operationModal || operationModal.hidden) {
+    return;
+  }
+
+  operationModal.hidden = true;
+  setComposeError('');
+  const returnFocus = composeReturnFocus;
+  composeReturnFocus = null;
+
+  if (transactionDetailModal && transactionDetailModal.hidden) {
+    document.body.classList.remove('modal-open');
+  }
+
+  if (reset) {
+    await resetFormToAdd();
+  }
+
+  if (restoreFocus) {
+    const target = returnFocus && returnFocus.isConnected
+      ? returnFocus
+      : (fab && !fab.hidden ? fab : headerAvatar);
+
+    if (target && target.isConnected) {
+      target.focus({ preventScroll: true });
+    }
+  }
+}
+
+async function openComposeForNew() {
+  if (!operationModal || !operationModal.hidden || isAppLocked) {
+    return;
+  }
+
+  const returnFocus = document.activeElement;
+  clearError();
+  setComposeError('');
+  await resetFormToAdd();
+  openComposeSheet({ returnFocus });
+}
+
+function pressComposeKey(key) {
+  if (isSavingOperation) {
+    return;
+  }
+
+  if (key === 'backspace') {
+    composeAmountRaw = composeAmountRaw.slice(0, -1);
+  } else if (key === '.') {
+    if (composeAmountRaw.includes('.')) {
+      return;
+    }
+
+    composeAmountRaw = composeAmountRaw ? `${composeAmountRaw}.` : '0.';
+  } else if (/^\d$/.test(key)) {
+    const [integerPart, fractionPart] = composeAmountRaw.split('.');
+
+    if (fractionPart !== undefined) {
+      if (fractionPart.length >= 2) {
+        return;
+      }
+    } else if (integerPart.replace(/^0+/, '').length >= 9) {
+      return;
+    }
+
+    if (composeAmountRaw === '0') {
+      composeAmountRaw = key;
+    } else {
+      composeAmountRaw += key;
+    }
+  } else {
+    return;
+  }
+
+  setComposeError('');
+  syncComposeFormUi();
+}
+
+function openTransactionDetail(expense, returnFocus = document.activeElement) {
+  if (!expense || !transactionDetailModal) {
+    return;
+  }
+
+  const type = getTransactionType(expense);
+  const visual = getCategoryVisual(expense.category);
+
+  detailExpenseId = Number(expense.id);
+  detailReturnFocus = returnFocus instanceof Element ? returnFocus : null;
+
+  transactionDetailIcon.textContent = visual.icon;
+  transactionDetailIcon.style.background = visual.bg;
+  transactionDetailIcon.style.color = visual.fg;
+  transactionDetailAmount.textContent = formatSignedAmount(expense.amount, type);
+  transactionDetailAmount.classList.toggle('is-income', type === 'income');
+
+  const adjustmentSuffix = expense.isAdjustment === true ? ' · корректировка' : '';
+  transactionDetailMeta.textContent = `${expense.category} · ${formatDate(expense.date)}${adjustmentSuffix}`;
+
+  const note = typeof expense.note === 'string' ? expense.note.trim() : '';
+  transactionDetailNote.textContent = note;
+  transactionDetailNote.hidden = !note;
+
+  transactionDetailModal.hidden = false;
+  document.body.classList.add('modal-open');
+  window.requestAnimationFrame(() => {
+    transactionDetailCard.focus({ preventScroll: true });
+  });
+}
+
+function closeTransactionDetail({ restoreFocus = true } = {}) {
+  if (!transactionDetailModal || transactionDetailModal.hidden) {
+    return;
+  }
+
+  transactionDetailModal.hidden = true;
+  detailExpenseId = null;
+
+  if (!operationModal || operationModal.hidden) {
+    document.body.classList.remove('modal-open');
+  }
+
+  if (restoreFocus) {
+    const target = detailReturnFocus && detailReturnFocus.isConnected
+      ? detailReturnFocus
+      : (fab && !fab.hidden ? fab : headerAvatar);
+
+    detailReturnFocus = null;
+
+    if (target && target.isConnected) {
+      target.focus({ preventScroll: true });
+    }
+  } else {
+    detailReturnFocus = null;
+  }
+}
+
+function openTransactionDetailById(id) {
+  const expense = expenses.find((item) => Number(item.id) === Number(id));
+
+  if (expense) {
+    openTransactionDetail(expense);
+  }
+}
+
+function initComposeUi() {
+  if (!operationModal || !operationModalClose || !composeKeypad) {
+    return;
+  }
+
+  operationModalClose.addEventListener('click', () => {
+    closeComposeSheet();
+  });
+
+  operationModal.addEventListener('click', (event) => {
+    if (event.target === operationModal) {
+      closeComposeSheet();
+    }
+  });
+
+  composeKeypad.addEventListener('click', (event) => {
+    const target = event.target instanceof Element
+      ? event.target.closest('[data-key]')
+      : null;
+
+    if (target && composeKeypad.contains(target)) {
+      pressComposeKey(target.dataset.key);
+    }
+  });
+
+  composeCategoryPills.addEventListener('click', (event) => {
+    const target = event.target instanceof Element
+      ? event.target.closest('[data-category-name]')
+      : null;
+
+    if (!target || !composeCategoryPills.contains(target)) {
+      return;
+    }
+
+    categoryInput.value = target.dataset.categoryName;
+    setComposeError('');
+    syncComposeFormUi();
+  });
+
+  categoryInput.addEventListener('change', () => {
+    setComposeError('');
+    syncComposeFormUi();
+  });
+
+  amountInput.addEventListener('input', () => {
+    composeAmountRaw = amountInput.value;
+    syncComposeAmountDisplay();
+  });
+
+  dateInput.addEventListener('input', () => setComposeError(''));
+  noteInput.addEventListener('input', () => setComposeError(''));
+
+  fab?.addEventListener('click', openComposeForNew);
+  headerAvatar?.addEventListener('click', () => showTab('settings'));
+  window.addEventListener('focus', updateHeaderDate);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      updateHeaderDate();
+    }
+  });
+
+  metricExpensesCard?.addEventListener('click', () => showTab('stats'));
+  metricIncomeCard?.addEventListener('click', () => showTab('stats'));
+  metricLimitsCard?.addEventListener('click', () => openCategoryModal('expense'));
+
+  homeLastList?.addEventListener('click', (event) => {
+    const target = event.target instanceof Element
+      ? event.target.closest('[data-expense-id]')
+      : null;
+
+    if (target && homeLastList.contains(target)) {
+      openTransactionDetailById(target.dataset.expenseId);
+    }
+  });
+
+  transactionDetailClose?.addEventListener('click', () => closeTransactionDetail());
+  transactionDetailModal?.addEventListener('click', (event) => {
+    if (event.target === transactionDetailModal) {
+      closeTransactionDetail();
+    }
+  });
+
+  transactionDetailEdit?.addEventListener('click', async () => {
+    const id = detailExpenseId;
+    const expense = expenses.find((item) => Number(item.id) === Number(id));
+
+    closeTransactionDetail({ restoreFocus: false });
+
+    if (expense) {
+      await startEditingExpense(expense);
+    }
+  });
+
+  transactionDetailDelete?.addEventListener('click', async () => {
+    const id = detailExpenseId;
+
+    closeTransactionDetail({ restoreFocus: false });
+
+    if (id !== null) {
+      await deleteExpense(Number(id));
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      if (!operationModal.hidden) {
+        event.preventDefault();
+        closeComposeSheet();
+        return;
+      }
+
+      if (transactionDetailModal && !transactionDetailModal.hidden) {
+        event.preventDefault();
+        closeTransactionDetail();
+        return;
+      }
+    }
+
+    if (operationModal.hidden || event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+
+    if (
+      activeElement instanceof HTMLInputElement
+      || activeElement instanceof HTMLSelectElement
+      || activeElement instanceof HTMLTextAreaElement
+    ) {
+      return;
+    }
+
+    if (/^\d$/.test(event.key) || event.key === '.' || event.key === ',' || event.key === 'Backspace') {
+      event.preventDefault();
+      pressComposeKey(event.key === ',' ? '.' : event.key);
+    }
+  });
+}
+
 function updateFormModeUi() {
   const isEditing = editingExpenseId !== null;
-  const isIncome = currentType === 'income';
 
   formTitle.textContent = isEditing ? 'Редактирование' : 'Новая операция';
-  submitButtonLabel.textContent = isEditing
-    ? 'Сохранить'
-    : (isIncome ? 'Добавить доход' : 'Добавить расход');
-  submitButtonIcon.setAttribute('href', isEditing ? '#i-check' : '#i-plus');
+  submitButtonLabel.textContent = 'Сохранить';
+  submitButtonIcon.setAttribute('href', '#i-check');
   cancelEditButton.hidden = !isEditing;
   formPanel.classList.toggle('is-editing', isEditing);
+  syncComposeFormUi();
 }
 
 function updateTypeControls() {
@@ -5594,6 +6382,9 @@ async function renderFormCategories(preferredName) {
   } else if (categories.length > 0) {
     categoryInput.value = categories[0].name;
   }
+
+  renderComposeCategoryPills();
+  syncComposeFormUi();
 }
 
 async function setTransactionType(type) {
@@ -5601,6 +6392,7 @@ async function setTransactionType(type) {
     return;
   }
 
+  setComposeError('');
   currentType = type;
   updateTypeControls();
   await renderFormCategories(null);
@@ -5609,13 +6401,15 @@ async function setTransactionType(type) {
 async function resetFormToAdd({ focus = false } = {}) {
   editingExpenseId = null;
   currentType = 'expense';
+  composeAmountRaw = '';
   form.reset();
   dateInput.value = getTodayISO();
   updateTypeControls();
   await renderFormCategories(null);
+  setComposeError('');
 
   if (focus) {
-    amountInput.focus();
+    composeAmountDisplay?.focus({ preventScroll: true });
   }
 }
 
@@ -5627,9 +6421,10 @@ async function startEditingExpense(expense) {
   const id = Number(expense.id);
 
   clearError();
-  showTab('home', { push: false });
+  setComposeError('');
   editingExpenseId = id;
   currentType = getTransactionType(expense);
+  composeAmountRaw = String(expense.amount);
   amountInput.value = String(expense.amount);
   noteInput.value = typeof expense.note === 'string' ? expense.note : '';
   dateInput.value = expense.date;
@@ -5640,8 +6435,8 @@ async function startEditingExpense(expense) {
     return;
   }
 
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  amountInput.focus({ preventScroll: true });
+  syncComposeFormUi();
+  openComposeSheet();
 }
 
 async function handleCancelEdit() {
@@ -5650,7 +6445,13 @@ async function handleCancelEdit() {
   }
 
   clearError();
-  await resetFormToAdd({ focus: true });
+
+  if (operationModal && !operationModal.hidden) {
+    await closeComposeSheet();
+    return;
+  }
+
+  await resetFormToAdd();
 }
 
 function initTypeTabs() {
@@ -5795,7 +6596,7 @@ async function renderCategoryModalList() {
     }
 
     actions.append(renameButton, deleteButton);
-    item.append(info, actions);
+    item.append(createCategoryIcon(category.name, 'category-icon--sm'), info, actions);
     fragment.append(item);
   });
 
@@ -5855,6 +6656,107 @@ async function refreshAfterCategoryChange() {
   await render(expenses);
 }
 
+function syncModalLock() {
+  const hasOpenModal = Array.from(document.querySelectorAll('.modal-overlay')).some((modal) => {
+    return !modal.hidden;
+  });
+  document.body.classList.toggle('modal-open', hasOpenModal);
+}
+
+function setValueModalError(message = '') {
+  if (!valueModalError || !valueModalInput) {
+    return;
+  }
+
+  valueModalError.textContent = message;
+  valueModalError.hidden = !message;
+  valueModalInput.setAttribute('aria-invalid', message ? 'true' : 'false');
+
+  if (message) {
+    valueModalInput.focus();
+  }
+}
+
+function settleValueModal(value) {
+  if (!valueModalState) {
+    return;
+  }
+
+  const state = valueModalState;
+  valueModalState = null;
+
+  if (valueModal) {
+    valueModal.hidden = true;
+  }
+
+  setValueModalError('');
+
+  if (valueModalInput) {
+    valueModalInput.value = '';
+    valueModalInput.removeAttribute('maxlength');
+    valueModalInput.setAttribute('inputmode', 'text');
+  }
+
+  syncModalLock();
+
+  if (state.returnFocus && state.returnFocus.isConnected) {
+    state.returnFocus.focus();
+  }
+
+  state.resolve(value);
+}
+
+function requestValueDialog(options = {}) {
+  if (!valueModal || !valueModalInput || !valueModalForm) {
+    return Promise.resolve(window.prompt(options.title || 'Значение', options.value || ''));
+  }
+
+  if (valueModalState) {
+    settleValueModal(null);
+  }
+
+  return new Promise((resolve) => {
+    valueModalState = {
+      resolve,
+      validate: typeof options.validate === 'function' ? options.validate : null,
+      returnFocus: document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    };
+
+    if (valueModalTitle) {
+      valueModalTitle.textContent = options.title || 'Значение';
+    }
+
+    if (valueModalSubtitle) {
+      valueModalSubtitle.textContent = options.subtitle || '';
+      valueModalSubtitle.hidden = !options.subtitle;
+    }
+
+    if (valueModalLabel) {
+      valueModalLabel.textContent = options.label || 'Значение';
+    }
+
+    valueModalInput.value = options.value === undefined || options.value === null
+      ? ''
+      : String(options.value);
+    valueModalInput.setAttribute('inputmode', options.inputMode || 'text');
+    valueModalInput.placeholder = options.placeholder || '';
+
+    if (options.maxLength) {
+      valueModalInput.setAttribute('maxlength', String(options.maxLength));
+    } else {
+      valueModalInput.removeAttribute('maxlength');
+    }
+
+    setValueModalError('');
+    valueModal.hidden = false;
+    syncModalLock();
+    valueModalInput.focus();
+    valueModalInput.select();
+  });
+}
+
 async function handleCategoryRename(id) {
   setCategoryModalError('');
 
@@ -5874,7 +6776,22 @@ async function handleCategoryRename(id) {
     return;
   }
 
-  const newName = window.prompt('Новое название категории:', category.name);
+  const newName = await requestValueDialog({
+    title: 'Название категории',
+    subtitle: `Введите новое название для «${category.name}».`,
+    label: 'Название',
+    value: category.name,
+    placeholder: 'Например, Продукты',
+    validate: (raw) => {
+      const trimmed = raw.trim();
+
+      if (!trimmed) {
+        throw new Error('Введите название категории.');
+      }
+
+      return trimmed;
+    }
+  });
 
   if (newName === null) {
     return;
@@ -5882,11 +6799,11 @@ async function handleCategoryRename(id) {
 
   try {
     await renameCategory(id, newName);
-    await renameQuickTemplateCategory(category.type, category.name, newName.trim());
+    await renameQuickTemplateCategory(category.type, category.name, newName);
     setCategoryModalError('');
 
     if (currentFilter === category.name) {
-      currentFilter = newName.trim();
+      currentFilter = newName;
     }
 
     await refreshAfterCategoryChange();
@@ -5917,10 +6834,25 @@ async function handleCategoryLimit(id) {
   const currentLimit = category.monthlyLimit === null
     ? ''
     : String(category.monthlyLimit);
-  const raw = window.prompt(
-    `Месячный лимит для «${category.name}» в рублях. Оставьте поле пустым, чтобы снять лимит:`,
-    currentLimit
-  );
+  const raw = await requestValueDialog({
+    title: 'Месячный лимит',
+    subtitle: `Для категории «${category.name}». Оставьте поле пустым, чтобы снять лимит.`,
+    label: 'Сумма в рублях',
+    value: currentLimit,
+    inputMode: 'decimal',
+    maxLength: 12,
+    placeholder: 'Например, 15 000',
+    validate: (value) => {
+      const trimmed = value.trim();
+
+      if (!trimmed) {
+        return '';
+      }
+
+      validateCategoryLimitValue(trimmed);
+      return trimmed;
+    }
+  });
 
   if (raw === null) {
     return;
@@ -6237,7 +7169,7 @@ async function renderQuickTemplateModalList() {
     );
 
     actions.append(upButton, downButton, editButton, deleteButton, toggleButton);
-    item.append(info, actions);
+    item.append(createCategoryIcon(template.category, 'category-icon--sm'), info, actions);
     fragment.append(item);
   });
 
@@ -6259,6 +7191,10 @@ async function renderQuickTemplateRow() {
   );
   const fragment = document.createDocumentFragment();
   const activeTemplates = quickTemplates.filter((template) => template.enabled);
+
+  if (quickTemplateManageButton) {
+    quickTemplateManageButton.hidden = quickTemplates.length === 0;
+  }
 
   if (quickTemplates.length === 0) {
     const addButton = document.createElement('button');
@@ -6300,7 +7236,7 @@ async function renderQuickTemplateRow() {
       amount.className = 'quick-template-amount';
       amount.textContent = formatAmount(template.amount);
 
-      button.append(label, amount);
+      button.append(createCategoryIcon(template.category, 'category-icon--pill'), label, amount);
 
       if (missingCategory) {
         const badge = document.createElement('span');
@@ -6312,14 +7248,6 @@ async function renderQuickTemplateRow() {
 
       fragment.append(button);
     });
-
-    const manageButton = document.createElement('button');
-
-    manageButton.type = 'button';
-    manageButton.className = 'quick-template-manage';
-    manageButton.dataset.quickTemplateAction = 'manage';
-    setIconButton(manageButton, 'sliders', 'Управление шаблонами');
-    fragment.append(manageButton);
   }
 
   quickTemplatesRow.replaceChildren(fragment);
@@ -6576,6 +7504,7 @@ async function handleQuickTemplateReorder(id, direction) {
 }
 
 function initQuickTemplateUi() {
+  quickTemplateManageButton?.addEventListener('click', openQuickTemplateModal);
   quickTemplatesRow.addEventListener('click', async (event) => {
     const target = event.target;
 
@@ -7114,7 +8043,9 @@ async function handleSecurityChangePinSubmit(event) {
     securityChangeNewPinInput.value = '';
     securityChangeNewPinConfirmInput.value = '';
     securityCurrentPinInput.value = '';
-    securityChangePinStatus.textContent = 'PIN изменён. Биометрия продолжает работать.';
+    securityChangePinStatus.textContent = securityState.biometricEnabled
+      ? 'PIN изменён. Биометрия продолжает работать.'
+      : 'PIN изменён.';
     securityChangePinStatus.hidden = false;
     securityChangeOldPinInput.focus();
   } catch (error) {
@@ -7628,16 +8559,30 @@ function parseBalanceInput(raw) {
 async function handleEditBalance() {
   clearError();
 
-  const raw = window.prompt(
-    'Введите начальный баланс в рублях (число может быть отрицательным):',
-    String(initialBalance)
-  );
+  const result = await requestValueDialog({
+    title: 'Начальный баланс',
+    subtitle: 'Стартовый остаток, от которого считается текущий баланс. Можно указать отрицательное число.',
+    label: 'Сумма в рублях',
+    value: initialBalance,
+    inputMode: 'decimal',
+    maxLength: 16,
+    placeholder: 'Например, 50 000',
+    validate: (raw) => {
+      const parsed = parseBalanceInput(raw);
 
-  if (raw === null) {
+      if (parsed === null) {
+        throw new Error('Введите корректное число для начального баланса.');
+      }
+
+      return parsed;
+    }
+  });
+
+  if (result === null) {
     return;
   }
 
-  const value = parseBalanceInput(raw);
+  const value = typeof result === 'number' ? result : parseBalanceInput(result);
 
   if (value === null) {
     alert('Введите корректное число для начального баланса.');
@@ -7847,6 +8792,53 @@ async function handleCreateAdjustment() {
         : 'Не удалось создать корректировку. Проверьте доступ к хранилищу и попробуйте ещё раз.'
     );
   }
+}
+
+function initValueDialogUi() {
+  if (!valueModal || !valueModalForm) {
+    return;
+  }
+
+  valueModalForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const state = valueModalState;
+
+    if (!state) {
+      return;
+    }
+
+    try {
+      const value = state.validate
+        ? state.validate(valueModalInput.value)
+        : valueModalInput.value;
+      settleValueModal(value);
+    } catch (error) {
+      setValueModalError(error.message || 'Проверьте введённое значение.');
+    }
+  });
+
+  valueModalClose?.addEventListener('click', () => settleValueModal(null));
+  valueModalCancel?.addEventListener('click', () => settleValueModal(null));
+  valueModal.addEventListener('click', (event) => {
+    if (event.target === valueModal) {
+      settleValueModal(null);
+    }
+  });
+  valueModalInput?.addEventListener('input', () => {
+    if (valueModalError && !valueModalError.hidden) {
+      setValueModalError('');
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || valueModalState === null) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    settleValueModal(null);
+  }, true);
 }
 
 function initBalanceReconcileUi() {
@@ -8070,19 +9062,20 @@ async function deleteExpense(id) {
 async function handleSubmit(event) {
   event.preventDefault();
   clearError();
+  setComposeError('');
 
-  const rawAmount = amountInput.value.trim();
-  const parsedAmount = Number(rawAmount.replace(',', '.'));
+  const rawAmount = (composeAmountRaw || amountInput.value).trim().replace(',', '.');
+  const parsedAmount = Number(rawAmount);
   const amount = Math.round(parsedAmount * 100) / 100;
 
   if (!rawAmount || !Number.isFinite(amount) || amount <= 0) {
-    alert('Введите сумму больше 0.');
-    amountInput.focus();
+    setComposeError('Введите сумму больше 0.');
+    composeAmountDisplay?.focus({ preventScroll: true });
     return;
   }
 
   if (!dateInput.value || !isValidDate(dateInput.value)) {
-    alert('Выберите корректную дату операции.');
+    setComposeError('Выберите корректную дату операции.');
     dateInput.focus();
     return;
   }
@@ -8090,8 +9083,8 @@ async function handleSubmit(event) {
   const selectedCategory = categoryInput.selectedOptions[0];
 
   if (!categoryInput.value || !selectedCategory || selectedCategory.disabled) {
-    alert('Выберите категорию.');
-    categoryInput.focus();
+    setComposeError('Выберите категорию.');
+    composeCategoryPills?.querySelector('.cat-pill')?.focus();
     return;
   }
 
@@ -8102,19 +9095,23 @@ async function handleSubmit(event) {
     date: dateInput.value,
     type: currentType
   };
+  const wasEditing = editingExpenseId !== null;
+  const savedType = currentType;
+  let saved = false;
 
+  isSavingOperation = true;
   submitButton.disabled = true;
   cancelEditButton.disabled = true;
 
   try {
-    if (editingExpenseId !== null) {
+    if (wasEditing) {
       const updated = await updateExpense(editingExpenseId, expenseData);
 
       expenses = expenses.map((expense) => {
         return expense.id === updated.id ? updated : expense;
       });
       await render(expenses);
-      await resetFormToAdd();
+      saved = true;
     } else {
       const expense = {
         ...expenseData,
@@ -8124,17 +9121,26 @@ async function handleSubmit(event) {
 
       expenses.push({ id, ...expense });
       await render(expenses);
-
-      form.reset();
-      dateInput.value = getTodayISO();
-      amountInput.focus();
+      saved = true;
     }
   } catch (error) {
-    showError('Не удалось сохранить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.');
+    const message = 'Не удалось сохранить операцию. Проверьте доступ к хранилищу и попробуйте ещё раз.';
+    setComposeError(message);
+    showError(message);
   } finally {
-    submitButton.disabled = false;
+    isSavingOperation = false;
     cancelEditButton.disabled = false;
+    syncComposeFormUi();
   }
+
+  if (!saved) {
+    return;
+  }
+
+  await closeComposeSheet();
+  showInfoToast(wasEditing
+    ? 'Изменения сохранены.'
+    : (savedType === 'income' ? 'Доход добавлен.' : 'Расход добавлен.'));
 }
 
 async function handleExpenseListClick(event) {
@@ -8154,6 +9160,13 @@ async function handleExpenseListClick(event) {
       await startEditingExpense(expense);
     }
 
+    return;
+  }
+
+  const transactionButton = target.closest('.expense-main');
+
+  if (transactionButton && expenseList.contains(transactionButton)) {
+    openTransactionDetailById(transactionButton.dataset.transactionId);
     return;
   }
 
@@ -8184,6 +9197,7 @@ async function init() {
   }
 
   dateInput.value = getTodayISO();
+  updateHeaderDate();
 
   form.addEventListener('submit', handleSubmit);
   cancelEditButton.addEventListener('click', handleCancelEdit);
@@ -8215,10 +9229,12 @@ async function init() {
   spendNudgeOpenButton.addEventListener('click', openOperationForm);
   spendNudgeHideButton.addEventListener('click', handleNudgeHide);
   initTypeTabs();
+  initComposeUi();
   initPeriodTabs();
   initCustomPeriod();
   initCategoryFilter();
   initExpenseListControls();
+  initValueDialogUi();
   initCategoryModal();
   initQuickTemplateUi();
   initSecurityUi();

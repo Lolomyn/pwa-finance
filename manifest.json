@@ -1,12 +1,12 @@
 {
   "name": "Мои Расходы",
   "short_name": "Расходы",
-  "description": "Личный офлайн-трекер трат",
+  "description": "Личный офлайн-трекер доходов и расходов",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f5f7",
-  "theme_color": "#f4f5f7",
+  "background_color": "#F6F3EE",
+  "theme_color": "#F6F3EE",
   "lang": "ru",
   "launch_handler": {
     "client_mode": "focus-existing"
