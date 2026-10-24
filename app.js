@@ -118,6 +118,40 @@ const MONTHS_FULL = [
 const EXPENSE_SORTS = ['date-desc', 'date-asc', 'amount-desc', 'amount-asc'];
 const CUSTOM_CHART_DAY_LIMIT = 62;
 const TAB_NAMES = ['home', 'history', 'stats', 'settings'];
+const TAB_SWIPE_COMMIT_DISTANCE = 64;
+const TAB_SWIPE_COMMIT_VELOCITY = 0.42;
+const TAB_SWIPE_MAX_DRAG = 96;
+const SHEET_SWIPE_COMMIT_DISTANCE = 96;
+const SHEET_SWIPE_COMMIT_VELOCITY = 0.5;
+const EXPENSE_SWIPE_COMMIT_DISTANCE = 40;
+const EXPENSE_ACTIONS_WIDTH = 92;
+const SWIPE_CLICK_GUARD_MS = 260;
+const SWIPE_NAV_IGNORE_SELECTOR = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable="true"]',
+  '.filters',
+  '.period-tabs',
+  '.quick-templates',
+  '.metrics',
+  '.cat-scroll',
+  '.history-filterbar',
+  '.search',
+  '.stats-chart',
+  '.category-icon-picker',
+  '.compose-keypad'
+].join(', ');
+const SHEET_SWIPE_IGNORE_SELECTOR = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable="true"]',
+  '.compose-keypad',
+  '.filters',
+  '.period-tabs',
+  '.category-icon-picker'
+].join(', ');
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const CHART_FONT_SIZE = 9;
@@ -380,6 +414,9 @@ let categoryModalType = 'expense';
 let categoryModalReturnFocus = null;
 let selectedCategoryIconKey = DEFAULT_CATEGORY_ICON_KEY;
 let categoryIconManuallySelected = false;
+let swipeGesture = null;
+let swipeClickGuard = null;
+let swipeClickGuardTimer = null;
 let editingExpenseId = null;
 let composeAmountRaw = '';
 let composeReturnFocus = null;
@@ -4468,6 +4505,10 @@ function showTab(tabName, { push = true } = {}) {
   const previousTab = activeTab;
   const isTabChange = previousTab !== targetTab;
 
+  if (isTabChange) {
+    closeExpenseSwipeItems();
+  }
+
   if (isTabChange && previousTab) {
     tabScrollPositions[previousTab] = window.scrollY;
   }
@@ -4518,7 +4559,13 @@ function initTabNavigation() {
 
   bottomNavButtons.forEach((button) => {
     button.addEventListener('click', () => {
-      showTab(button.dataset.tabTarget);
+      const targetTab = button.dataset.tabTarget;
+
+      if (targetTab !== activeTab) {
+        hapticFeedback(6);
+      }
+
+      showTab(targetTab);
     });
   });
 
@@ -4534,6 +4581,554 @@ function initTabNavigation() {
 
   window.addEventListener('popstate', handleRouteChange);
   window.addEventListener('hashchange', handleRouteChange);
+}
+
+function hapticFeedback(duration = 8) {
+  if (!('vibrate' in navigator)) {
+    return;
+  }
+
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return;
+  }
+
+  try {
+    navigator.vibrate(duration);
+  } catch (error) {
+    // Виброотклик не критичен для работы приложения.
+  }
+}
+
+function clearSwipeClickGuard() {
+  if (swipeClickGuard) {
+    document.removeEventListener('click', swipeClickGuard, true);
+    swipeClickGuard = null;
+  }
+
+  if (swipeClickGuardTimer !== null) {
+    window.clearTimeout(swipeClickGuardTimer);
+    swipeClickGuardTimer = null;
+  }
+}
+
+function armSwipeClickGuard() {
+  clearSwipeClickGuard();
+
+  swipeClickGuard = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    clearSwipeClickGuard();
+  };
+
+  document.addEventListener('click', swipeClickGuard, true);
+  swipeClickGuardTimer = window.setTimeout(clearSwipeClickGuard, SWIPE_CLICK_GUARD_MS);
+}
+
+function getActiveTabPanel() {
+  return tabPanels.find((panel) => {
+    return panel.dataset.tab === activeTab && !panel.hidden;
+  }) || null;
+}
+
+function getTabNavButton(tabName) {
+  return bottomNavButtons.find((button) => button.dataset.tabTarget === tabName) || null;
+}
+
+function closeExpenseSwipeItem(item) {
+  if (!item) {
+    return;
+  }
+
+  item.classList.remove('is-actions-open', 'is-swiping');
+  item.style.removeProperty('--swipe-offset');
+}
+
+function closeExpenseSwipeItems(except = null) {
+  document
+    .querySelectorAll('#expense-list .expense-item.is-actions-open, #expense-list .expense-item.is-swiping')
+    .forEach((item) => {
+      if (item !== except) {
+        closeExpenseSwipeItem(item);
+      }
+    });
+}
+
+function resetTabSwipe(gesture) {
+  if (!gesture) {
+    return;
+  }
+
+  const panel = gesture.panel;
+
+  if (panel) {
+    panel.classList.remove('is-tab-swiping', 'is-tab-settling');
+    panel.style.removeProperty('transform');
+    panel.style.removeProperty('opacity');
+  }
+
+  const targetButton = gesture.targetTab ? getTabNavButton(gesture.targetTab) : null;
+
+  if (targetButton) {
+    targetButton.classList.remove('is-swipe-target');
+  }
+}
+
+function resetSheetSwipe(gesture) {
+  if (!gesture) {
+    return;
+  }
+
+  gesture.card.classList.remove('is-sheet-dragging', 'is-sheet-settling', 'is-sheet-closing');
+  gesture.overlay.classList.remove('is-sheet-dragging', 'is-sheet-closing');
+  gesture.card.style.removeProperty('transform');
+  gesture.card.style.removeProperty('opacity');
+  gesture.card.style.removeProperty('transition');
+  gesture.overlay.style.removeProperty('background-color');
+  gesture.overlay.style.removeProperty('--sheet-drag-progress');
+}
+
+function prepareTabSwipe(gesture, dx) {
+  const currentIndex = TAB_NAMES.indexOf(activeTab);
+  const direction = dx < 0 ? 1 : -1;
+  const targetTab = TAB_NAMES[currentIndex + direction] || null;
+
+  gesture.direction = direction;
+  gesture.targetTab = targetTab;
+  gesture.panel.classList.add('is-tab-swiping');
+
+  if (targetTab) {
+    const targetButton = getTabNavButton(targetTab);
+
+    if (targetButton) {
+      targetButton.classList.add('is-swipe-target');
+    }
+  }
+}
+
+function updateTabSwipe(gesture, dx) {
+  const resistance = gesture.targetTab ? 0.78 : 0.16;
+  const offset = Math.max(
+    -TAB_SWIPE_MAX_DRAG,
+    Math.min(TAB_SWIPE_MAX_DRAG, dx * resistance)
+  );
+
+  gesture.offsetX = offset;
+  gesture.panel.style.transform = `translate3d(${offset}px, 0, 0)`;
+  gesture.panel.style.opacity = String(1 - Math.min(0.14, Math.abs(offset) / 900));
+}
+
+function finishTabSwipe(gesture) {
+  const dx = gesture.lastX - gesture.startX;
+  const elapsed = Math.max(1, performance.now() - gesture.startTime);
+  const velocity = Math.abs(dx) / elapsed;
+  const shouldCommit = Boolean(gesture.targetTab) && (
+    Math.abs(dx) >= TAB_SWIPE_COMMIT_DISTANCE ||
+    (Math.abs(dx) >= 24 && velocity >= TAB_SWIPE_COMMIT_VELOCITY)
+  );
+
+  if (shouldCommit) {
+    const targetTab = gesture.targetTab;
+    const targetPanel = tabPanels.find((panel) => panel.dataset.tab === targetTab);
+
+    hapticFeedback(8);
+    resetTabSwipe(gesture);
+
+    if (targetPanel) {
+      targetPanel.dataset.enterDirection = dx < 0 ? 'next' : 'prev';
+    }
+
+    showTab(targetTab);
+
+    if (targetPanel) {
+      window.setTimeout(() => {
+        targetPanel.removeAttribute('data-enter-direction');
+      }, 340);
+    }
+
+    return;
+  }
+
+  const panel = gesture.panel;
+  const targetButton = gesture.targetTab ? getTabNavButton(gesture.targetTab) : null;
+
+  if (targetButton) {
+    targetButton.classList.remove('is-swipe-target');
+  }
+
+  panel.classList.remove('is-tab-swiping');
+  panel.classList.add('is-tab-settling');
+  panel.style.transform = 'translate3d(0, 0, 0)';
+  panel.style.opacity = '';
+
+  window.setTimeout(() => {
+    panel.classList.remove('is-tab-settling');
+    panel.style.removeProperty('transform');
+    panel.style.removeProperty('opacity');
+  }, 230);
+}
+
+function prepareExpenseSwipe(gesture) {
+  closeExpenseSwipeItems(gesture.item);
+  gesture.baseOffset = gesture.item.classList.contains('is-actions-open')
+    ? EXPENSE_ACTIONS_WIDTH
+    : 0;
+  gesture.item.classList.add('is-swiping');
+}
+
+function updateExpenseSwipe(gesture, dx) {
+  const offset = Math.max(
+    0,
+    Math.min(EXPENSE_ACTIONS_WIDTH, gesture.baseOffset - dx)
+  );
+
+  gesture.offset = offset;
+  gesture.item.style.setProperty('--swipe-offset', `${offset}px`);
+}
+
+function finishExpenseSwipe(gesture) {
+  const dx = gesture.lastX - gesture.startX;
+  const elapsed = Math.max(1, performance.now() - gesture.startTime);
+  const leftVelocity = -dx / elapsed;
+  const shouldOpen = (gesture.offset || 0) >= EXPENSE_SWIPE_COMMIT_DISTANCE ||
+    (leftVelocity >= 0.35 && (gesture.offset || 0) > 12);
+
+  gesture.item.classList.remove('is-swiping');
+  gesture.item.style.removeProperty('--swipe-offset');
+
+  if (shouldOpen) {
+    gesture.item.classList.add('is-actions-open');
+    hapticFeedback(8);
+    return;
+  }
+
+  gesture.item.classList.remove('is-actions-open');
+}
+
+function updateSheetSwipe(gesture, dy) {
+  const cardHeight = gesture.card.offsetHeight || 1;
+  const maxOffset = cardHeight * 0.9;
+  let offset = Math.max(0, dy);
+
+  if (offset > maxOffset) {
+    offset = maxOffset + (offset - maxOffset) * 0.25;
+  }
+
+  const progress = Math.min(1, offset / cardHeight);
+
+  gesture.offsetY = offset;
+  gesture.card.style.transform = `translate3d(0, ${offset}px, 0)`;
+  gesture.overlay.style.setProperty('--sheet-drag-progress', String(progress));
+  gesture.overlay.style.backgroundColor = `rgba(20, 20, 22, ${0.35 * (1 - progress * 0.78)})`;
+}
+
+function closeModalOverlay(overlay) {
+  if (!overlay) {
+    return;
+  }
+
+  clearSwipeClickGuard();
+
+  if (overlay.id === 'operation-modal') {
+    closeComposeSheet();
+  } else if (overlay.id === 'transaction-detail-modal') {
+    closeTransactionDetail();
+  } else if (overlay.id === 'category-modal') {
+    closeCategoryModal();
+  } else if (overlay.id === 'quick-template-modal') {
+    closeQuickTemplateModal();
+  } else {
+    const closeButton = overlay.querySelector('.modal-close-button');
+
+    if (closeButton instanceof HTMLElement && !closeButton.disabled) {
+      closeButton.click();
+    }
+  }
+}
+
+function finishSheetSwipe(gesture) {
+  const dy = gesture.lastY - gesture.startY;
+  const elapsed = Math.max(1, performance.now() - gesture.startTime);
+  const velocity = dy / elapsed;
+  const shouldClose = dy >= SHEET_SWIPE_COMMIT_DISTANCE ||
+    (dy >= 32 && velocity >= SHEET_SWIPE_COMMIT_VELOCITY);
+
+  if (!shouldClose) {
+    gesture.card.classList.remove('is-sheet-dragging');
+    gesture.card.classList.add('is-sheet-settling');
+    gesture.card.style.transition = 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)';
+    gesture.card.style.transform = 'translate3d(0, 0, 0)';
+    gesture.overlay.style.backgroundColor = '';
+
+    window.setTimeout(() => {
+      resetSheetSwipe(gesture);
+    }, 230);
+
+    return;
+  }
+
+  hapticFeedback(12);
+  gesture.overlay.classList.add('is-sheet-closing');
+  gesture.card.style.transition = 'transform 0.18s cubic-bezier(0.4, 0, 0.6, 1), opacity 0.18s ease';
+  gesture.card.style.transform = 'translate3d(0, 100%, 0)';
+  gesture.card.style.opacity = '0';
+  gesture.overlay.style.backgroundColor = 'rgba(20, 20, 22, 0)';
+
+  const overlay = gesture.overlay;
+
+  window.setTimeout(() => {
+    resetSheetSwipe(gesture);
+    closeModalOverlay(overlay);
+  }, 185);
+}
+
+function handleSwipeStart(event) {
+  if (
+    event.touches.length !== 1 ||
+    isAppLocked ||
+    !appDataLoaded
+  ) {
+    return;
+  }
+
+  const target = event.target instanceof Element ? event.target : null;
+  const touch = event.touches[0];
+
+  if (!target || !touch) {
+    return;
+  }
+
+  const gesture = {
+    startX: touch.clientX,
+    startY: touch.clientY,
+    lastX: touch.clientX,
+    lastY: touch.clientY,
+    startTime: performance.now(),
+    target,
+    axis: null,
+    kind: ''
+  };
+  const overlay = target.closest('.modal-overlay:not([hidden])');
+
+  if (overlay) {
+    const card = target.closest('.modal-card');
+
+    if (
+      !card ||
+      !overlay.contains(card) ||
+      target.closest(SHEET_SWIPE_IGNORE_SELECTOR) ||
+      card.scrollTop > 0
+    ) {
+      return;
+    }
+
+    swipeGesture = {
+      ...gesture,
+      kind: 'sheet',
+      overlay,
+      card
+    };
+    return;
+  }
+
+  if (document.body.classList.contains('modal-open')) {
+    return;
+  }
+
+  const expenseItem = target.closest('#expense-list .expense-item');
+
+  if (expenseItem) {
+    if (target.closest('.expense-actions')) {
+      return;
+    }
+
+    swipeGesture = {
+      ...gesture,
+      kind: 'expense',
+      item: expenseItem
+    };
+    return;
+  }
+
+  if (!target.closest('.views') || target.closest(SWIPE_NAV_IGNORE_SELECTOR)) {
+    return;
+  }
+
+  const panel = getActiveTabPanel();
+
+  if (!panel) {
+    return;
+  }
+
+  swipeGesture = {
+    ...gesture,
+    kind: 'tabs',
+    panel
+  };
+}
+
+function handleSwipeMove(event) {
+  const gesture = swipeGesture;
+
+  if (!gesture || gesture.axis === 'ignored') {
+    return;
+  }
+
+  if (event.touches.length !== 1) {
+    handleSwipeCancel();
+    return;
+  }
+
+  const touch = event.touches[0];
+
+  if (!touch) {
+    return;
+  }
+
+  gesture.lastX = touch.clientX;
+  gesture.lastY = touch.clientY;
+
+  const dx = touch.clientX - gesture.startX;
+  const dy = touch.clientY - gesture.startY;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+
+  if (!gesture.axis) {
+    if (Math.max(absX, absY) < 10) {
+      return;
+    }
+
+    if (gesture.kind === 'sheet') {
+      if (dy < 10 || absY <= absX * 1.15 || gesture.card.scrollTop > 0) {
+        gesture.axis = 'ignored';
+        return;
+      }
+
+      gesture.axis = 'y';
+      gesture.card.classList.add('is-sheet-dragging');
+      gesture.overlay.classList.add('is-sheet-dragging');
+    } else if (
+      gesture.kind === 'expense' &&
+      dx > 0 &&
+      !gesture.item.classList.contains('is-actions-open')
+    ) {
+      if (absX <= absY * 1.15) {
+        gesture.axis = 'ignored';
+        return;
+      }
+
+      gesture.kind = 'tabs';
+      gesture.panel = getActiveTabPanel();
+
+      if (!gesture.panel) {
+        gesture.axis = 'ignored';
+        return;
+      }
+
+      gesture.axis = 'x';
+      prepareTabSwipe(gesture, dx);
+    } else {
+      if (absX <= absY * 1.15) {
+        gesture.axis = 'ignored';
+        return;
+      }
+
+      gesture.axis = 'x';
+
+      if (gesture.kind === 'expense') {
+        prepareExpenseSwipe(gesture);
+      } else {
+        prepareTabSwipe(gesture, dx);
+      }
+    }
+  }
+
+  if (gesture.axis === 'x') {
+    if (gesture.kind === 'expense') {
+      updateExpenseSwipe(gesture, dx);
+    } else {
+      updateTabSwipe(gesture, dx);
+    }
+  } else if (gesture.kind === 'sheet' && gesture.axis === 'y') {
+    updateSheetSwipe(gesture, dy);
+  }
+
+  if (event.cancelable) {
+    event.preventDefault();
+  }
+}
+
+function handleSwipeEnd(event) {
+  if (event.touches.length > 0) {
+    handleSwipeCancel();
+    return;
+  }
+
+  const gesture = swipeGesture;
+
+  if (!gesture) {
+    return;
+  }
+
+  swipeGesture = null;
+
+  if (gesture.axis === 'x') {
+    armSwipeClickGuard();
+
+    if (gesture.kind === 'expense') {
+      finishExpenseSwipe(gesture);
+    } else {
+      finishTabSwipe(gesture);
+    }
+  } else if (gesture.kind === 'sheet' && gesture.axis === 'y') {
+    armSwipeClickGuard();
+    finishSheetSwipe(gesture);
+  }
+}
+
+function handleSwipeCancel() {
+  const gesture = swipeGesture;
+
+  if (!gesture) {
+    return;
+  }
+
+  swipeGesture = null;
+
+  if (gesture.kind === 'sheet' && gesture.axis === 'y') {
+    resetSheetSwipe(gesture);
+    return;
+  }
+
+  if (gesture.axis !== 'x') {
+    return;
+  }
+
+  if (gesture.kind === 'expense') {
+    gesture.item.classList.remove('is-swiping');
+    gesture.item.style.removeProperty('--swipe-offset');
+    return;
+  }
+
+  resetTabSwipe(gesture);
+}
+
+function initSwipeGestures() {
+  document.addEventListener('touchstart', handleSwipeStart, { passive: true });
+  document.addEventListener('touchmove', handleSwipeMove, { passive: false });
+  document.addEventListener('touchend', handleSwipeEnd, { passive: true });
+  document.addEventListener('touchcancel', handleSwipeCancel, { passive: true });
+
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+
+    if (!target || !target.closest('#expense-list .expense-item')) {
+      closeExpenseSwipeItems();
+    }
+  });
+
+  window.addEventListener('scroll', () => {
+    closeExpenseSwipeItems();
+  }, { passive: true });
 }
 
 function showError(message) {
@@ -8893,11 +9488,20 @@ async function handleExpenseListClick(event) {
     return;
   }
 
+  const openSwipeItem = target.closest('#expense-list .expense-item.is-actions-open');
+
+  if (openSwipeItem && !target.closest('.expense-actions')) {
+    closeExpenseSwipeItem(openSwipeItem);
+    return;
+  }
+
   const editButton = target.closest('.edit-button');
 
   if (editButton && expenseList.contains(editButton)) {
     const id = Number(editButton.dataset.id);
     const expense = expenses.find((item) => item.id === id);
+
+    closeExpenseSwipeItems();
 
     if (expense) {
       await startEditingExpense(expense);
@@ -8924,6 +9528,8 @@ async function handleExpenseListClick(event) {
   if (!Number.isInteger(id)) {
     return;
   }
+
+  closeExpenseSwipeItems();
 
   try {
     await deleteExpense(id);
@@ -8971,6 +9577,7 @@ async function init() {
   initSecurityUi();
   initBalanceReconcileUi();
   initTabNavigation();
+  initSwipeGestures();
   showTab(getTabFromHash(), { push: false });
 
   window.addEventListener('resize', () => {
