@@ -24,37 +24,66 @@ const TAB_TITLES = {
   settings: 'Настройки'
 };
 
+const CATEGORY_ICON_OPTIONS = [
+  { key: 'food', label: 'Продукты', icon: '🛒', bg: '#d6f5df', fg: '#146c3c' },
+  { key: 'cafe', label: 'Кафе', icon: '☕', bg: '#ffe2cc', fg: '#9a470c' },
+  { key: 'transport', label: 'Транспорт', icon: '🚕', bg: '#d6e6ff', fg: '#1d4f9e' },
+  { key: 'home', label: 'Жильё', icon: '🏠', bg: '#e6deff', fg: '#5137a8' },
+  { key: 'utilities', label: 'ЖКХ', icon: '💡', bg: '#fff2cc', fg: '#7a5b00' },
+  { key: 'entertainment', label: 'Развлечения', icon: '🎮', bg: '#ffd6e7', fg: '#9b2350' },
+  { key: 'clothes', label: 'Одежда', icon: '👕', bg: '#fff2cc', fg: '#7a5b00' },
+  { key: 'health', label: 'Здоровье', icon: '💊', bg: '#ffd6dd', fg: '#a61b37' },
+  { key: 'sport', label: 'Спорт', icon: '🏋️', bg: '#d6f2ee', fg: '#0d625a' },
+  { key: 'education', label: 'Образование', icon: '📚', bg: '#d6e6ff', fg: '#1d4f9e' },
+  { key: 'communication', label: 'Связь', icon: '📱', bg: '#d6f2ee', fg: '#0d625a' },
+  { key: 'subscriptions', label: 'Подписки', icon: '🔁', bg: '#e6deff', fg: '#5137a8' },
+  { key: 'travel', label: 'Путешествия', icon: '✈️', bg: '#d6e6ff', fg: '#1d4f9e' },
+  { key: 'pets', label: 'Питомцы', icon: '🐾', bg: '#ffe2cc', fg: '#9a470c' },
+  { key: 'beauty', label: 'Красота', icon: '💅', bg: '#ffd6e7', fg: '#9b2350' },
+  { key: 'gifts', label: 'Подарки', icon: '🎁', bg: '#ffe2cc', fg: '#9a470c' },
+  { key: 'salary', label: 'Зарплата', icon: '💼', bg: '#d6f5df', fg: '#146c3c' },
+  { key: 'freelance', label: 'Фриланс', icon: '💻', bg: '#d6e6ff', fg: '#1d4f9e' },
+  { key: 'investments', label: 'Инвестиции', icon: '📈', bg: '#e6deff', fg: '#5137a8' },
+  { key: 'other', label: 'Другое', icon: '📦', bg: '#eeeae3', fg: '#6f6a63' }
+];
+
+const CATEGORY_ICON_BY_KEY = new Map(
+  CATEGORY_ICON_OPTIONS.map((option) => [option.key, option])
+);
+const DEFAULT_CATEGORY_ICON_KEY = 'other';
 const CATEGORY_VISUALS = new Map([
-  ['еда', { icon: '🛒', bg: '#d6f5df', fg: '#146c3c' }],
-  ['продукты', { icon: '🛒', bg: '#d6f5df', fg: '#146c3c' }],
-  ['кафе', { icon: '☕', bg: '#ffe2cc', fg: '#9a470c' }],
+  ['еда', CATEGORY_ICON_BY_KEY.get('food')],
+  ['продукты', CATEGORY_ICON_BY_KEY.get('food')],
+  ['кафе', CATEGORY_ICON_BY_KEY.get('cafe')],
   ['ресторан', { icon: '🍽️', bg: '#ffe2cc', fg: '#9a470c' }],
-  ['транспорт', { icon: '🚕', bg: '#d6e6ff', fg: '#1d4f9e' }],
-  ['такси', { icon: '🚕', bg: '#d6e6ff', fg: '#1d4f9e' }],
-  ['жильё', { icon: '🏠', bg: '#e6deff', fg: '#5137a8' }],
-  ['жилье', { icon: '🏠', bg: '#e6deff', fg: '#5137a8' }],
-  ['жкх', { icon: '💡', bg: '#fff2cc', fg: '#7a5b00' }],
-  ['развлечения', { icon: '🎮', bg: '#ffd6e7', fg: '#9b2350' }],
-  ['одежда', { icon: '👕', bg: '#fff2cc', fg: '#7a5b00' }],
-  ['здоровье', { icon: '💊', bg: '#ffd6dd', fg: '#a61b37' }],
-  ['аптека', { icon: '💊', bg: '#ffd6dd', fg: '#a61b37' }],
-  ['спорт', { icon: '🏋️', bg: '#d6f2ee', fg: '#0d625a' }],
-  ['образование', { icon: '📚', bg: '#d6e6ff', fg: '#1d4f9e' }],
-  ['связь', { icon: '📱', bg: '#d6f2ee', fg: '#0d625a' }],
-  ['подписки', { icon: '🔁', bg: '#e6deff', fg: '#5137a8' }],
-  ['путешествия', { icon: '✈️', bg: '#d6e6ff', fg: '#1d4f9e' }],
-  ['питомцы', { icon: '🐾', bg: '#ffe2cc', fg: '#9a470c' }],
+  ['транспорт', CATEGORY_ICON_BY_KEY.get('transport')],
+  ['такси', CATEGORY_ICON_BY_KEY.get('transport')],
+  ['жильё', CATEGORY_ICON_BY_KEY.get('home')],
+  ['жилье', CATEGORY_ICON_BY_KEY.get('home')],
+  ['жкх', CATEGORY_ICON_BY_KEY.get('utilities')],
+  ['развлечения', CATEGORY_ICON_BY_KEY.get('entertainment')],
+  ['одежда', CATEGORY_ICON_BY_KEY.get('clothes')],
+  ['здоровье', CATEGORY_ICON_BY_KEY.get('health')],
+  ['аптека', CATEGORY_ICON_BY_KEY.get('health')],
+  ['спорт', CATEGORY_ICON_BY_KEY.get('sport')],
+  ['образование', CATEGORY_ICON_BY_KEY.get('education')],
+  ['связь', CATEGORY_ICON_BY_KEY.get('communication')],
+  ['подписки', CATEGORY_ICON_BY_KEY.get('subscriptions')],
+  ['путешествия', CATEGORY_ICON_BY_KEY.get('travel')],
+  ['питомцы', CATEGORY_ICON_BY_KEY.get('pets')],
+  ['красота', CATEGORY_ICON_BY_KEY.get('beauty')],
   ['ремонт', { icon: '🛠️', bg: '#eeeae3', fg: '#6f6a63' }],
   ['страховка', { icon: '🛡️', bg: '#d6e6ff', fg: '#1d4f9e' }],
   ['налоги', { icon: '🧾', bg: '#eeeae3', fg: '#6f6a63' }],
-  ['другое', { icon: '📦', bg: '#eeeae3', fg: '#6f6a63' }],
-  ['прочее', { icon: '📦', bg: '#eeeae3', fg: '#6f6a63' }],
-  ['зарплата', { icon: '💼', bg: '#d6f5df', fg: '#146c3c' }],
-  ['фриланс', { icon: '💻', bg: '#d6e6ff', fg: '#1d4f9e' }],
-  ['подарок', { icon: '🎁', bg: '#ffe2cc', fg: '#9a470c' }],
-  ['инвестиции', { icon: '📈', bg: '#e6deff', fg: '#5137a8' }],
-  ['проценты', { icon: '📈', bg: '#e6deff', fg: '#5137a8' }],
-  ['бизнес', { icon: '💼', bg: '#d6f5df', fg: '#146c3c' }]
+  ['другое', CATEGORY_ICON_BY_KEY.get('other')],
+  ['прочее', CATEGORY_ICON_BY_KEY.get('other')],
+  ['зарплата', CATEGORY_ICON_BY_KEY.get('salary')],
+  ['фриланс', CATEGORY_ICON_BY_KEY.get('freelance')],
+  ['подарок', CATEGORY_ICON_BY_KEY.get('gifts')],
+  ['подарки', CATEGORY_ICON_BY_KEY.get('gifts')],
+  ['инвестиции', CATEGORY_ICON_BY_KEY.get('investments')],
+  ['проценты', CATEGORY_ICON_BY_KEY.get('investments')],
+  ['бизнес', CATEGORY_ICON_BY_KEY.get('salary')]
 ]);
 
 const CATEGORY_FALLBACK_VISUALS = [
@@ -65,6 +94,9 @@ const CATEGORY_FALLBACK_VISUALS = [
   { icon: '🏷️', bg: '#d6f2ee', fg: '#0d625a' },
   { icon: '🏷️', bg: '#ffd6e7', fg: '#9b2350' }
 ];
+
+const categoryIconLookup = new Map();
+const categoryIconLookupByName = new Map();
 
 const PERIODS = ['week', 'month', 'year', 'all'];
 const PERIOD_DAYS = {
@@ -194,6 +226,8 @@ const categoryModalList = document.getElementById('category-modal-list');
 const categoryModalEmpty = document.getElementById('category-modal-empty');
 const categoryAddForm = document.getElementById('category-add-form');
 const categoryNameInput = document.getElementById('category-name-input');
+const categoryIconPicker = document.getElementById('category-icon-picker');
+const categoryIconSelectedLabel = document.getElementById('category-icon-selected-label');
 const categoryModalError = document.getElementById('category-modal-error');
 const manageSecurityButton = document.getElementById('manage-security');
 const securityModal = document.getElementById('security-modal');
@@ -344,6 +378,8 @@ let lastBalanceSeries = null;
 let lastBalancePeriod = 'month';
 let categoryModalType = 'expense';
 let categoryModalReturnFocus = null;
+let selectedCategoryIconKey = DEFAULT_CATEGORY_ICON_KEY;
+let categoryIconManuallySelected = false;
 let editingExpenseId = null;
 let composeAmountRaw = '';
 let composeReturnFocus = null;
@@ -444,11 +480,11 @@ function openDB() {
 
             if (name && !knownCategories.has(key)) {
               knownCategories.add(key);
-              categoriesStore.add({
+              categoriesStore.add(createCategoryRecord(
                 name,
                 type,
-                isSystem: name === SYSTEM_CATEGORY_NAME
-              });
+                name === SYSTEM_CATEGORY_NAME
+              ));
             }
 
             cursor.continue();
@@ -498,16 +534,69 @@ function isSystemCategory(category) {
   );
 }
 
-function normalizeCategory(record) {
-  const category = record && typeof record === 'object' ? record : {};
-  const name = typeof category.name === 'string' ? category.name : '';
-  const type = category.type === 'income' ? 'income' : 'expense';
+function normalizeCategoryIconKey(value) {
+  return typeof value === 'string' && CATEGORY_ICON_BY_KEY.has(value)
+    ? value
+    : '';
+}
+
+function getCategoryLookupName(name) {
+  return String(name || '').trim().toLowerCase();
+}
+
+function getSuggestedCategoryIconKey(name) {
+  const visual = CATEGORY_VISUALS.get(normalizeCategoryName(name));
+
+  if (!visual || !visual.key) {
+    return '';
+  }
+
+  return CATEGORY_ICON_BY_KEY.get(visual.key) === visual ? visual.key : '';
+}
+
+function rememberCategoryIcons(categories) {
+  categoryIconLookup.clear();
+  categoryIconLookupByName.clear();
+
+  categories.forEach((category) => {
+    const icon = normalizeCategoryIconKey(category.icon);
+
+    if (!icon) {
+      return;
+    }
+
+    const type = category.type === 'income' ? 'income' : 'expense';
+    const lookupName = getCategoryLookupName(category.name);
+
+    categoryIconLookup.set(`${type}\u0000${lookupName}`, icon);
+    categoryIconLookupByName.set(lookupName, icon);
+  });
+}
+
+function createCategoryRecord(name, type, isSystem, iconKey) {
+  const icon = normalizeCategoryIconKey(iconKey) || getSuggestedCategoryIconKey(name);
 
   return {
-    ...category,
     name,
     type,
-    isSystem: category.isSystem === true || name === SYSTEM_CATEGORY_NAME
+    isSystem,
+    ...(icon ? { icon } : {})
+  };
+}
+
+function normalizeCategory(record) {
+  const category = record && typeof record === 'object' ? record : {};
+  const { icon: storedIcon, ...rest } = category;
+  const name = typeof category.name === 'string' ? category.name : '';
+  const type = category.type === 'income' ? 'income' : 'expense';
+  const icon = normalizeCategoryIconKey(storedIcon);
+
+  return {
+    ...rest,
+    name,
+    type,
+    isSystem: category.isSystem === true || name === SYSTEM_CATEGORY_NAME,
+    ...(icon ? { icon } : {})
   };
 }
 
@@ -516,11 +605,11 @@ function createDefaultCategoryRecords() {
 
   TRANSACTION_TYPES.forEach((type) => {
     DEFAULT_CATEGORIES[type].forEach((name) => {
-      records.push({
+      records.push(createCategoryRecord(
         name,
         type,
-        isSystem: name === SYSTEM_CATEGORY_NAME
-      });
+        name === SYSTEM_CATEGORY_NAME
+      ));
     });
   });
 
@@ -573,7 +662,9 @@ function readAllCategories() {
       }
 
       settled = true;
-      resolve((request.result || []).map(normalizeCategory));
+      const categories = (request.result || []).map(normalizeCategory);
+      rememberCategoryIcons(categories);
+      resolve(categories);
     };
 
     request.onerror = () => fail(request.error);
@@ -679,20 +770,20 @@ function seedDefaultsIfEmpty() {
 
         if (typeCategories.length === 0) {
           DEFAULT_CATEGORIES[type].forEach((name) => {
-            store.add({
+            store.add(createCategoryRecord(
               name,
               type,
-              isSystem: name === SYSTEM_CATEGORY_NAME
-            });
+              name === SYSTEM_CATEGORY_NAME
+            ));
           });
         } else if (!typeCategories.some((category) => {
           return category.name === SYSTEM_CATEGORY_NAME;
         })) {
-          store.add({
-            name: SYSTEM_CATEGORY_NAME,
+          store.add(createCategoryRecord(
+            SYSTEM_CATEGORY_NAME,
             type,
-            isSystem: true
-          });
+            true
+          ));
         }
       });
     };
@@ -725,7 +816,7 @@ function categoryKey(type, name) {
   return `${type}\u0000${name.toLowerCase()}`;
 }
 
-function addCategory(name, type) {
+function addCategory(name, type, iconKey = '') {
   return new Promise((resolve, reject) => {
     if (!db) {
       reject(new Error('База данных не открыта.'));
@@ -783,18 +874,13 @@ function addCategory(name, type) {
         return;
       }
 
-      const addRequest = store.add({
-        name: cleanName,
-        type,
-        isSystem: false
-      });
+      const record = createCategoryRecord(cleanName, type, false, iconKey);
+      const addRequest = store.add(record);
 
       addRequest.onsuccess = () => {
         created = {
           id: addRequest.result,
-          name: cleanName,
-          type,
-          isSystem: false
+          ...record
         };
       };
     };
@@ -1945,10 +2031,13 @@ function replaceAllData(data) {
       settingsStore.delete(LAST_NUDGE_HIDDEN_UNTIL_KEY);
 
       (data.categories || []).forEach((category) => {
+        const icon = normalizeCategoryIconKey(category.icon);
+
         categoriesStore.add({
           name: category.name,
           type: category.type,
-          isSystem: isSystemCategory(category)
+          isSystem: isSystemCategory(category),
+          ...(icon ? { icon } : {})
         });
       });
 
@@ -2059,8 +2148,33 @@ function normalizeCategoryName(name) {
     .replace(/ё/g, 'е');
 }
 
-function getCategoryVisual(name) {
+function getCategoryVisual(category, type = '') {
+  let name = '';
+  let categoryType = TRANSACTION_TYPES.includes(type) ? type : '';
+  let iconKey = '';
+
+  if (category && typeof category === 'object') {
+    name = typeof category.name === 'string' ? category.name : '';
+    categoryType = TRANSACTION_TYPES.includes(category.type)
+      ? category.type
+      : categoryType;
+    iconKey = normalizeCategoryIconKey(category.icon);
+  } else {
+    name = category;
+  }
+
   const normalized = normalizeCategoryName(name);
+  const lookupName = getCategoryLookupName(name);
+
+  if (!iconKey) {
+    iconKey = categoryIconLookup.get(`${categoryType}\u0000${lookupName}`)
+      || categoryIconLookupByName.get(lookupName)
+      || '';
+  }
+
+  if (iconKey && CATEGORY_ICON_BY_KEY.has(iconKey)) {
+    return CATEGORY_ICON_BY_KEY.get(iconKey);
+  }
 
   if (CATEGORY_VISUALS.has(normalized)) {
     return CATEGORY_VISUALS.get(normalized);
@@ -2075,8 +2189,8 @@ function getCategoryVisual(name) {
   return CATEGORY_FALLBACK_VISUALS[Math.abs(hash)];
 }
 
-function createCategoryIcon(name, extraClass = '') {
-  const visual = getCategoryVisual(name);
+function createCategoryIcon(category, extraClass = '', type = '') {
+  const visual = getCategoryVisual(category, type);
   const icon = document.createElement('span');
 
   icon.className = `category-icon${extraClass ? ` ${extraClass}` : ''}`;
@@ -2699,7 +2813,7 @@ function createExpenseElement(expense) {
   amount.textContent = formatSignedAmount(expense.amount, type);
 
   info.append(title, meta);
-  main.append(createCategoryIcon(expense.category), info, amount);
+  main.append(createCategoryIcon(expense.category, '', type), info, amount);
 
   const actions = document.createElement('div');
   actions.className = 'expense-actions';
@@ -2828,7 +2942,7 @@ function createHomeOperationElement(expense) {
   amount.textContent = formatSignedAmount(expense.amount, type);
 
   info.append(title, sub);
-  item.append(createCategoryIcon(expense.category), info, amount);
+  item.append(createCategoryIcon(expense.category, '', type), info, amount);
 
   return item;
 }
@@ -3769,7 +3883,7 @@ function renderComparison(container, comparison) {
   container.append(title, document.createTextNode(' '), list);
 }
 
-function renderCategoryBreakdown(container, list, categories, total) {
+function renderCategoryBreakdown(container, list, categories, total, type) {
   const entries = Object.entries(categories)
     .filter(([, sum]) => Number.isFinite(sum) && sum > 0)
     .sort((a, b) => b[1] - a[1]);
@@ -3779,7 +3893,7 @@ function renderCategoryBreakdown(container, list, categories, total) {
     const item = document.createElement('li');
     item.className = 'stats-category';
 
-    const visual = getCategoryVisual(category);
+    const visual = getCategoryVisual(category, type);
     const body = document.createElement('div');
     body.className = 'stats-category-body';
 
@@ -3810,7 +3924,7 @@ function renderCategoryBreakdown(container, list, categories, total) {
     bar.append(fill);
 
     body.append(top, bar);
-    item.append(createCategoryIcon(category, 'category-icon--sm'), body);
+    item.append(createCategoryIcon(category, 'category-icon--sm', type), body);
 
     fragment.append(item);
   });
@@ -3844,13 +3958,15 @@ async function renderStats(result) {
     statsExpenseGroup,
     statsExpenseCategories,
     result.expenseByCategory,
-    result.expenseTotal
+    result.expenseTotal,
+    'expense'
   );
   const incomeCount = renderCategoryBreakdown(
     statsIncomeGroup,
     statsIncomeCategories,
     result.incomeByCategory,
-    result.incomeTotal
+    result.incomeTotal,
+    'income'
   );
 
   statsEmpty.hidden = expenseCount + incomeCount > 0;
@@ -4625,11 +4741,16 @@ async function exportJSON() {
     version: 2,
     exportedAt,
     initialBalance: balance,
-    categories: categories.map((category) => ({
-      name: category.name,
-      type: category.type,
-      isSystem: isSystemCategory(category)
-    })),
+    categories: categories.map((category) => {
+      const icon = normalizeCategoryIconKey(category.icon);
+
+      return {
+        name: category.name,
+        type: category.type,
+        isSystem: isSystemCategory(category),
+        ...(icon ? { icon } : {})
+      };
+    }),
     quickTemplates: templates.map((template) => ({
       id: template.id,
       label: template.label,
@@ -5120,10 +5241,13 @@ function validateImportCategories(list) {
     }
 
     seen.add(key);
+    const icon = normalizeCategoryIconKey(entry.icon);
+
     result.push({
       name,
       type: entry.type,
-      isSystem: name === SYSTEM_CATEGORY_NAME
+      isSystem: name === SYSTEM_CATEGORY_NAME,
+      ...(icon ? { icon } : {})
     });
   });
 
@@ -5133,7 +5257,7 @@ function validateImportCategories(list) {
 function buildImportCategories(importedCategories, items, addDefaults) {
   const map = new Map();
 
-  const add = (rawName, type, forceSystem) => {
+  const add = (rawName, type, forceSystem, rawIcon) => {
     if (!TRANSACTION_TYPES.includes(type)) {
       return null;
     }
@@ -5146,6 +5270,7 @@ function buildImportCategories(importedCategories, items, addDefaults) {
 
     const key = categoryKey(type, name);
     const isSystem = forceSystem === true || name === SYSTEM_CATEGORY_NAME;
+    const icon = normalizeCategoryIconKey(rawIcon) || getSuggestedCategoryIconKey(name);
 
     if (map.has(key)) {
       const existing = map.get(key);
@@ -5154,13 +5279,18 @@ function buildImportCategories(importedCategories, items, addDefaults) {
         existing.isSystem = true;
       }
 
+      if (icon && !existing.icon) {
+        existing.icon = icon;
+      }
+
       return existing;
     }
 
     const record = {
       name,
       type,
-      isSystem
+      isSystem,
+      ...(icon ? { icon } : {})
     };
     map.set(key, record);
 
@@ -5168,13 +5298,13 @@ function buildImportCategories(importedCategories, items, addDefaults) {
   };
 
   (importedCategories || []).forEach((category) => {
-    add(category.name, category.type, category.isSystem);
+    add(category.name, category.type, category.isSystem, category.icon);
   });
 
   if (addDefaults) {
     TRANSACTION_TYPES.forEach((type) => {
       DEFAULT_CATEGORIES[type].forEach((name) => {
-        add(name, type);
+        add(name, type, false, getSuggestedCategoryIconKey(name));
       });
     });
   }
@@ -5580,7 +5710,10 @@ function renderComposeCategoryPills() {
     const label = document.createElement('span');
     label.textContent = name;
 
-    button.append(createCategoryIcon(name, 'category-icon--pill'), label);
+    button.append(
+      createCategoryIcon(name, 'category-icon--pill', currentType),
+      label
+    );
     fragment.append(button);
   });
 
@@ -5686,7 +5819,7 @@ function openTransactionDetail(expense, returnFocus = document.activeElement) {
   }
 
   const type = getTransactionType(expense);
-  const visual = getCategoryVisual(expense.category);
+  const visual = getCategoryVisual(expense.category, type);
 
   detailExpenseId = Number(expense.id);
   detailReturnFocus = returnFocus instanceof Element ? returnFocus : null;
@@ -6061,6 +6194,89 @@ function updateCategoryModalTabs() {
   });
 }
 
+function updateCategoryIconPickerSelection() {
+  if (!categoryIconPicker) {
+    return;
+  }
+
+  categoryIconPicker.querySelectorAll('[data-icon-key]').forEach((button) => {
+    const isSelected = button.dataset.iconKey === selectedCategoryIconKey;
+
+    button.classList.toggle('is-selected', isSelected);
+    button.setAttribute('aria-pressed', String(isSelected));
+  });
+
+  if (categoryIconSelectedLabel) {
+    const option = CATEGORY_ICON_BY_KEY.get(selectedCategoryIconKey);
+    categoryIconSelectedLabel.textContent = option ? option.label : '';
+  }
+}
+
+function setSelectedCategoryIconKey(iconKey, isManual = false) {
+  const normalized = normalizeCategoryIconKey(iconKey);
+
+  if (!normalized) {
+    return;
+  }
+
+  selectedCategoryIconKey = normalized;
+
+  if (isManual) {
+    categoryIconManuallySelected = true;
+  }
+
+  updateCategoryIconPickerSelection();
+}
+
+function resetCategoryIconPicker() {
+  categoryIconManuallySelected = false;
+  selectedCategoryIconKey = DEFAULT_CATEGORY_ICON_KEY;
+  updateCategoryIconPickerSelection();
+}
+
+function updateCategoryIconSuggestion() {
+  if (categoryIconManuallySelected) {
+    return;
+  }
+
+  const suggested = getSuggestedCategoryIconKey(categoryNameInput.value);
+
+  selectedCategoryIconKey = suggested || DEFAULT_CATEGORY_ICON_KEY;
+  updateCategoryIconPickerSelection();
+}
+
+function renderCategoryIconPicker() {
+  if (!categoryIconPicker) {
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  CATEGORY_ICON_OPTIONS.forEach((option) => {
+    const button = document.createElement('button');
+    const visual = document.createElement('span');
+
+    button.type = 'button';
+    button.className = 'category-icon-option';
+    button.dataset.iconKey = option.key;
+    button.title = option.label;
+    button.setAttribute('aria-label', `Иконка «${option.label}»`);
+    button.setAttribute('aria-pressed', 'false');
+
+    visual.className = 'category-icon category-icon--picker';
+    visual.style.background = option.bg;
+    visual.style.color = option.fg;
+    visual.setAttribute('aria-hidden', 'true');
+    visual.textContent = option.icon;
+
+    button.append(visual);
+    fragment.append(button);
+  });
+
+  categoryIconPicker.replaceChildren(fragment);
+  updateCategoryIconPickerSelection();
+}
+
 async function renderCategoryModalList() {
   const type = categoryModalType;
   let categories;
@@ -6142,7 +6358,7 @@ async function renderCategoryModalList() {
     }
 
     actions.append(renameButton, deleteButton);
-    item.append(createCategoryIcon(category.name, 'category-icon--sm'), info, actions);
+    item.append(createCategoryIcon(category, 'category-icon--sm'), info, actions);
     fragment.append(item);
   });
 
@@ -6158,6 +6374,7 @@ function openCategoryModal(type = currentType) {
   updateCategoryModalTabs();
   setCategoryModalError('');
   categoryNameInput.value = '';
+  resetCategoryIconPicker();
   categoryModal.hidden = false;
   document.body.classList.add('modal-open');
   renderCategoryModalList();
@@ -6396,6 +6613,7 @@ async function handleCategoryDelete(id) {
 }
 
 function initCategoryModal() {
+  renderCategoryIconPicker();
   manageCategoriesButton.addEventListener('click', openCategoryModal);
   categoryModalClose.addEventListener('click', closeCategoryModal);
   categoryModal.addEventListener('click', (event) => {
@@ -6461,13 +6679,41 @@ function initCategoryModal() {
     }
   });
 
+  categoryNameInput.addEventListener('input', () => {
+    setCategoryModalError('');
+    updateCategoryIconSuggestion();
+  });
+
+  if (categoryIconPicker) {
+    categoryIconPicker.addEventListener('click', (event) => {
+      const target = event.target;
+
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const button = target.closest('[data-icon-key]');
+
+      if (!button || !categoryIconPicker.contains(button)) {
+        return;
+      }
+
+      setSelectedCategoryIconKey(button.dataset.iconKey, true);
+    });
+  }
+
   categoryAddForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     setCategoryModalError('');
 
     try {
-      await addCategory(categoryNameInput.value, categoryModalType);
+      await addCategory(
+        categoryNameInput.value,
+        categoryModalType,
+        selectedCategoryIconKey
+      );
       categoryNameInput.value = '';
+      resetCategoryIconPicker();
       await refreshAfterCategoryChange();
       categoryNameInput.focus();
     } catch (error) {
@@ -6658,7 +6904,11 @@ async function renderQuickTemplateModalList() {
     );
 
     actions.append(upButton, downButton, editButton, deleteButton, toggleButton);
-    item.append(createCategoryIcon(template.category, 'category-icon--sm'), info, actions);
+    item.append(
+      createCategoryIcon(template.category, 'category-icon--sm', template.type),
+      info,
+      actions
+    );
     fragment.append(item);
   });
 
@@ -6725,7 +6975,11 @@ async function renderQuickTemplateRow() {
       amount.className = 'quick-template-amount';
       amount.textContent = formatAmount(template.amount);
 
-      button.append(createCategoryIcon(template.category, 'category-icon--pill'), label, amount);
+      button.append(
+        createCategoryIcon(template.category, 'category-icon--pill', template.type),
+        label,
+        amount
+      );
 
       if (missingCategory) {
         const badge = document.createElement('span');

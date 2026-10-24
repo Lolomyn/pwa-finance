@@ -806,26 +806,45 @@
       <ul id="category-modal-list" class="category-list"></ul>
       <p id="category-modal-empty" class="category-empty" hidden>Нет категорий</p>
 
-      <form id="category-add-form" class="category-add-row" novalidate>
-        <input
-          id="category-name-input"
-          type="text"
-          placeholder="Новая категория"
-          aria-label="Новая категория"
-          autocomplete="off"
-        >
-        <button
-          class="icon-button category-add-button"
-          type="submit"
-          aria-label="Добавить категорию"
-          title="Добавить категорию"
-          data-tooltip="Добавить"
-        >
-          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
-        </button>
-      </form>
+      <form id="category-add-form" class="category-add-form" novalidate>
+        <div class="category-add-row">
+          <input
+            id="category-name-input"
+            type="text"
+            placeholder="Новая категория"
+            aria-label="Новая категория"
+            autocomplete="off"
+          >
+          <button
+            class="icon-button category-add-button"
+            type="submit"
+            aria-label="Добавить категорию"
+            title="Добавить категорию"
+            data-tooltip="Добавить"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
+          </button>
+        </div>
 
-      <p id="category-modal-error" class="category-modal-error" role="alert" hidden></p>
+        <p id="category-modal-error" class="category-modal-error" role="alert" hidden></p>
+
+        <div class="category-icon-field">
+          <div class="category-icon-field-head">
+            <span class="category-icon-field-label">Иконка</span>
+            <span
+              id="category-icon-selected-label"
+              class="category-icon-field-value"
+              aria-live="polite"
+            >Другое</span>
+          </div>
+          <div
+            id="category-icon-picker"
+            class="category-icon-picker"
+            role="group"
+            aria-label="Иконка новой категории"
+          ></div>
+        </div>
+      </form>
     </div>
   </div>
 
