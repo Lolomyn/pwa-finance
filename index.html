@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="Расходы">
   <meta
     name="description"
-    content="Локальный офлайн-трекер доходов и расходов: категории, лимиты, статистика, быстрые шаблоны и резервные копии."
+    content="Локальный офлайн-трекер доходов и расходов: категории, статистика, быстрые шаблоны и резервные копии."
   >
   <title>Мои расходы</title>
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
@@ -222,18 +222,6 @@
         <div class="metrics" aria-label="Показатели месяца">
           <button
             class="metric primary"
-            id="metric-limits-card"
-            type="button"
-            aria-label="Настроить лимиты по категориям"
-          >
-            <span class="metric-lbl">Лимиты</span>
-            <strong class="metric-val" id="metric-limits-value">—</strong>
-            <span class="metric-sub" id="metric-limits-sub">Настроить</span>
-            <span class="metric-bar" aria-hidden="true"><i id="metric-limits-bar"></i></span>
-          </button>
-
-          <button
-            class="metric"
             id="metric-expenses-card"
             type="button"
             aria-label="Открыть анализ расходов"
@@ -254,18 +242,6 @@
             <span class="metric-sub">за этот месяц</span>
           </button>
         </div>
-
-        <section id="home-limits" class="home-limits" aria-labelledby="home-limits-title" hidden>
-          <div class="feed-head">
-            <h2 id="home-limits-title">Лимиты по категориям</h2>
-            <button
-              id="manage-limits"
-              class="link-button"
-              type="button"
-            >Настроить</button>
-          </div>
-          <div id="home-limits-list" class="home-limits-list"></div>
-        </section>
 
         <section class="quick-templates-section" aria-labelledby="quick-templates-title">
           <div class="feed-head">
@@ -533,7 +509,7 @@
               <span class="set-ic" style="background:#E6DEFF" aria-hidden="true">🏷️</span>
               <span class="set-body">
                 <span class="set-name">Категории</span>
-                <span class="set-sub">Расходы, доходы и лимиты</span>
+                <span class="set-sub">Расходы и доходы</span>
               </span>
               <span class="set-chev" aria-hidden="true">›</span>
             </button>

@@ -184,120 +184,6 @@ h2 {
   background: var(--soft);
 }
 
-.home-limits {
-  margin-bottom: 16px;
-  padding: 14px 16px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 6px 20px rgba(44, 62, 80, 0.05);
-}
-
-.home-limits h2 {
-  margin-bottom: 8px;
-  font-size: 16px;
-}
-
-.home-limits-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-height: 204px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-}
-
-.month-limit-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  padding: 8px;
-  color: var(--text);
-  font-size: 14px;
-  text-align: left;
-  white-space: normal;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-}
-
-.month-limit-row:hover {
-  background: #f5f8fb;
-}
-
-.month-limit-row.is-over {
-  background: #fdf1ef;
-}
-
-.month-limit-row.is-over:hover {
-  background: #fbe8e5;
-}
-
-.month-limit-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 3px 5px;
-  width: 100%;
-  min-width: 0;
-}
-
-.month-limit-name {
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.month-limit-separator {
-  color: var(--muted);
-}
-
-.month-limit-amounts {
-  min-width: 0;
-  color: var(--muted);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.month-limit-metrics {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-.month-limit-percent {
-  font-size: 13px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.month-limit-over {
-  color: var(--expense);
-  font-size: 12px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.month-limit-progress {
-  display: block;
-  width: 100%;
-  height: 4px;
-  overflow: hidden;
-  background: #eeeeee;
-  border-radius: 999px;
-}
-
-.month-limit-progress-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  transition: width 0.2s ease;
-}
-
-.home-limits-manage,
 .home-show-all {
   display: block;
   width: 100%;
@@ -312,7 +198,6 @@ h2 {
   border-radius: 6px;
 }
 
-.home-limits-manage:hover,
 .home-show-all:hover {
   color: var(--primary-hover);
   background: transparent;
@@ -1187,27 +1072,6 @@ button:focus-visible {
   white-space: nowrap;
 }
 
-.stats-limit-details {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.stats-limit-progress {
-  height: 4px;
-}
-
-.stats-limit-caption {
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.stats-limit-caption.is-over {
-  color: var(--expense);
-  font-weight: 700;
-}
-
 .stats-empty {
   margin: 8px 0 0;
   color: var(--muted);
@@ -1648,13 +1512,6 @@ body.modal-open {
   background: #eef2f6;
   border-radius: 999px;
   white-space: nowrap;
-}
-
-.category-item-limit {
-  flex-basis: 100%;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.3;
 }
 
 .category-item-actions {

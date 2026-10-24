@@ -9,7 +9,6 @@ const INITIAL_BALANCE_KEY = 'initialBalance';
 const QUICK_TEMPLATES_KEY = 'quickTemplates';
 const LAST_NUDGE_HIDDEN_UNTIL_KEY = 'lastNudgeHiddenUntil';
 const QUICK_TEMPLATE_LABEL_MAX = 30;
-const CATEGORY_LIMIT_MAX = 100000000;
 
 const SYSTEM_CATEGORY_NAME = 'Другое';
 const TRANSACTION_TYPES = ['expense', 'income'];
@@ -125,9 +124,6 @@ const initialBalanceValue = document.getElementById('initial-balance-value');
 const balanceHint = document.getElementById('balance-hint');
 const editBalanceButton = document.getElementById('edit-balance');
 const editInitialBalanceButton = document.getElementById('edit-initial-balance');
-const homeLimits = document.getElementById('home-limits');
-const homeLimitsList = document.getElementById('home-limits-list');
-const manageLimitsButton = document.getElementById('manage-limits');
 const totalExpense = document.getElementById('total-expense');
 const totalIncome = document.getElementById('total-income');
 const totalNet = document.getElementById('total-net');
@@ -285,10 +281,6 @@ const composeCategoryDisplay = document.getElementById('compose-category-display
 const composeCategoryPills = document.getElementById('compose-category-pills');
 const composeKeypad = document.getElementById('compose-keypad');
 const composeError = document.getElementById('compose-error');
-const metricLimitsCard = document.getElementById('metric-limits-card');
-const metricLimitsValue = document.getElementById('metric-limits-value');
-const metricLimitsSub = document.getElementById('metric-limits-sub');
-const metricLimitsBar = document.getElementById('metric-limits-bar');
 const metricExpensesCard = document.getElementById('metric-expenses-card');
 const metricExpensesValue = document.getElementById('metric-expenses-value');
 const metricExpensesSub = document.getElementById('metric-expenses-sub');
@@ -455,8 +447,7 @@ function openDB() {
               categoriesStore.add({
                 name,
                 type,
-                isSystem: name === SYSTEM_CATEGORY_NAME,
-                monthlyLimit: null
+                isSystem: name === SYSTEM_CATEGORY_NAME
               });
             }
 
@@ -464,28 +455,6 @@ function openDB() {
           };
         }
       }
-
-      const categoriesStore = upgradeTransaction.objectStore(CATEGORIES_STORE);
-      const limitMigrationRequest = categoriesStore.openCursor();
-
-      limitMigrationRequest.onsuccess = () => {
-        const cursor = limitMigrationRequest.result;
-
-        if (!cursor) {
-          return;
-        }
-
-        const record = cursor.value || {};
-
-        if (!Object.prototype.hasOwnProperty.call(record, 'monthlyLimit')) {
-          cursor.update({
-            ...record,
-            monthlyLimit: null
-          });
-        }
-
-        cursor.continue();
-      };
     };
 
     request.onsuccess = () => {
@@ -529,26 +498,6 @@ function isSystemCategory(category) {
   );
 }
 
-function normalizeMonthlyLimit(value) {
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
-
-  const number = typeof value === 'number'
-    ? value
-    : Number(String(value).trim().replace(/\s/g, '').replace(',', '.'));
-
-  if (
-    !Number.isFinite(number) ||
-    number <= 0 ||
-    number > CATEGORY_LIMIT_MAX
-  ) {
-    return null;
-  }
-
-  return roundCurrency(number);
-}
-
 function normalizeCategory(record) {
   const category = record && typeof record === 'object' ? record : {};
   const name = typeof category.name === 'string' ? category.name : '';
@@ -558,10 +507,7 @@ function normalizeCategory(record) {
     ...category,
     name,
     type,
-    isSystem: category.isSystem === true || name === SYSTEM_CATEGORY_NAME,
-    monthlyLimit: type === 'expense'
-      ? normalizeMonthlyLimit(category.monthlyLimit)
-      : null
+    isSystem: category.isSystem === true || name === SYSTEM_CATEGORY_NAME
   };
 }
 
@@ -573,8 +519,7 @@ function createDefaultCategoryRecords() {
       records.push({
         name,
         type,
-        isSystem: name === SYSTEM_CATEGORY_NAME,
-        monthlyLimit: null
+        isSystem: name === SYSTEM_CATEGORY_NAME
       });
     });
   });
@@ -737,8 +682,7 @@ function seedDefaultsIfEmpty() {
             store.add({
               name,
               type,
-              isSystem: name === SYSTEM_CATEGORY_NAME,
-              monthlyLimit: null
+              isSystem: name === SYSTEM_CATEGORY_NAME
             });
           });
         } else if (!typeCategories.some((category) => {
@@ -747,8 +691,7 @@ function seedDefaultsIfEmpty() {
           store.add({
             name: SYSTEM_CATEGORY_NAME,
             type,
-            isSystem: true,
-            monthlyLimit: null
+            isSystem: true
           });
         }
       });
@@ -843,8 +786,7 @@ function addCategory(name, type) {
       const addRequest = store.add({
         name: cleanName,
         type,
-        isSystem: false,
-        monthlyLimit: null
+        isSystem: false
       });
 
       addRequest.onsuccess = () => {
@@ -852,8 +794,7 @@ function addCategory(name, type) {
           id: addRequest.result,
           name: cleanName,
           type,
-          isSystem: false,
-          monthlyLimit: null
+          isSystem: false
         };
       };
     };
@@ -1144,187 +1085,6 @@ async function deleteCategory(id) {
   await deleteCategoryRecord(category, usage > 0);
 
   return true;
-}
-
-function validateCategoryLimitValue(value) {
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  if (typeof value === 'string' && !value.trim()) {
-    return null;
-  }
-
-  const raw = typeof value === 'string'
-    ? value.trim().replace(/\s/g, '').replace(',', '.')
-    : value;
-  const number = Number(raw);
-
-  if (
-    !Number.isFinite(number) ||
-    number <= 0 ||
-    number > CATEGORY_LIMIT_MAX
-  ) {
-    throw new Error('Лимит должен быть числом больше 0 и не больше 100 000 000.');
-  }
-
-  return roundCurrency(number);
-}
-
-function getCategoryLimit(categoryName) {
-  return getCategories('expense').then((categories) => {
-    const category = categories.find((item) => item.name === categoryName);
-    return category ? category.monthlyLimit : null;
-  });
-}
-
-function setCategoryLimit(categoryId, value) {
-  return new Promise((resolve, reject) => {
-    if (!db) {
-      reject(new Error('База данных не открыта.'));
-      return;
-    }
-
-    if (!Number.isInteger(categoryId)) {
-      reject(new Error('Категория не найдена.'));
-      return;
-    }
-
-    let monthlyLimit;
-
-    try {
-      monthlyLimit = validateCategoryLimitValue(value);
-    } catch (error) {
-      reject(error);
-      return;
-    }
-
-    let transaction;
-
-    try {
-      transaction = db.transaction(CATEGORIES_STORE, 'readwrite');
-    } catch (error) {
-      reject(error);
-      return;
-    }
-
-    const store = transaction.objectStore(CATEGORIES_STORE);
-    const getRequest = store.get(categoryId);
-    let updated = null;
-    let settled = false;
-
-    const fail = (error) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      reject(error || new Error('Не удалось сохранить лимит.'));
-    };
-
-    getRequest.onsuccess = () => {
-      const category = getRequest.result;
-
-      if (!category) {
-        transaction.abort();
-        fail(new Error('Категория не найдена.'));
-        return;
-      }
-
-      if (category.type !== 'expense') {
-        transaction.abort();
-        fail(new Error('Лимиты доступны только для расходных категорий.'));
-        return;
-      }
-
-      const updatedRecord = {
-        ...category,
-        monthlyLimit
-      };
-      const putRequest = store.put(updatedRecord);
-
-      putRequest.onsuccess = () => {
-        updated = normalizeCategory(updatedRecord);
-      };
-    };
-
-    getRequest.onerror = () => fail(getRequest.error);
-    transaction.oncomplete = () => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      resolve(updated);
-    };
-    transaction.onerror = () => fail(transaction.error || getRequest.error);
-    transaction.onabort = () => fail(transaction.error || getRequest.error);
-  });
-}
-
-async function getMonthLimitStats() {
-  const categories = await getAllCategories();
-  const today = getTodayISO();
-  const monthStart = `${today.slice(0, 7)}-01`;
-  const spentByCategory = new Map();
-
-  expenses.forEach((expense) => {
-    if (getTransactionType(expense) !== 'expense' || expense.isAdjustment === true) {
-      return;
-    }
-
-    if (typeof expense.date !== 'string') {
-      return;
-    }
-
-    if (expense.date < monthStart || expense.date > today) {
-      return;
-    }
-
-    const amount = Number(expense.amount);
-
-    if (!Number.isFinite(amount)) {
-      return;
-    }
-
-    const current = spentByCategory.get(expense.category) || 0;
-    spentByCategory.set(expense.category, current + amount);
-  });
-
-  return categories
-    .filter((category) => {
-      return category.type === 'expense' && category.monthlyLimit !== null;
-    })
-    .map((category) => {
-      const limit = category.monthlyLimit;
-      const spent = roundCurrency(spentByCategory.get(category.name) || 0);
-      const remaining = roundCurrency(limit - spent);
-
-      return {
-        category,
-        limit,
-        spent,
-        remaining,
-        percent: (spent / limit) * 100,
-        over: spent > limit
-      };
-    })
-    .sort((left, right) => {
-      return right.percent - left.percent
-        || left.category.name.localeCompare(right.category.name, 'ru');
-    });
-}
-
-function getLimitColor(percent) {
-  if (percent > 100) {
-    return '#c54122';
-  }
-
-  if (percent > 70) {
-    return '#a85a00';
-  }
-
-  return '#1b8048';
 }
 
 function getInitialBalance() {
@@ -2188,10 +1948,7 @@ function replaceAllData(data) {
         categoriesStore.add({
           name: category.name,
           type: category.type,
-          isSystem: isSystemCategory(category),
-          monthlyLimit: category.type === 'expense'
-            ? normalizeMonthlyLimit(category.monthlyLimit)
-            : null
+          isSystem: isSystemCategory(category)
         });
       });
 
@@ -3135,77 +2892,6 @@ function renderHomeLastOperations(items = expenses) {
   homeLastOperations.hidden = false;
 }
 
-async function renderLimitsHome(container = homeLimitsList) {
-  let stats;
-
-  try {
-    stats = await getMonthLimitStats();
-  } catch (error) {
-    homeLimits.hidden = true;
-    container.replaceChildren();
-    return [];
-  }
-
-  if (stats.length === 0) {
-    container.replaceChildren();
-    homeLimits.hidden = true;
-    return [];
-  }
-
-  const fragment = document.createDocumentFragment();
-
-  stats.forEach((stat) => {
-    const roundedPercent = Math.round(stat.percent);
-    const row = document.createElement('button');
-    row.type = 'button';
-    row.className = `limit-card${stat.over ? ' is-over' : ''}`;
-    row.dataset.limitCategory = stat.category.name;
-
-    const head = document.createElement('span');
-    head.className = 'limit-head';
-
-    const name = document.createElement('span');
-    name.className = 'limit-name';
-    name.textContent = stat.category.name;
-
-    const percent = document.createElement('span');
-    percent.className = `limit-percent${stat.over ? ' limit-over' : ''}`;
-    percent.textContent = `${roundedPercent}%`;
-
-    head.append(createCategoryIcon(stat.category.name, 'category-icon--sm'), name, percent);
-
-    const amounts = document.createElement('span');
-    amounts.className = 'limit-amounts';
-    amounts.textContent = stat.over
-      ? `${amountFormatter.format(stat.spent)} из ${amountFormatter.format(stat.limit)} ₽ · перерасход ${formatAmount(Math.abs(stat.remaining))}`
-      : `${amountFormatter.format(stat.spent)} из ${amountFormatter.format(stat.limit)} ₽`;
-
-    const bar = document.createElement('span');
-    bar.className = 'limit-progress';
-    bar.setAttribute('role', 'progressbar');
-    bar.setAttribute('aria-valuemin', '0');
-    bar.setAttribute('aria-valuemax', '100');
-    bar.setAttribute('aria-valuenow', String(Math.min(100, roundedPercent)));
-    bar.setAttribute(
-      'aria-label',
-      `${stat.category.name}: потрачено ${formatAmount(stat.spent)} из ${formatAmount(stat.limit)}`
-    );
-
-    const fill = document.createElement('span');
-    fill.className = 'limit-progress-fill';
-    fill.style.width = `${Math.min(100, Math.max(0, stat.percent))}%`;
-    fill.style.backgroundColor = getLimitColor(stat.percent);
-    bar.append(fill);
-
-    row.append(head, amounts, bar);
-    fragment.append(row);
-  });
-
-  container.replaceChildren(fragment);
-  homeLimits.hidden = false;
-  return stats;
-}
-
 function getCurrentMonthTotals() {
   const today = getTodayISO();
   const monthPrefix = today.slice(0, 7);
@@ -3248,11 +2934,15 @@ function getCurrentMonthTotals() {
   };
 }
 
-function updateHomeMetrics(limitStats = []) {
+function formatMetricAmount(amount) {
+  return formatAmount(amount).replace(/(\d)\u00A0(?=\d)/g, '$1 ');
+}
+
+function updateHomeMetrics() {
   const totals = getCurrentMonthTotals();
 
   if (metricExpensesValue) {
-    metricExpensesValue.textContent = formatAmount(totals.expense);
+    metricExpensesValue.textContent = formatMetricAmount(totals.expense);
   }
 
   if (metricExpensesSub) {
@@ -3262,42 +2952,8 @@ function updateHomeMetrics(limitStats = []) {
   }
 
   if (metricIncomeValue) {
-    metricIncomeValue.textContent = formatAmount(totals.income);
+    metricIncomeValue.textContent = formatMetricAmount(totals.income);
   }
-
-  if (!metricLimitsValue || !metricLimitsSub || !metricLimitsBar) {
-    return;
-  }
-
-  if (limitStats.length === 0) {
-    metricLimitsValue.textContent = '—';
-    metricLimitsSub.textContent = 'Настроить лимиты';
-    metricLimitsBar.style.width = '0%';
-    metricLimitsCard?.setAttribute('aria-label', 'Настроить лимиты по категориям');
-    return;
-  }
-
-  const totalLimit = roundCurrency(
-    limitStats.reduce((sum, stat) => sum + Number(stat.limit || 0), 0)
-  );
-  const totalSpent = roundCurrency(
-    limitStats.reduce((sum, stat) => sum + Number(stat.spent || 0), 0)
-  );
-  const percent = totalLimit > 0 ? (totalSpent / totalLimit) * 100 : 0;
-  const overCount = limitStats.filter((stat) => stat.over).length;
-  const categoryWord = overCount === 1
-    ? 'категория'
-    : (overCount >= 2 && overCount <= 4 ? 'категории' : 'категорий');
-
-  metricLimitsValue.textContent = formatAmount(totalLimit);
-  metricLimitsSub.textContent = overCount > 0
-    ? `Лимит превышен: ${overCount} ${categoryWord}`
-    : `${formatAmount(totalSpent)} использовано`;
-  metricLimitsBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
-  metricLimitsCard?.setAttribute(
-    'aria-label',
-    `Лимиты: потрачено ${formatAmount(totalSpent)} из ${formatAmount(totalLimit)}. Настроить`
-  );
 }
 
 function getTodayTotals() {
@@ -3527,8 +3183,7 @@ async function renderHome(items = expenses) {
   updateBackupBanner();
   renderNudgeBanner(spendNudge);
   updateLastBackupStatusLine();
-  const limitStats = await renderLimitsHome();
-  updateHomeMetrics(limitStats);
+  updateHomeMetrics();
 }
 
 function estimateChartLabelWidth(label) {
@@ -4114,40 +3769,7 @@ function renderComparison(container, comparison) {
   container.append(title, document.createTextNode(' '), list);
 }
 
-function renderLimitsInStats(container, limitStat) {
-  const details = document.createElement('div');
-  details.className = 'stats-limit-details';
-
-  const bar = document.createElement('div');
-  bar.className = 'month-limit-progress stats-limit-progress';
-  bar.setAttribute('role', 'progressbar');
-  bar.setAttribute('aria-valuemin', '0');
-  bar.setAttribute('aria-valuemax', '100');
-  bar.setAttribute('aria-valuenow', String(Math.min(100, Math.round(limitStat.percent))));
-  bar.setAttribute(
-    'aria-label',
-    `${limitStat.category.name}: потрачено ${formatAmount(limitStat.spent)} из ${formatAmount(limitStat.limit)}`
-  );
-
-  const fill = document.createElement('span');
-  fill.className = 'month-limit-progress-fill';
-  fill.style.width = `${Math.min(100, Math.max(0, limitStat.percent))}%`;
-  fill.style.backgroundColor = getLimitColor(limitStat.percent);
-  bar.append(fill);
-
-  const caption = document.createElement('span');
-  caption.className = limitStat.over
-    ? 'stats-limit-caption is-over'
-    : 'stats-limit-caption';
-  caption.textContent = limitStat.over
-    ? `перерасход: +${formatAmount(Math.abs(limitStat.remaining))}`
-    : `из ${formatAmount(limitStat.limit)}`;
-
-  details.append(bar, caption);
-  container.append(details);
-}
-
-function renderCategoryBreakdown(container, list, categories, total, limitStats) {
+function renderCategoryBreakdown(container, list, categories, total) {
   const entries = Object.entries(categories)
     .filter(([, sum]) => Number.isFinite(sum) && sum > 0)
     .sort((a, b) => b[1] - a[1]);
@@ -4190,10 +3812,6 @@ function renderCategoryBreakdown(container, list, categories, total, limitStats)
     body.append(top, bar);
     item.append(createCategoryIcon(category, 'category-icon--sm'), body);
 
-    if (limitStats && limitStats.has(category)) {
-      renderLimitsInStats(body, limitStats.get(category));
-    }
-
     fragment.append(item);
   });
 
@@ -4222,23 +3840,11 @@ async function renderStats(result) {
   statsAvg.textContent = formatAmount(result.avgPerDay);
   renderMonthForecast(monthForecast);
 
-  let limitStatsByName = new Map();
-
-  try {
-    const monthLimitStats = await getMonthLimitStats();
-    limitStatsByName = new Map(
-      monthLimitStats.map((stat) => [stat.category.name, stat])
-    );
-  } catch (error) {
-    limitStatsByName = new Map();
-  }
-
   const expenseCount = renderCategoryBreakdown(
     statsExpenseGroup,
     statsExpenseCategories,
     result.expenseByCategory,
-    result.expenseTotal,
-    limitStatsByName
+    result.expenseTotal
   );
   const incomeCount = renderCategoryBreakdown(
     statsIncomeGroup,
@@ -5022,8 +4628,7 @@ async function exportJSON() {
     categories: categories.map((category) => ({
       name: category.name,
       type: category.type,
-      isSystem: isSystemCategory(category),
-      monthlyLimit: category.type === 'expense' ? category.monthlyLimit : null
+      isSystem: isSystemCategory(category)
     })),
     quickTemplates: templates.map((template) => ({
       id: template.id,
@@ -5514,36 +5119,11 @@ function validateImportCategories(list) {
       return;
     }
 
-    let monthlyLimit = null;
-
-    if (
-      entry.type === 'expense' &&
-      Object.prototype.hasOwnProperty.call(entry, 'monthlyLimit') &&
-      entry.monthlyLimit !== null
-    ) {
-      const rawLimit = entry.monthlyLimit;
-      const isValidLimit = (
-        typeof rawLimit === 'number' &&
-        Number.isFinite(rawLimit) &&
-        rawLimit > 0 &&
-        rawLimit <= CATEGORY_LIMIT_MAX
-      );
-
-      if (isValidLimit) {
-        monthlyLimit = roundCurrency(rawLimit);
-      } else {
-        console.warn(
-          `${label}: некорректное поле "monthlyLimit", лимит будет снят.`
-        );
-      }
-    }
-
     seen.add(key);
     result.push({
       name,
       type: entry.type,
-      isSystem: name === SYSTEM_CATEGORY_NAME,
-      monthlyLimit
+      isSystem: name === SYSTEM_CATEGORY_NAME
     });
   });
 
@@ -5553,7 +5133,7 @@ function validateImportCategories(list) {
 function buildImportCategories(importedCategories, items, addDefaults) {
   const map = new Map();
 
-  const add = (rawName, type, forceSystem, monthlyLimit = null) => {
+  const add = (rawName, type, forceSystem) => {
     if (!TRANSACTION_TYPES.includes(type)) {
       return null;
     }
@@ -5566,9 +5146,6 @@ function buildImportCategories(importedCategories, items, addDefaults) {
 
     const key = categoryKey(type, name);
     const isSystem = forceSystem === true || name === SYSTEM_CATEGORY_NAME;
-    const normalizedLimit = type === 'expense'
-      ? normalizeMonthlyLimit(monthlyLimit)
-      : null;
 
     if (map.has(key)) {
       const existing = map.get(key);
@@ -5577,18 +5154,13 @@ function buildImportCategories(importedCategories, items, addDefaults) {
         existing.isSystem = true;
       }
 
-      if (normalizedLimit !== null && existing.monthlyLimit === null) {
-        existing.monthlyLimit = normalizedLimit;
-      }
-
       return existing;
     }
 
     const record = {
       name,
       type,
-      isSystem,
-      monthlyLimit: normalizedLimit
+      isSystem
     };
     map.set(key, record);
 
@@ -5596,7 +5168,7 @@ function buildImportCategories(importedCategories, items, addDefaults) {
   };
 
   (importedCategories || []).forEach((category) => {
-    add(category.name, category.type, category.isSystem, category.monthlyLimit);
+    add(category.name, category.type, category.isSystem);
   });
 
   if (addDefaults) {
@@ -6237,7 +5809,6 @@ function initComposeUi() {
 
   metricExpensesCard?.addEventListener('click', () => showTab('stats'));
   metricIncomeCard?.addEventListener('click', () => showTab('stats'));
-  metricLimitsCard?.addEventListener('click', () => openCategoryModal('expense'));
 
   homeLastList?.addEventListener('click', (event) => {
     const target = event.target instanceof Element
@@ -6526,35 +6097,10 @@ async function renderCategoryModalList() {
       info.append(badge);
     }
 
-    if (category.type === 'expense') {
-      const limit = document.createElement('span');
-      limit.className = 'category-item-limit';
-      limit.textContent = category.monthlyLimit === null
-        ? 'Лимит не задан'
-        : `Лимит: ${formatAmount(category.monthlyLimit)}/мес`;
-      info.append(limit);
-    }
-
     const actions = document.createElement('div');
     actions.className = 'category-item-actions';
 
     const actionsDisabled = isSystemCategory(category);
-
-    if (category.type === 'expense') {
-      const limitButton = document.createElement('button');
-      limitButton.type = 'button';
-      limitButton.className = 'category-action-button';
-      limitButton.dataset.categoryAction = 'limit';
-      limitButton.dataset.id = String(category.id);
-      setIconButton(
-        limitButton,
-        'sliders',
-        category.monthlyLimit === null
-          ? `Задать лимит для категории «${category.name}»`
-          : `Изменить лимит для категории «${category.name}»`
-      );
-      actions.append(limitButton);
-    }
 
     const renameButton = document.createElement('button');
     renameButton.type = 'button';
@@ -6812,61 +6358,6 @@ async function handleCategoryRename(id) {
   }
 }
 
-async function handleCategoryLimit(id) {
-  setCategoryModalError('');
-
-  let categories;
-
-  try {
-    categories = await getCategories('expense');
-  } catch (error) {
-    setCategoryModalError('Не удалось загрузить категории.');
-    return;
-  }
-
-  const category = categories.find((item) => item.id === id);
-
-  if (!category) {
-    setCategoryModalError('Категория не найдена.');
-    return;
-  }
-
-  const currentLimit = category.monthlyLimit === null
-    ? ''
-    : String(category.monthlyLimit);
-  const raw = await requestValueDialog({
-    title: 'Месячный лимит',
-    subtitle: `Для категории «${category.name}». Оставьте поле пустым, чтобы снять лимит.`,
-    label: 'Сумма в рублях',
-    value: currentLimit,
-    inputMode: 'decimal',
-    maxLength: 12,
-    placeholder: 'Например, 15 000',
-    validate: (value) => {
-      const trimmed = value.trim();
-
-      if (!trimmed) {
-        return '';
-      }
-
-      validateCategoryLimitValue(trimmed);
-      return trimmed;
-    }
-  });
-
-  if (raw === null) {
-    return;
-  }
-
-  try {
-    await setCategoryLimit(id, raw);
-    setCategoryModalError('');
-    await refreshAfterCategoryChange();
-  } catch (error) {
-    setCategoryModalError(error.message || 'Не удалось сохранить лимит.');
-  }
-}
-
 async function handleCategoryDelete(id) {
   setCategoryModalError('');
 
@@ -6963,9 +6454,7 @@ function initCategoryModal() {
       return;
     }
 
-    if (button.dataset.categoryAction === 'limit') {
-      handleCategoryLimit(id);
-    } else if (button.dataset.categoryAction === 'rename') {
+    if (button.dataset.categoryAction === 'rename') {
       handleCategoryRename(id);
     } else if (button.dataset.categoryAction === 'delete') {
       handleCategoryDelete(id);
@@ -9206,18 +8695,6 @@ async function init() {
   editBalanceButton.addEventListener('click', handleEditBalance);
   editInitialBalanceButton.addEventListener('click', handleEditBalance);
   homeShowAllButton.addEventListener('click', () => showTab('history'));
-  manageLimitsButton.addEventListener('click', () => openCategoryModal('expense'));
-  homeLimits.addEventListener('click', (event) => {
-    const target = event.target;
-
-    if (!(target instanceof Element)) {
-      return;
-    }
-
-    if (target.closest('[data-limit-category]')) {
-      showTab('stats');
-    }
-  });
   manageQuickTemplatesButton.addEventListener('click', openQuickTemplateModal);
   exportJsonButton.addEventListener('click', handleExportJson);
   exportCsvButton.addEventListener('click', handleExportCsv);

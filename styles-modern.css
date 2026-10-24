@@ -142,8 +142,6 @@ p {
 .settings-balance-value,
 .expense-amount,
 .home-last-amount,
-.month-limit-amounts,
-.month-limit-percent,
 .total-row-value,
 .stats-value,
 .stats-flow-value,
@@ -421,7 +419,6 @@ select {
    -------------------------------------------------------------------------- */
 
 .balance,
-.home-limits,
 .panel,
 .home-last,
 .settings-card,
@@ -434,7 +431,6 @@ select {
 }
 
 .balance,
-.home-limits,
 .panel,
 .home-last,
 .settings-card,
@@ -549,62 +545,6 @@ select {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.17);
-}
-
-.home-limits {
-  margin-bottom: 14px;
-  padding: 17px 18px 13px;
-}
-
-.home-limits h2 {
-  font-size: 16px;
-}
-
-.home-limits-list {
-  gap: 0;
-  max-height: 232px;
-}
-
-.month-limit-row {
-  padding: 10px 0;
-  border-radius: 0;
-}
-
-.month-limit-row:first-child {
-  padding-top: 2px;
-}
-
-.month-limit-row + .month-limit-row {
-  border-top: 1px solid #f0f2f5;
-}
-
-.month-limit-row:hover,
-.month-limit-row.is-over,
-.month-limit-row.is-over:hover {
-  background: transparent;
-}
-
-.month-limit-name {
-  font-size: 13.5px;
-  font-weight: 650;
-}
-
-.month-limit-amounts {
-  font-size: 12px;
-}
-
-.month-limit-percent {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.month-limit-over {
-  font-size: 11px;
-}
-
-.month-limit-progress {
-  height: 5px;
-  background: #eef0f4;
 }
 
 #quick-templates {
