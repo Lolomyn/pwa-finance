@@ -218,7 +218,10 @@ const statsExpense = document.getElementById('stats-expense');
 const statsIncome = document.getElementById('stats-income');
 const statsNet = document.getElementById('stats-net');
 const statsAvg = document.getElementById('stats-avg');
-const statsChart = document.getElementById('stats-chart');
+const statsChart = document.getElementById('bar-chart');
+const barChartTitle = document.getElementById('bar-chart-title');
+const statsMax = document.getElementById('stats-max');
+const statsMaxCat = document.getElementById('stats-max-cat');
 const balanceChartTitle = document.getElementById('balance-chart-title');
 const statsBalanceChart = document.getElementById('stats-balance-chart');
 const statsComparison = document.getElementById('stats-comparison');
@@ -4019,6 +4022,25 @@ async function renderStats(result) {
   statsNet.classList.toggle('is-income', netFlow >= 0);
   statsNet.classList.toggle('is-expense', netFlow < 0);
   statsAvg.textContent = formatAmount(result.avgPerDay);
+
+  let maxTx = { amount: 0, category: '' };
+  (result.filtered || []).forEach((expense) => {
+    if (getTransactionType(expense) !== 'expense') {
+      return;
+    }
+
+    if (expense.amount > maxTx.amount) {
+      maxTx = { amount: expense.amount, category: expense.category };
+    }
+  });
+
+  if (statsMax) {
+    statsMax.textContent = formatAmount(maxTx.amount);
+  }
+
+  if (statsMaxCat) {
+    statsMaxCat.textContent = maxTx.category || '—';
+  }
   renderMonthForecast(monthForecast);
 
   const expenseCount = renderCategoryBreakdown(
@@ -4040,6 +4062,19 @@ async function renderStats(result) {
 
   lastChartData = result.chartData;
   lastChartPeriod = result.chartPeriod || currentPeriod;
+
+  if (barChartTitle) {
+    const period = customRange ? 'custom' : currentPeriod;
+    const titleMap = {
+      week: 'Динамика за неделю',
+      month: 'Динамика за месяц',
+      year: 'Динамика за год',
+      custom: 'Динамика за период',
+      all: 'Динамика за всё время'
+    };
+    barChartTitle.textContent = titleMap[period] || 'Динамика';
+  }
+
   renderBarChart(statsChart, result.chartData, lastChartPeriod);
 
   balanceChartTitle.textContent = result.balanceGranularity === 'month'
