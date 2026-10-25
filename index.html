@@ -228,6 +228,25 @@
       </nav>
     </header>
 
+    <nav class="bottom-nav" aria-label="Основная навигация">
+      <button class="nav-btn is-active" id="nav-home" data-tab-target="home" aria-current="page">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Главная
+      </button>
+      <button class="nav-btn" id="nav-history" data-tab-target="history">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        История
+      </button>
+      <button class="nav-btn" id="nav-stats" data-tab-target="stats">
+        <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-6"/></svg>
+        Статистика
+      </button>
+      <button class="nav-btn" id="nav-categories" data-tab-target="settings">
+        <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+        Категории
+      </button>
+    </nav>
+
     <p id="app-error" class="app-error" role="alert" hidden></p>
 
     <main class="views">
