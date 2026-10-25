@@ -173,6 +173,10 @@ const tabPanels = [...document.querySelectorAll('.tab-panel[data-tab]')];
 const hubFinanceButton = document.getElementById('hub-finance');
 const hubWidgetMonth = document.getElementById('hub-widget-month');
 const hubWidgetCount = document.getElementById('hub-widget-count');
+const hubWidgetCalendar = document.getElementById('hub-widget-calendar');
+const hubFinanceExpense = document.getElementById('hub-finance-expense');
+const hubFinanceIncome = document.getElementById('hub-finance-income');
+const hubNotesStat = document.getElementById('hub-notes-stat');
 const bottomNavButtons = [...document.querySelectorAll('[data-tab-target]')];
 const homeLastOperations = document.getElementById('home-last-operations');
 const homeLastList = document.getElementById('home-last-list');
@@ -4481,17 +4485,104 @@ function getWorkingDaysInMonth(date) {
 
 function renderHubScreen() {
   const now = new Date();
-  const monthLabel = new Intl.DateTimeFormat('ru-RU', {
-    month: 'long',
-    year: 'numeric'
-  }).format(now);
+  const monthLabel = `${new Intl.DateTimeFormat('ru-RU', { month: 'long' }).format(now)} ${now.getFullYear()}`;
   const workingDays = getWorkingDaysInMonth(now);
-  const workingDaysNoun = workingDays === 1 ? 'день' : workingDays <= 4 ? 'дня' : 'дней';
+  const workingDaysNoun = (() => {
+    const mod10 = workingDays % 10;
+    const mod100 = workingDays % 100;
 
-  hubWidgetMonth.textContent = monthLabel;
-  hubWidgetCount.textContent = `${workingDays} ${workingDaysNoun}`;
+    if (mod10 === 1 && mod100 !== 11) {
+      return 'день';
+    }
+
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return 'дня';
+    }
+
+    return 'дней';
+  })();
+
+  if (hubWidgetMonth) {
+    hubWidgetMonth.textContent = monthLabel;
+  }
+
+  if (hubWidgetCount) {
+    hubWidgetCount.textContent = `${workingDays} ${workingDaysNoun}`;
+  }
+
+  if (hubWidgetCalendar) {
+    renderHubCalendar(hubWidgetCalendar, now);
+  }
+
+  const monthPrefix = getTodayISO().slice(0, 7);
+  let expenseTotal = 0;
+  let incomeTotal = 0;
+
+  (expenses || []).forEach((expense) => {
+    if (typeof expense.date !== 'string' || !expense.date.startsWith(monthPrefix)) {
+      return;
+    }
+
+    const amount = Number(expense.amount);
+
+    if (!Number.isFinite(amount)) {
+      return;
+    }
+
+    if (getTransactionType(expense) === 'income') {
+      incomeTotal += amount;
+    } else {
+      expenseTotal += amount;
+    }
+  });
+
+  if (hubFinanceExpense) {
+    hubFinanceExpense.textContent = `Траты ${amountFormatter.format(roundCurrency(expenseTotal))} ₽ за месяц`;
+  }
+
+  if (hubFinanceIncome) {
+    hubFinanceIncome.textContent = `Доход ${amountFormatter.format(roundCurrency(incomeTotal))} ₽ за месяц`;
+  }
 
   window.Notes?.renderHub?.();
+}
+
+function renderHubCalendar(container, now) {
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = now.getDate();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const offset = (firstWeekday + 6) % 7;
+  const fragment = document.createDocumentFragment();
+
+  for (let i = 0; i < offset; i += 1) {
+    const cell = document.createElement('div');
+    cell.className = 'hub-cal-cell hub-cal-empty';
+    fragment.append(cell);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const weekday = new Date(year, month, day).getDay();
+    const isWeekend = weekday === 0 || weekday === 6;
+    const cell = document.createElement('div');
+    let className = 'hub-cal-cell';
+
+    if (isWeekend) {
+      className += ' hub-cal-weekend';
+    } else {
+      className += ' hub-cal-active';
+    }
+
+    if (day === today) {
+      className += ' hub-cal-today';
+    }
+
+    cell.className = className;
+    fragment.append(cell);
+  }
+
+  container.replaceChildren(fragment);
 }
 
 function initHub() {
@@ -4559,6 +4650,7 @@ function initHub() {
           hubQuickInput.value = '';
           hapticFeedback(8);
           showInfoToast('Заметка сохранена');
+          renderHubScreen();
           return;
         }
 
@@ -4583,6 +4675,8 @@ async function render(items) {
   } else if (activeTab === 'stats') {
     await refreshStats();
   }
+
+  renderHubScreen();
 }
 
 function getTabFromHash() {
@@ -10121,6 +10215,7 @@ async function init() {
 
     await render(expenses);
     updateBackupBanner();
+    renderHubScreen();
   } catch (error) {
     showError('Не удалось загрузить операции. Проверьте настройки браузера и перезагрузите страницу.');
   }

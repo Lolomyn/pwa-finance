@@ -125,37 +125,49 @@
 
   <div id="app" class="app">
     <section data-tab="hub" class="tab-panel hub-screen" id="tab-hub" aria-label="Общий хаб">
-      <div class="hub-shell">
-        <h2 class="hub-title">Хаб</h2>
-        <p class="hub-subtitle">Приложения и виджеты</p>
-      </div>
-      <div class="hub-grid">
-        <button id="hub-finance" class="hub-app" type="button" aria-label="Открыть приложение Финансы">
-          <span class="hub-app-icon" aria-hidden="true">💰</span>
-          <span class="hub-app-body">
-            <span class="hub-app-title">Финансы</span>
-            <span class="hub-app-subtitle">Трекер расходов</span>
-          </span>
-        </button>
-        <button id="hub-notes" class="hub-app" type="button" aria-label="Открыть приложение Заметки">
-          <span class="hub-app-icon" aria-hidden="true">📝</span>
-          <span class="hub-app-body">
-            <span class="hub-app-title">Заметки</span>
-            <span class="hub-app-subtitle">Приложение заметок</span>
-          </span>
-        </button>
-        <article class="hub-widget" aria-live="polite">
-          <span class="hub-widget-label">Рабочие дни</span>
-          <span id="hub-widget-month" class="hub-widget-month">Месяц</span>
-          <strong id="hub-widget-count" class="hub-widget-value">–</strong>
-          <span class="hub-widget-note">5-дневная неделя</span>
-        </article>
-        <button id="hub-notes-widget" class="hub-widget hub-widget--notes" type="button">
-          <span class="hub-widget-label">Заметки</span>
-          <span id="hub-notes-widget-title" class="hub-notes-widget-title">Нет заметок</span>
-          <span id="hub-notes-widget-preview" class="hub-notes-widget-preview"></span>
-          <span id="hub-notes-widget-meta" class="hub-widget-note">–</span>
-        </button>
+      <div class="hub-wrap">
+        <div class="hub-widget" aria-live="polite">
+          <div class="hub-widget-head">
+            <div class="hub-widget-lbl">Рабочих дней</div>
+            <div id="hub-widget-month" class="hub-widget-month">октябрь 2026</div>
+          </div>
+          <div class="hub-widget-body">
+            <div id="hub-widget-count" class="hub-widget-num">22</div>
+            <div id="hub-widget-calendar" class="hub-cal-grid" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div class="hub-apps">
+          <button id="hub-finance" class="hub-app hub-app-finance" type="button" aria-label="Открыть приложение Финансы">
+            <div class="hub-app-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2.5" y="5.5" width="19" height="13" rx="3"/>
+                <path d="M2.5 10h19"/>
+                <circle cx="17.5" cy="15" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+            </div>
+            <div class="hub-app-info">
+              <div class="hub-app-name">Финансы</div>
+              <div class="hub-app-stat" id="hub-finance-expense">Траты — ₽ за месяц</div>
+              <div class="hub-app-stat" id="hub-finance-income">Доход — ₽ за месяц</div>
+            </div>
+          </button>
+
+          <button id="hub-notes" class="hub-app hub-app-notes" type="button" aria-label="Открыть приложение Заметки">
+            <div class="hub-app-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+                <path d="M14 3v5h5"/>
+                <path d="M8 13h8M8 17h5"/>
+              </svg>
+            </div>
+            <div class="hub-app-info">
+              <div class="hub-app-name">Заметки</div>
+              <div class="hub-app-stat" id="hub-notes-stat">0 заметок</div>
+            </div>
+          </button>
+        </div>
+
         <form id="hub-quick-note" class="hub-quick" novalidate>
           <input
             id="hub-quick-input"

@@ -644,12 +644,35 @@
   function renderHub() {
     readDom();
 
+    const { active } = segmentLists();
+    const latest = [...active].sort((a, b) => b.updatedAt - a.updatedAt)[0] || null;
+
+    const statEl = el('hub-notes-stat');
+
+    if (statEl) {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const todayCount = active.filter((note) => {
+        const updated = new Date(note.updatedAt);
+
+        if (Number.isNaN(updated.getTime())) {
+          return false;
+        }
+
+        return updated.toISOString().slice(0, 10) === todayKey;
+      }).length;
+
+      const parts = [notesCountLabel(active.length)];
+
+      if (todayCount > 0) {
+        parts.push(`${todayCount} сегодня`);
+      }
+
+      statEl.textContent = parts.join(' · ');
+    }
+
     if (!els.hubNotesWidgetTitle) {
       return;
     }
-
-    const { active } = segmentLists();
-    const latest = [...active].sort((a, b) => b.updatedAt - a.updatedAt)[0] || null;
 
     if (latest) {
       els.hubNotesWidgetTitle.textContent = noteTitleText(latest);
