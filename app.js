@@ -4782,7 +4782,7 @@ function showTab(tabName, { push = true } = {}) {
   updateHeaderDate();
 
   if (fab) {
-    fab.hidden = targetTab !== 'home' && targetTab !== 'history';
+    fab.hidden = targetTab !== 'home';
   }
 
   document.title = targetTab === 'hub'

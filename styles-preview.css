@@ -3861,6 +3861,21 @@ button.set:active {
   border-color: #DCD6CD;
 }
 
+/* ==========================================================================
+   History tab cleanup (preview): hide search, filters-more, settings avatar
+   ========================================================================== */
+.search {
+  display: none !important;
+}
+
+.history-more {
+  display: none !important;
+}
+
+.avatar {
+  display: none !important;
+}
+
 .pie-chart {
   width: 140px;
   height: 140px;
@@ -4994,4 +5009,19 @@ button.set:active {
 .add-cat-btn:active {
   background: #F5F1EA;
   border-color: #DCD6CD;
+}
+
+/* ==========================================================================
+   History tab cleanup (preview): hide search, filters-more, settings avatar
+   ========================================================================== */
+.search {
+  display: none !important;
+}
+
+.history-more {
+  display: none !important;
+}
+
+.avatar {
+  display: none !important;
 }
