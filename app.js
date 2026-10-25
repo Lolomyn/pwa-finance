@@ -2936,6 +2936,17 @@ function updateTotal(items) {
   totalNet.classList.toggle('is-income', netFlow >= 0);
   totalNet.classList.toggle('is-expense', netFlow < 0);
 
+  const balanceIncomeEl = document.getElementById('balance-income');
+  const balanceExpenseEl = document.getElementById('balance-expense');
+
+  if (balanceIncomeEl) {
+    balanceIncomeEl.textContent = '+' + formatAmount(totals.incomeTotal).replace(' ₽', '') + ' ₽';
+  }
+
+  if (balanceExpenseEl) {
+    balanceExpenseEl.textContent = '−' + formatAmount(totals.expenseTotal).replace(' ₽', '') + ' ₽';
+  }
+
   updateBalance(totals);
 }
 
