@@ -122,6 +122,28 @@
   </svg>
 
   <div id="app" class="app">
+    <section data-tab="hub" class="tab-panel hub-screen" id="tab-hub" aria-label="Общий хаб">
+      <div class="hub-shell">
+        <h2 class="hub-title">Хаб</h2>
+        <p class="hub-subtitle">Приложения и виджеты</p>
+      </div>
+      <div class="hub-grid">
+        <button id="hub-finance" class="hub-app" type="button" aria-label="Открыть приложение Финансы">
+          <span class="hub-app-icon" aria-hidden="true">💰</span>
+          <span class="hub-app-body">
+            <span class="hub-app-title">Финансы</span>
+            <span class="hub-app-subtitle">Трекер расходов</span>
+          </span>
+        </button>
+        <article class="hub-widget" aria-live="polite">
+          <span class="hub-widget-label">Рабочие дни</span>
+          <span id="hub-widget-month" class="hub-widget-month">Месяц</span>
+          <strong id="hub-widget-count" class="hub-widget-value">–</strong>
+          <span class="hub-widget-note">5-дневная неделя</span>
+        </article>
+      </div>
+    </section>
+
     <header class="sticky-top">
       <div class="ph">
         <div class="ph-copy">

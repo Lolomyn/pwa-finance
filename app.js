@@ -18,6 +18,7 @@ const DEFAULT_CATEGORIES = {
 };
 
 const TAB_TITLES = {
+  hub: 'Хаб',
   home: 'Мои расходы',
   history: 'История',
   stats: 'Анализ',
@@ -117,7 +118,7 @@ const MONTHS_FULL = [
 
 const EXPENSE_SORTS = ['date-desc', 'date-asc', 'amount-desc', 'amount-asc'];
 const CUSTOM_CHART_DAY_LIMIT = 62;
-const TAB_NAMES = ['home', 'history', 'stats', 'settings'];
+const TAB_NAMES = ['hub', 'home', 'history', 'stats', 'settings'];
 const TAB_SWIPE_COMMIT_DISTANCE = 64;
 const TAB_SWIPE_COMMIT_VELOCITY = 0.42;
 const TAB_SWIPE_MAX_DRAG = 96;
@@ -167,6 +168,9 @@ const PIN_LOCK_DURATION = 30 * 1000;
 
 const appRoot = document.querySelector('.app');
 const tabPanels = [...document.querySelectorAll('.tab-panel[data-tab]')];
+const hubFinanceButton = document.getElementById('hub-finance');
+const hubWidgetMonth = document.getElementById('hub-widget-month');
+const hubWidgetCount = document.getElementById('hub-widget-count');
 const bottomNavButtons = [...document.querySelectorAll('[data-tab-target]')];
 const homeLastOperations = document.getElementById('home-last-operations');
 const homeLastList = document.getElementById('home-last-list');
@@ -4448,6 +4452,50 @@ function updateHeaderDate() {
   headerDate.textContent = `${dateText} · ${weekday}`;
 }
 
+function getWorkingDaysInMonth(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let workingDays = 0;
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const weekday = new Date(year, month, day).getDay();
+
+    if (weekday !== 0 && weekday !== 6) {
+      workingDays += 1;
+    }
+  }
+
+  return workingDays;
+}
+
+function renderHubScreen() {
+  const now = new Date();
+  const monthLabel = new Intl.DateTimeFormat('ru-RU', {
+    month: 'long',
+    year: 'numeric'
+  }).format(now);
+  const workingDays = getWorkingDaysInMonth(now);
+  const workingDaysNoun = workingDays === 1 ? 'день' : workingDays <= 4 ? 'дня' : 'дней';
+
+  hubWidgetMonth.textContent = monthLabel;
+  hubWidgetCount.textContent = `${workingDays} ${workingDaysNoun}`;
+}
+
+function initHub() {
+  if (!hubFinanceButton) {
+    return;
+  }
+
+  hubFinanceButton.addEventListener('click', () => {
+    hapticFeedback(8);
+    showTab('home');
+  });
+
+  document.getElementById('hub-close')?.addEventListener('click', () => showTab('home'));
+  renderHubScreen();
+}
+
 async function render(items) {
   historyDirty = true;
   markStatsDirty();
@@ -4485,7 +4533,9 @@ function onTabShow(tabName) {
     return;
   }
 
-  if (tabName === 'home') {
+  if (tabName === 'hub') {
+    renderHubScreen();
+  } else if (tabName === 'home') {
     renderHome(expenses);
   } else if (tabName === 'history' && historyDirty) {
     renderHistory(expenses);
@@ -4523,13 +4573,15 @@ function showTab(tabName, { push = true } = {}) {
     fab.hidden = targetTab !== 'home' && targetTab !== 'history';
   }
 
-  document.title = targetTab === 'home'
-    ? 'Мои расходы'
-    : `${TAB_TITLES[targetTab] || 'Мои расходы'} · Мои расходы`;
+  document.title = targetTab === 'hub'
+    ? TAB_TITLES.hub
+    : (targetTab === 'home' ? 'Мои расходы' : `${TAB_TITLES[targetTab] || 'Мои расходы'} · Мои расходы`);
 
   tabPanels.forEach((panel) => {
     panel.hidden = panel.dataset.tab !== targetTab;
   });
+
+  appRoot.classList.toggle('hub-active', targetTab === 'hub');
 
   bottomNavButtons.forEach((button) => {
     const isActive = button.dataset.tabTarget === targetTab;
@@ -9579,6 +9631,8 @@ async function init() {
   initTabNavigation();
   initSwipeGestures();
   showTab(getTabFromHash(), { push: false });
+  showTab('hub', { push: true });
+  initHub();
 
   window.addEventListener('resize', () => {
     if (lastChartData) {
