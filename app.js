@@ -20,11 +20,11 @@ const DEFAULT_CATEGORIES = {
 
 const TAB_TITLES = {
   hub: 'Хаб',
-  home: 'Мои расходы',
+  home: 'Финансы',
   history: 'История',
-  stats: 'Анализ',
+  stats: 'Статистика',
   notes: 'Заметки',
-  settings: 'Настройки'
+  settings: 'Категории'
 };
 
 const CATEGORY_ICON_OPTIONS = [
@@ -4465,16 +4465,20 @@ function updateHeaderDate() {
     return;
   }
 
-  const now = new Date();
-  const dateText = new Intl.DateTimeFormat('ru-RU', {
-    day: 'numeric',
-    month: 'long'
-  }).format(now);
-  const weekday = new Intl.DateTimeFormat('ru-RU', {
-    weekday: 'long'
-  }).format(now);
+  if (activeTab && activeTab !== 'home') {
+    const subtitles = {
+      history: 'Все операции',
+      stats: 'Аналитика расходов',
+      settings: 'Настройка'
+    };
 
-  headerDate.textContent = `${dateText} · ${weekday}`;
+    headerDate.textContent = subtitles[activeTab] || '';
+    return;
+  }
+
+  const now = new Date();
+  const monthLabel = `${new Intl.DateTimeFormat('ru-RU', { month: 'long' }).format(now)} ${now.getFullYear()}`;
+  headerDate.textContent = monthLabel;
 }
 
 function getWorkingDaysInMonth(date) {
@@ -4611,7 +4615,12 @@ function initHub() {
   if (financeExitButton) {
     financeExitButton.addEventListener('click', () => {
       hapticFeedback(8);
-      showTab('hub');
+
+      if (activeTab === 'home') {
+        showTab('hub');
+      } else {
+        showTab('home');
+      }
     });
   }
 
@@ -4751,6 +4760,8 @@ function showTab(tabName, { push = true } = {}) {
   if (viewTitle) {
     viewTitle.textContent = TAB_TITLES[targetTab] || TAB_TITLES.home;
   }
+
+  updateHeaderDate();
 
   if (fab) {
     fab.hidden = targetTab !== 'home' && targetTab !== 'history';
