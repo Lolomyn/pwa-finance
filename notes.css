@@ -2,6 +2,53 @@
    Слои: styles.css → styles-modern.css → styles-preview.css → этот файл (финальный вид). */
 
 /* --------------------------------------------------------------------------
+   Оболочка заметок: отдельный экран приложения без шапки трекера
+   -------------------------------------------------------------------------- */
+
+.app.notes-active .sticky-top {
+  display: none;
+}
+
+.app.notes-active .fnav {
+  display: none;
+}
+
+.app.notes-active {
+  padding-top: calc(16px + var(--safe-top));
+}
+
+/* Круглая кнопка выхода в хаб (finance-exit и notes-exit) */
+
+.hub-back {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.15s ease;
+}
+
+.hub-back .icon {
+  width: 18px;
+  height: 18px;
+  transform: rotate(180deg);
+}
+
+.hub-back:hover {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.hub-back:active {
+  transform: scale(0.92);
+}
+
+/* --------------------------------------------------------------------------
    Экран заметок: шапка, тулбар, списки
    -------------------------------------------------------------------------- */
 
@@ -10,7 +57,12 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin: 4px 2px 14px;
+  margin: 6px 2px 14px;
+}
+
+.notes-head .hub-back {
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .notes-head-title {

@@ -4503,6 +4503,24 @@ function initHub() {
     showTab('home');
   });
 
+  const financeExitButton = document.getElementById('finance-exit');
+
+  if (financeExitButton) {
+    financeExitButton.addEventListener('click', () => {
+      hapticFeedback(8);
+      showTab('hub');
+    });
+  }
+
+  const notesExitButton = document.getElementById('notes-exit');
+
+  if (notesExitButton) {
+    notesExitButton.addEventListener('click', () => {
+      hapticFeedback(8);
+      showTab('hub');
+    });
+  }
+
   const hubNotesButton = document.getElementById('hub-notes');
   const hubNotesWidget = document.getElementById('hub-notes-widget');
 
@@ -4634,13 +4652,16 @@ function showTab(tabName, { push = true } = {}) {
 
   document.title = targetTab === 'hub'
     ? TAB_TITLES.hub
-    : (targetTab === 'home' ? 'Мои расходы' : `${TAB_TITLES[targetTab] || 'Мои расходы'} · Мои расходы`);
+    : (targetTab === 'notes'
+      ? 'Заметки'
+      : (targetTab === 'home' ? 'Мои расходы' : `${TAB_TITLES[targetTab] || 'Мои расходы'} · Мои расходы`));
 
   tabPanels.forEach((panel) => {
     panel.hidden = panel.dataset.tab !== targetTab;
   });
 
   appRoot.classList.toggle('hub-active', targetTab === 'hub');
+  appRoot.classList.toggle('notes-active', targetTab === 'notes');
 
   bottomNavButtons.forEach((button) => {
     const isActive = button.dataset.tabTarget === targetTab;
@@ -4798,10 +4819,14 @@ function resetSheetSwipe(gesture) {
   gesture.overlay.style.removeProperty('--sheet-drag-progress');
 }
 
+const FINANCE_TABS = ['home', 'history', 'stats', 'settings'];
+
 function prepareTabSwipe(gesture, dx) {
-  const currentIndex = TAB_NAMES.indexOf(activeTab);
+  // Свайпы переключают только вкладки финансового приложения;
+  // хаб и заметки — отдельные экраны без горизонтальных переходов.
+  const currentIndex = FINANCE_TABS.indexOf(activeTab);
   const direction = dx < 0 ? 1 : -1;
-  const targetTab = TAB_NAMES[currentIndex + direction] || null;
+  const targetTab = currentIndex === -1 ? null : (FINANCE_TABS[currentIndex + direction] || null);
 
   gesture.direction = direction;
   gesture.targetTab = targetTab;

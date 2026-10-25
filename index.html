@@ -174,6 +174,15 @@
 
     <header class="sticky-top">
       <div class="ph">
+        <button
+          id="finance-exit"
+          class="hub-back"
+          type="button"
+          aria-label="Вернуться в хаб"
+          title="В хаб"
+        >
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg>
+        </button>
         <div class="ph-copy">
           <div class="ph-date" id="header-date">Сегодня</div>
           <h1 class="ph-title" id="view-title">Мои расходы</h1>
@@ -191,7 +200,6 @@
         <button type="button" class="fnav-button is-active" data-tab-target="home" aria-current="page">Обзор</button>
         <button type="button" class="fnav-button" data-tab-target="history">История</button>
         <button type="button" class="fnav-button" data-tab-target="stats">Анализ</button>
-        <button type="button" class="fnav-button" data-tab-target="notes">Заметки</button>
         <button type="button" class="fnav-button" data-tab-target="settings">Ещё</button>
       </nav>
     </header>
@@ -690,6 +698,15 @@
 
       <section data-tab="notes" class="tab-panel" id="tab-notes" hidden>
         <div class="notes-head">
+          <button
+            id="notes-exit"
+            class="hub-back notes-exit"
+            type="button"
+            aria-label="Вернуться в хаб"
+            title="В хаб"
+          >
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg>
+          </button>
           <div class="notes-head-copy">
             <div id="notes-count-label" class="notes-head-title">Заметки</div>
             <p class="notes-head-sub">Автосохранение включено</p>
