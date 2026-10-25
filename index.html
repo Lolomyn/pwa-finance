@@ -794,24 +794,31 @@
 
         <div class="compose-display">
           <div id="compose-amount-display" class="compose-amt is-empty" tabindex="-1" aria-live="polite">0<span class="cur">₽</span></div>
+          <div id="compose-calc-rationale" class="compose-calc-rationale" aria-hidden="true"></div>
           <div id="compose-category-display" class="compose-cat">Выберите категорию</div>
         </div>
 
         <div id="compose-category-pills" class="cat-scroll" role="group" aria-label="Категория"></div>
 
-        <div class="keypad" id="compose-keypad" aria-label="Цифровая клавиатура">
+        <div id="compose-keypad" class="keypad" aria-label="Клавиатура калькулятора">
           <button type="button" class="key" data-key="7" aria-label="7">7</button>
           <button type="button" class="key" data-key="8" aria-label="8">8</button>
           <button type="button" class="key" data-key="9" aria-label="9">9</button>
+          <button type="button" class="key op" data-key="div" aria-label="Разделить">÷</button>
           <button type="button" class="key" data-key="4" aria-label="4">4</button>
           <button type="button" class="key" data-key="5" aria-label="5">5</button>
           <button type="button" class="key" data-key="6" aria-label="6">6</button>
+          <button type="button" class="key op" data-key="mul" aria-label="Умножить">×</button>
           <button type="button" class="key" data-key="1" aria-label="1">1</button>
           <button type="button" class="key" data-key="2" aria-label="2">2</button>
           <button type="button" class="key" data-key="3" aria-label="3">3</button>
-          <button type="button" class="key" data-key="." aria-label="Десятичный разделитель">,</button>
+          <button type="button" class="key op" data-key="sub" aria-label="Вычесть">−</button>
           <button type="button" class="key" data-key="0" aria-label="0">0</button>
-          <button type="button" class="key action" data-key="backspace" aria-label="Удалить последнюю цифру">⌫</button>
+          <button type="button" class="key" data-key="." aria-label="Десятичный разделитель">,</button>
+          <button type="button" class="key action" data-key="backspace" aria-label="Стереть последний символ">⌫</button>
+          <button type="button" class="key op" data-key="add" aria-label="Прибавить">+</button>
+          <button type="button" class="key clear" data-key="clear" aria-label="Сбросить">C</button>
+          <button type="button" class="key equals" data-key="equals" aria-label="Вычислить">=</button>
         </div>
 
         <div class="visually-hidden">

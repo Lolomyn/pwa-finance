@@ -351,6 +351,7 @@ const operationModal = document.getElementById('operation-modal');
 const operationModalClose = document.getElementById('operation-modal-close');
 const composeCard = operationModal.querySelector('.compose-card');
 const composeAmountDisplay = document.getElementById('compose-amount-display');
+const composeCalcRationale = document.getElementById('compose-calc-rationale');
 const composeCategoryDisplay = document.getElementById('compose-category-display');
 const composeCategoryPills = document.getElementById('compose-category-pills');
 const composeKeypad = document.getElementById('compose-keypad');
@@ -424,7 +425,7 @@ let swipeGesture = null;
 let swipeClickGuard = null;
 let swipeClickGuardTimer = null;
 let editingExpenseId = null;
-let composeAmountRaw = '';
+let composeAmountValue = '';
 let composeReturnFocus = null;
 let isSavingOperation = false;
 let detailExpenseId = null;
@@ -6356,32 +6357,372 @@ function formatComposeAmount(rawValue) {
     : `${formattedInteger},${fractionPart}`;
 }
 
+/* -----------------------------------------------------------------------
+   Калькулятор суммы операции: выражение с приоритетом × и ÷
+   ----------------------------------------------------------------------- */
+
+const CALC_OP_BY_KEY = {
+  add: '+',
+  sub: '-',
+  mul: '*',
+  div: '/'
+};
+
+let calcTokens = [];            // последовательность токенов: {type:'num'|'op'}
+let calcTyping = false;         // набирается цифра в последний num-токен
+let calcEqualsSuffix = false;   // результат зафиксирован кнопкой «=»
+let calcEqualsText = '';        // строка выражения, целиком вошедшего в «=»
+
+function resetComposeCalculator() {
+  calcTokens = [];
+  calcTyping = false;
+  calcEqualsSuffix = false;
+  calcEqualsText = '';
+}
+
+function loadComposeCalculatorValue(rawValue) {
+  resetComposeCalculator();
+
+  const normalized = String(rawValue || '')
+    .trim()
+    .replace(',', '.')
+    .replace(/[^\d.\-]/g, '');
+  const value = parseFloat(normalized);
+
+  if (!Number.isFinite(value)) {
+    return;
+  }
+
+  const [integerPart, fractionPart] = String(calcRoundMoney(value)).split('.');
+  const safeInteger = (integerPart.replace(/^0+/, '') || '0').slice(0, 9);
+  const safeFraction = (fractionPart || '').replace(/0+$/, '').slice(0, 2);
+
+  calcTokens = [{
+    type: 'num',
+    text: safeFraction ? `${safeInteger}.${safeFraction}` : safeInteger
+  }];
+}
+
+function calcRoundMoney(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function calcOperatorSymbol(op) {
+  if (op === '-') {
+    return '−';
+  }
+
+  if (op === '*') {
+    return '×';
+  }
+
+  if (op === '/') {
+    return '÷';
+  }
+
+  return op;
+}
+
+function calcExpressionText(tokens) {
+  return tokens
+    .map((token) => token.type === 'num'
+      ? formatComposeAmount(token.text)
+      : calcOperatorSymbol(token.op))
+    .join(' ');
+}
+
+function calcEvaluate(tokens) {
+  if (tokens.length === 0) {
+    return { value: null };
+  }
+
+  const sequence = tokens
+    .map((token) => token.type === 'num' ? parseFloat(token.text) : token.op);
+  const pending = [Number(sequence[0]) || 0];
+
+  // Первый проход: × и ÷ (лево-направо)
+  for (let i = 1; i < sequence.length; i += 2) {
+    const op = sequence[i];
+    const right = sequence[i + 1];
+
+    if (typeof right !== 'number') {
+      return { value: null };
+    }
+
+    if (op === '*') {
+      pending[pending.length - 1] = pending[pending.length - 1] * right;
+    } else if (op === '/') {
+      if (right === 0) {
+        return { divideByZero: true };
+      }
+
+      pending[pending.length - 1] = pending[pending.length - 1] / right;
+    } else {
+      pending.push(op, right);
+    }
+  }
+
+  // Второй проход: + и − (лево-направо)
+  let result = pending[0] || 0;
+
+  for (let i = 1; i < pending.length; i += 2) {
+    result = pending[i] === '+' ? result + pending[i + 1] : result - pending[i + 1];
+  }
+
+  return { value: calcRoundMoney(result) };
+}
+
+function calcSnapshot() {
+  if (calcTokens.length === 0) {
+    return {
+      state: 'empty',
+      amount: null,
+      display: '0',
+      rationale: '',
+      savable: false
+    };
+  }
+
+  const last = calcTokens[calcTokens.length - 1];
+
+  if (calcEqualsSuffix && last.type === 'num') {
+    const amount = parseFloat(last.text) || 0;
+
+    return {
+      state: 'value',
+      amount,
+      display: formatComposeAmount(last.text),
+      rationale: `${calcEqualsText} =`,
+      savable: amount > 0
+    };
+  }
+
+  const dangling = last.type === 'op';
+  const evaluation = calcEvaluate(dangling ? calcTokens.slice(0, -1) : calcTokens);
+
+  if (evaluation.divideByZero) {
+    return {
+      state: 'error',
+      amount: null,
+      display: '0',
+      rationale: 'Нельзя ÷ 0',
+      savable: false
+    };
+  }
+
+  if (dangling) {
+    return {
+      state: 'dangling',
+      amount: null,
+      display: formatComposeAmount(String(evaluation.value)),
+      rationale: `${calcExpressionText(calcTokens)} …`,
+      savable: false
+    };
+  }
+
+  if (calcTyping) {
+    const amount = parseFloat(last.text) || 0;
+
+    return {
+      state: 'typing',
+      amount,
+      display: formatComposeAmount(last.text),
+      rationale: calcTokens.length > 1 ? calcExpressionText(calcTokens) : '',
+      // Во время набора сохранять можно только одиночное число —
+      // иначе сумма на дисплее разойдётся с выражением в строке rationale.
+      savable: calcTokens.length === 1 && amount > 0
+    };
+  }
+
+  return {
+    state: 'value',
+    amount: evaluation.value,
+    display: formatComposeAmount(String(evaluation.value)),
+    rationale: calcTokens.length > 1 ? calcExpressionText(calcTokens) : '',
+    savable: calcTokens.length === 1 && evaluation.value > 0
+  };
+}
+
+function calcAddDigit(digit) {
+  if (calcEqualsSuffix) {
+    resetComposeCalculator();
+  }
+
+  const last = calcTokens[calcTokens.length - 1];
+
+  if (!last || last.type === 'op') {
+    calcTokens.push({ type: 'num', text: digit });
+    calcTyping = true;
+    return true;
+  }
+
+  const [integerPart, fractionPart] = last.text.split('.');
+
+  if (fractionPart !== undefined) {
+    if (fractionPart.length >= 2) {
+      return false;
+    }
+  } else if (integerPart.replace(/^0+/, '').length >= 9) {
+    return false;
+  }
+
+  if (last.text === '0') {
+    last.text = digit;
+  } else {
+    last.text += digit;
+  }
+
+  calcTyping = true;
+  return true;
+}
+
+function calcAddSeparator() {
+  if (calcEqualsSuffix) {
+    resetComposeCalculator();
+  }
+
+  const last = calcTokens[calcTokens.length - 1];
+
+  if (last && last.type === 'num') {
+    if (last.text.includes('.')) {
+      return false;
+    }
+
+    last.text = `${last.text}.`;
+    calcTyping = true;
+    return true;
+  }
+
+  calcTokens.push({ type: 'num', text: '0.' });
+  calcTyping = true;
+  return true;
+}
+
+function calcAddOperator(op) {
+  if (calcEqualsSuffix) {
+    calcEqualsSuffix = false; // продолжаем вычисление от результата
+  }
+
+  const last = calcTokens[calcTokens.length - 1];
+
+  if (!last) {
+    return false; // выражение не начинается с оператора
+  }
+
+  if (last.type === 'op') {
+    last.op = op; // замена оператора до ввода числа
+    return true;
+  }
+
+  calcTokens.push({ type: 'op', op });
+  calcTyping = false;
+  return true;
+}
+
+function calcEquals() {
+  if (calcEqualsSuffix || calcTokens.length === 0) {
+    return false;
+  }
+
+  const last = calcTokens[calcTokens.length - 1];
+  const evalTokens = last.type === 'op' ? calcTokens.slice(0, -1) : calcTokens;
+
+  if (evalTokens.length === 0) {
+    return false;
+  }
+
+  const evaluation = calcEvaluate(evalTokens);
+
+  if (evaluation.divideByZero) {
+    return true; // выражение не сворачивается — ошибка покажет строка rationale
+  }
+
+  if (evalTokens.some((token) => token.type === 'op')) {
+    calcTokens = [{
+      type: 'num',
+      text: String(evaluation.value)
+    }];
+  }
+
+  calcEqualsSuffix = true;
+  calcTyping = false;
+  calcEqualsText = calcExpressionText(evalTokens);
+  return true;
+}
+
+function calcBackspace() {
+  calcEqualsSuffix = false;
+
+  const last = calcTokens[calcTokens.length - 1];
+
+  if (!last) {
+    return false;
+  }
+
+  if (last.type === 'op') {
+    calcTokens.pop();
+    calcTyping = calcTokens.length > 0
+      && calcTokens[calcTokens.length - 1].type === 'num';
+    return true;
+  }
+
+  last.text = last.text.slice(0, -1);
+
+  if (last.text === '') {
+    calcTokens.pop();
+    calcTyping = calcTokens.length > 0
+      && calcTokens[calcTokens.length - 1].type === 'num';
+  } else {
+    calcTyping = true;
+  }
+
+  return true;
+}
+
+function calcClear() {
+  if (calcTokens.length === 0 && !calcEqualsSuffix) {
+    return false;
+  }
+
+  resetComposeCalculator();
+  return true;
+}
+
 function syncComposeAmountDisplay() {
   if (!composeAmountDisplay || !amountInput) {
     return;
   }
 
-  const displayText = formatComposeAmount(composeAmountRaw);
+  const snapshot = calcSnapshot();
   const currency = document.createElement('span');
   currency.className = 'cur';
   currency.textContent = '₽';
 
   composeAmountDisplay.replaceChildren(
-    document.createTextNode(displayText),
+    document.createTextNode(snapshot.display),
     document.createTextNode(' '),
     currency
   );
 
-  const normalizedValue = composeAmountRaw.endsWith('.')
-    ? composeAmountRaw.slice(0, -1)
-    : composeAmountRaw;
-  amountInput.value = normalizedValue;
+  composeAmountDisplay.classList.toggle(
+    'is-empty',
+    snapshot.state === 'empty' || snapshot.state === 'error' || snapshot.amount === 0
+  );
 
-  const parsedAmount = Number(composeAmountRaw);
-  const hasAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
+  if (composeCalcRationale) {
+    composeCalcRationale.textContent = snapshot.rationale;
+    composeCalcRationale.classList.toggle('is-error', snapshot.state === 'error');
+  }
 
-  composeAmountDisplay.classList.toggle('is-empty', !composeAmountRaw || parsedAmount === 0);
-  submitButton.disabled = isSavingOperation || !hasAmount;
+  composeAmountValue = snapshot.amount !== null && snapshot.amount !== undefined && snapshot.savable
+    ? String(snapshot.amount)
+    : '';
+  amountInput.value = composeAmountValue;
+
+  submitButton.disabled = isSavingOperation
+    || !snapshot.savable
+    || composeAmountValue === ''
+    || Number(composeAmountValue) <= 0;
 }
 
 function syncComposeCategoryDisplay() {
@@ -6512,36 +6853,28 @@ function pressComposeKey(key) {
     return;
   }
 
+  let changed = false;
+
   if (key === 'backspace') {
-    composeAmountRaw = composeAmountRaw.slice(0, -1);
+    changed = calcBackspace();
   } else if (key === '.') {
-    if (composeAmountRaw.includes('.')) {
-      return;
-    }
-
-    composeAmountRaw = composeAmountRaw ? `${composeAmountRaw}.` : '0.';
+    changed = calcAddSeparator();
   } else if (/^\d$/.test(key)) {
-    const [integerPart, fractionPart] = composeAmountRaw.split('.');
-
-    if (fractionPart !== undefined) {
-      if (fractionPart.length >= 2) {
-        return;
-      }
-    } else if (integerPart.replace(/^0+/, '').length >= 9) {
-      return;
-    }
-
-    if (composeAmountRaw === '0') {
-      composeAmountRaw = key;
-    } else {
-      composeAmountRaw += key;
-    }
+    changed = calcAddDigit(key);
+  } else if (Object.prototype.hasOwnProperty.call(CALC_OP_BY_KEY, key)) {
+    changed = calcAddOperator(CALC_OP_BY_KEY[key]);
+  } else if (key === 'equals') {
+    changed = calcEquals();
+  } else if (key === 'clear') {
+    changed = calcClear();
   } else {
     return;
   }
 
-  setComposeError('');
-  syncComposeFormUi();
+  if (changed) {
+    setComposeError('');
+    syncComposeFormUi();
+  }
 }
 
 function openTransactionDetail(expense, returnFocus = document.activeElement) {
@@ -6655,7 +6988,7 @@ function initComposeUi() {
   });
 
   amountInput.addEventListener('input', () => {
-    composeAmountRaw = amountInput.value;
+    loadComposeCalculatorValue(amountInput.value);
     syncComposeAmountDisplay();
   });
 
@@ -6748,6 +7081,32 @@ function initComposeUi() {
     if (/^\d$/.test(event.key) || event.key === '.' || event.key === ',' || event.key === 'Backspace') {
       event.preventDefault();
       pressComposeKey(event.key === ',' ? '.' : event.key);
+      return;
+    }
+
+    if (event.key === '+' || event.key === '-' || event.key === '*' || event.key === '/') {
+      const operatorKey = event.key === '+'
+        ? 'add'
+        : event.key === '-'
+          ? 'sub'
+          : event.key === '*'
+            ? 'mul'
+            : 'div';
+
+      event.preventDefault();
+      pressComposeKey(operatorKey);
+      return;
+    }
+
+    if (event.key === '=' || event.key === 'Enter') {
+      event.preventDefault();
+      pressComposeKey('equals');
+      return;
+    }
+
+    if (event.key === 'Delete') {
+      event.preventDefault();
+      pressComposeKey('clear');
     }
   });
 }
@@ -6836,7 +7195,7 @@ async function setTransactionType(type) {
 async function resetFormToAdd({ focus = false } = {}) {
   editingExpenseId = null;
   currentType = 'expense';
-  composeAmountRaw = '';
+  resetComposeCalculator();
   form.reset();
   dateInput.value = getTodayISO();
   updateTypeControls();
@@ -6859,8 +7218,7 @@ async function startEditingExpense(expense) {
   setComposeError('');
   editingExpenseId = id;
   currentType = getTransactionType(expense);
-  composeAmountRaw = String(expense.amount);
-  amountInput.value = String(expense.amount);
+  loadComposeCalculatorValue(String(expense.amount));
   noteInput.value = typeof expense.note === 'string' ? expense.note : '';
   dateInput.value = expense.date;
   updateTypeControls();
@@ -9538,7 +9896,7 @@ async function handleSubmit(event) {
   clearError();
   setComposeError('');
 
-  const rawAmount = (composeAmountRaw || amountInput.value).trim().replace(',', '.');
+  const rawAmount = composeAmountValue || '0';
   const parsedAmount = Number(rawAmount);
   const amount = Math.round(parsedAmount * 100) / 100;
 
