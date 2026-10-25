@@ -429,6 +429,7 @@ let swipeGesture = null;
 let swipeClickGuard = null;
 let swipeClickGuardTimer = null;
 let editingExpenseId = null;
+let historyDate = new Date();
 let composeAmountValue = '';
 let composeReturnFocus = null;
 let isSavingOperation = false;
@@ -4456,8 +4457,25 @@ function initExpenseListControls() {
 }
 
 function renderHistory(items = expenses) {
-  renderExpenseList(items);
+  const monthLabel = document.getElementById('history-month-label');
+
+  if (monthLabel) {
+    const y = historyDate.getFullYear();
+    const m = historyDate.getMonth();
+    const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    monthLabel.textContent = `${monthNames[m]} ${y}`;
+  }
+
+  const monthPrefix = `${historyDate.getFullYear()}-${String(historyDate.getMonth() + 1).padStart(2, '0')}`;
+  const monthItems = items.filter((expense) => typeof expense.date === 'string' && expense.date.startsWith(monthPrefix));
+
+  renderExpenseList(monthItems);
   historyDirty = false;
+}
+
+function changeMonth(delta) {
+  historyDate.setMonth(historyDate.getMonth() + delta);
+  renderHistory(expenses);
 }
 
 function updateHeaderDate() {
