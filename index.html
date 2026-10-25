@@ -810,7 +810,7 @@
           <span class="compose-head-spacer" aria-hidden="true"></span>
         </div>
 
-        <div id="type-tabs" class="seg" role="tablist" aria-label="Тип операции">
+        <div id="type-tabs" class="seg calc-type" role="tablist" aria-label="Тип операции">
           <button
             type="button"
             class="seg-button type-button is-active"
@@ -833,7 +833,7 @@
           <div id="compose-category-display" class="compose-cat">Выберите категорию</div>
         </div>
 
-        <div id="compose-category-pills" class="cat-scroll" role="group" aria-label="Категория"></div>
+        <div id="compose-category-pills" class="cat-scroll calc-cats" role="group" aria-label="Категория"></div>
 
         <div id="compose-keypad" class="keypad" aria-label="Клавиатура калькулятора">
           <button type="button" class="key" data-key="7" aria-label="7">7</button>
@@ -848,13 +848,12 @@
           <button type="button" class="key" data-key="2" aria-label="2">2</button>
           <button type="button" class="key" data-key="3" aria-label="3">3</button>
           <button type="button" class="key op" data-key="sub" aria-label="Вычесть">−</button>
-          <button type="button" class="key" data-key="0" aria-label="0">0</button>
           <button type="button" class="key" data-key="." aria-label="Десятичный разделитель">,</button>
+          <button type="button" class="key" data-key="0" aria-label="0">0</button>
           <button type="button" class="key action" data-key="backspace" aria-label="Стереть последний символ">⌫</button>
           <button type="button" class="key op" data-key="add" aria-label="Прибавить">+</button>
-          <button type="button" class="key clear" data-key="clear" aria-label="Сбросить">C</button>
-          <button type="button" class="key equals" data-key="equals" aria-label="Вычислить">=</button>
         </div>
+        <button type="submit" class="key submit" id="compose-submit" aria-label="Сохранить операцию">Сохранить</button>
 
         <div class="visually-hidden">
           <label for="amount">Сумма</label>
@@ -893,11 +892,6 @@
         <p id="compose-error" class="form-error" role="alert" hidden></p>
 
         <div class="compose-actions">
-          <button class="btn-submit" type="submit">
-            <svg class="icon" aria-hidden="true" focusable="false"><use id="submit-button-icon" href="#i-check"></use></svg>
-            <span id="submit-button-label">Сохранить</span>
-          </button>
-
           <button id="cancel-edit" class="compose-cancel" type="button" hidden>Отменить редактирование</button>
         </div>
       </form>

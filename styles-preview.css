@@ -3988,9 +3988,113 @@ button.set:active {
   min-height: 18px;
 }
 
-.stats-period-lbl.clickable {
-  color: var(--accent);
+.calc-type {
+  display: flex;
+  background: #F5F1EA;
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.calc-type .seg-button,
+.calc-type button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
   cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.calc-type .seg-button.is-active,
+.calc-type button.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.calc-cats {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.calc-cats::-webkit-scrollbar {
+  display: none;
+}
+
+.calc-cats .cat-pill,
+.calc-cats .calc-cat {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 99px;
+  background: #F5F1EA;
+  border: 2px solid transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.calc-cats .cat-pill.is-active,
+.calc-cats .calc-cat.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.calc-display {
+  text-align: center;
+  padding: 10px 0 16px;
+  min-height: 90px;
+}
+
+.calc-amount {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  word-break: break-all;
+}
+
+.calc-amount .cur {
+  font-size: 20px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.calc-amount.is-empty {
+  color: #D1D5DB;
+}
+
+.calc-result {
+  font-size: 15px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.calc-result.is-error {
+  color: var(--danger);
 }
 
 .quick-template-item-amount {

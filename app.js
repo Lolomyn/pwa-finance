@@ -6591,71 +6591,40 @@ function calcEvaluate(tokens) {
 function calcSnapshot() {
   if (calcTokens.length === 0) {
     return {
-      state: 'empty',
-      amount: null,
-      display: '0',
-      rationale: '',
-      savable: false
+      expression: '0',
+      result: null,
+      resultText: '',
+      error: false,
+      amount: null
     };
   }
 
   const last = calcTokens[calcTokens.length - 1];
-
-  if (calcEqualsSuffix && last.type === 'num') {
-    const amount = parseFloat(last.text) || 0;
-
-    return {
-      state: 'value',
-      amount,
-      display: formatComposeAmount(last.text),
-      rationale: `${calcEqualsText} =`,
-      savable: amount > 0
-    };
-  }
-
   const dangling = last.type === 'op';
   const evaluation = calcEvaluate(dangling ? calcTokens.slice(0, -1) : calcTokens);
 
   if (evaluation.divideByZero) {
     return {
-      state: 'error',
-      amount: null,
-      display: '0',
-      rationale: 'Нельзя ÷ 0',
-      savable: false
+      expression: calcExpressionText(calcTokens),
+      result: null,
+      resultText: 'Нельзя ÷ 0',
+      error: true,
+      amount: null
     };
   }
 
-  if (dangling) {
-    return {
-      state: 'dangling',
-      amount: null,
-      display: formatComposeAmount(String(evaluation.value)),
-      rationale: `${calcExpressionText(calcTokens)} …`,
-      savable: false
-    };
-  }
-
-  if (calcTyping) {
-    const amount = parseFloat(last.text) || 0;
-
-    return {
-      state: 'typing',
-      amount,
-      display: formatComposeAmount(last.text),
-      rationale: calcTokens.length > 1 ? calcExpressionText(calcTokens) : '',
-      // Во время набора сохранять можно только одиночное число —
-      // иначе сумма на дисплее разойдётся с выражением в строке rationale.
-      savable: calcTokens.length === 1 && amount > 0
-    };
-  }
+  const value = evaluation.value;
+  const hasOperators = calcTokens.some((token) => token.type === 'op');
+  const resultText = hasOperators && value !== null
+    ? `= ${formatComposeAmount(String(value))} ₽`
+    : '';
 
   return {
-    state: 'value',
-    amount: evaluation.value,
-    display: formatComposeAmount(String(evaluation.value)),
-    rationale: calcTokens.length > 1 ? calcExpressionText(calcTokens) : '',
-    savable: calcTokens.length === 1 && evaluation.value > 0
+    expression: calcExpressionText(calcTokens),
+    result: value,
+    resultText,
+    error: false,
+    amount: value
   };
 }
 
@@ -6814,31 +6783,29 @@ function syncComposeAmountDisplay() {
   currency.className = 'cur';
   currency.textContent = '₽';
 
+  const displayText = snapshot.expression === '0' && calcTokens.length === 0 ? '0' : snapshot.expression;
+
   composeAmountDisplay.replaceChildren(
-    document.createTextNode(snapshot.display),
+    document.createTextNode(displayText),
     document.createTextNode(' '),
     currency
   );
 
-  composeAmountDisplay.classList.toggle(
-    'is-empty',
-    snapshot.state === 'empty' || snapshot.state === 'error' || snapshot.amount === 0
-  );
+  composeAmountDisplay.classList.toggle('is-empty', calcTokens.length === 0);
 
   if (composeCalcRationale) {
-    composeCalcRationale.textContent = snapshot.rationale;
-    composeCalcRationale.classList.toggle('is-error', snapshot.state === 'error');
+    composeCalcRationale.textContent = snapshot.resultText;
+    composeCalcRationale.classList.toggle('is-error', snapshot.error);
   }
 
-  composeAmountValue = snapshot.amount !== null && snapshot.amount !== undefined && snapshot.savable
-    ? String(snapshot.amount)
+  const amount = snapshot.amount;
+  composeAmountValue = (amount !== null && Number.isFinite(amount) && amount > 0)
+    ? String(amount)
     : '';
   amountInput.value = composeAmountValue;
 
   submitButton.disabled = isSavingOperation
-    || !snapshot.savable
-    || composeAmountValue === ''
-    || Number(composeAmountValue) <= 0;
+    || !(amount !== null && Number.isFinite(amount) && amount > 0);
 }
 
 function syncComposeCategoryDisplay() {
@@ -7215,14 +7182,18 @@ function initComposeUi() {
     }
 
     if (event.key === '=' || event.key === 'Enter') {
-      event.preventDefault();
-      pressComposeKey('equals');
+      // Enter отправляет форму нативно (сохранение); '=' оставлен для совместимости.
+      if (event.key === '=') {
+        event.preventDefault();
+        pressComposeKey('equals');
+        return;
+      }
       return;
     }
 
     if (event.key === 'Delete') {
       event.preventDefault();
-      pressComposeKey('clear');
+      pressComposeKey('backspace');
     }
   });
 }
@@ -7231,8 +7202,13 @@ function updateFormModeUi() {
   const isEditing = editingExpenseId !== null;
 
   formTitle.textContent = isEditing ? 'Редактирование' : 'Новая операция';
-  submitButtonLabel.textContent = 'Сохранить';
-  submitButtonIcon.setAttribute('href', '#i-check');
+  if (submitButtonLabel) {
+    submitButtonLabel.textContent = 'Сохранить';
+  }
+
+  if (submitButtonIcon) {
+    submitButtonIcon.setAttribute('href', '#i-check');
+  }
   cancelEditButton.hidden = !isEditing;
   formPanel.classList.toggle('is-editing', isEditing);
   syncComposeFormUi();
