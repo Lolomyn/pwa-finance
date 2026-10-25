@@ -1,10 +1,11 @@
 'use strict';
 
 const DB_NAME = 'expense-tracker-db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_NAME = 'expenses';
 const SETTINGS_STORE = 'settings';
 const CATEGORIES_STORE = 'categories';
+const NOTES_STORE = 'notes';
 const INITIAL_BALANCE_KEY = 'initialBalance';
 const QUICK_TEMPLATES_KEY = 'quickTemplates';
 const LAST_NUDGE_HIDDEN_UNTIL_KEY = 'lastNudgeHiddenUntil';
@@ -22,6 +23,7 @@ const TAB_TITLES = {
   home: 'Мои расходы',
   history: 'История',
   stats: 'Анализ',
+  notes: 'Заметки',
   settings: 'Настройки'
 };
 
@@ -118,7 +120,7 @@ const MONTHS_FULL = [
 
 const EXPENSE_SORTS = ['date-desc', 'date-asc', 'amount-desc', 'amount-asc'];
 const CUSTOM_CHART_DAY_LIMIT = 62;
-const TAB_NAMES = ['hub', 'home', 'history', 'stats', 'settings'];
+const TAB_NAMES = ['hub', 'home', 'history', 'stats', 'notes', 'settings'];
 const TAB_SWIPE_COMMIT_DISTANCE = 64;
 const TAB_SWIPE_COMMIT_VELOCITY = 0.42;
 const TAB_SWIPE_MAX_DRAG = 96;
@@ -531,6 +533,13 @@ function openDB() {
             cursor.continue();
           };
         }
+      }
+
+      if (!database.objectStoreNames.contains(NOTES_STORE)) {
+        database.createObjectStore(NOTES_STORE, {
+          keyPath: 'id',
+          autoIncrement: true
+        });
       }
     };
 
@@ -4480,6 +4489,8 @@ function renderHubScreen() {
 
   hubWidgetMonth.textContent = monthLabel;
   hubWidgetCount.textContent = `${workingDays} ${workingDaysNoun}`;
+
+  window.Notes?.renderHub?.();
 }
 
 function initHub() {
@@ -4491,6 +4502,53 @@ function initHub() {
     hapticFeedback(8);
     showTab('home');
   });
+
+  const hubNotesButton = document.getElementById('hub-notes');
+  const hubNotesWidget = document.getElementById('hub-notes-widget');
+
+  if (hubNotesButton) {
+    hubNotesButton.addEventListener('click', () => {
+      hapticFeedback(8);
+      showTab('notes');
+    });
+  }
+
+  if (hubNotesWidget) {
+    hubNotesWidget.addEventListener('click', () => {
+      hapticFeedback(8);
+      showTab('notes');
+    });
+  }
+
+  const hubQuickForm = document.getElementById('hub-quick-note');
+  const hubQuickInput = document.getElementById('hub-quick-input');
+
+  if (hubQuickForm) {
+    hubQuickForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const text = hubQuickInput.value.trim();
+
+      if (!text) {
+        hubQuickInput.focus();
+        return;
+      }
+
+      if (window.Notes && typeof window.Notes.createQuickNote === 'function') {
+        const created = window.Notes.createQuickNote(text);
+
+        if (created) {
+          hubQuickInput.value = '';
+          hapticFeedback(8);
+          showInfoToast('Заметка сохранена');
+          return;
+        }
+
+        showInfoToast('Не удалось сохранить заметку');
+      } else {
+        showInfoToast('Приложение заметок ещё загружается');
+      }
+    });
+  }
 
   document.getElementById('hub-close')?.addEventListener('click', () => showTab('home'));
   renderHubScreen();
@@ -4539,11 +4597,12 @@ function onTabShow(tabName) {
     renderHome(expenses);
   } else if (tabName === 'history' && historyDirty) {
     renderHistory(expenses);
-  } else if (
-    tabName === 'stats' &&
+  } else if (tabName === 'stats' &&
     (statsDirty || statsRenderedDay !== getTodayISO())
   ) {
     refreshStats();
+  } else if (tabName === 'notes') {
+    window.Notes?.render();
   } else if (tabName === 'settings') {
     renderBalanceLine();
     updateLastBackupStatusLine();
@@ -9670,6 +9729,13 @@ async function init() {
     await refreshCategoryUi();
     await refreshQuickTemplatesUi();
     appDataLoaded = true;
+
+    try {
+      await window.Notes?.init?.();
+    } catch (notesError) {
+      console.warn('Не удалось инициализировать заметки:', notesError);
+    }
+
     await render(expenses);
     updateBackupBanner();
   } catch (error) {
