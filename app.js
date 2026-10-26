@@ -9,6 +9,7 @@ const NOTES_STORE = 'notes';
 const INITIAL_BALANCE_KEY = 'initialBalance';
 const QUICK_TEMPLATES_KEY = 'quickTemplates';
 const LAST_NUDGE_HIDDEN_UNTIL_KEY = 'lastNudgeHiddenUntil';
+const FINANCE_CATEGORIES_KEY = 'financeCategoriesInitialized';
 const QUICK_TEMPLATE_LABEL_MAX = 30;
 
 const SYSTEM_CATEGORY_NAME = 'Другое';
@@ -4672,7 +4673,7 @@ function initHub() {
 
   hubFinanceButton.addEventListener('click', () => {
     hapticFeedback(8);
-    showTab('home');
+    window.location.href = './finance.html';
   });
 
   const financeExitButton = document.getElementById('finance-exit');
@@ -10252,7 +10253,12 @@ async function init() {
 
   try {
     db = await openDB();
-    await seedDefaultsIfEmpty();
+    const financeState = await getSettings([FINANCE_CATEGORIES_KEY]);
+
+    if (financeState[FINANCE_CATEGORIES_KEY] !== true) {
+      await seedDefaultsIfEmpty();
+    }
+
     await loadStoredPreferences();
 
     if (isPinConfigured()) {

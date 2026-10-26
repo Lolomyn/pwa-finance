@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#FAF6EF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Финансы">
+<meta name="description" content="Личный офлайн-трекер доходов и расходов.">
+<title>Финансы</title>
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="./icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="finance.css">
+<script src="finance.js" defer></script>
+</head>
+<body>
+
+<div class="app-screen">
+
+  <!-- ЭКРАН 1: ГЛАВНАЯ -->
+  <div class="content-area" id="view-home" style="display:block;">
+    <header class="header">
+      <button class="back-btn" type="button" onclick="goHub()" aria-label="Вернуться в хаб">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <div>
+        <div class="header-title">Финансы</div>
+        <div class="header-sub" id="homeMonthLabel">октябрь 2026</div>
+      </div>
+    </header>
+
+    <div class="balance-card">
+      <div class="balance-head">
+        <div class="balance-lbl">Текущий баланс</div>
+        <button class="balance-edit" type="button" onclick="openBalanceModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          Задать
+        </button>
+      </div>
+      <div class="balance-val" id="balanceVal">0<span class="cur">₽</span></div>
+      <div class="balance-split">
+        <div class="split-item">
+          <div class="lbl">Доход</div>
+          <div class="val" id="incomeVal">+0 ₽</div>
+        </div>
+        <div class="split-item">
+          <div class="lbl">Расход</div>
+          <div class="val" id="expenseVal">−0 ₽</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="list-title">Последние</div>
+    <div id="homeTxList"></div>
+  </div>
+
+  <!-- ЭКРАН 2: ИСТОРИЯ -->
+  <div class="content-area" id="view-history" style="display:none;">
+    <header class="header">
+      <button class="back-btn" type="button" onclick="switchView('home')" aria-label="На главную">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <div>
+        <div class="header-title">История</div>
+        <div class="header-sub">Все операции</div>
+      </div>
+    </header>
+
+    <div class="month-nav">
+      <button class="month-btn" type="button" onclick="changeMonth(-1)" aria-label="Предыдущий месяц">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <div class="month-lbl" id="historyMonthLabel">Октябрь 2026</div>
+      <button class="month-btn" type="button" onclick="changeMonth(1)" aria-label="Следующий месяц">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div id="historyTxList"></div>
+  </div>
+
+  <!-- ЭКРАН 3: СТАТИСТИКА -->
+  <div class="content-area" id="view-stats" style="display:none;">
+    <header class="header">
+      <button class="back-btn" type="button" onclick="switchView('home')" aria-label="На главную">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <div>
+        <div class="header-title">Статистика</div>
+        <div class="header-sub">Аналитика расходов</div>
+      </div>
+    </header>
+
+    <div class="stats-tabs">
+      <button class="stats-tab active" type="button" data-range="week" onclick="setStatsRange('week', this)">Неделя</button>
+      <button class="stats-tab" type="button" data-range="month" onclick="setStatsRange('month', this)">Месяц</button>
+      <button class="stats-tab" type="button" data-range="year" onclick="setStatsRange('year', this)">Год</button>
+      <button class="stats-tab" type="button" data-range="custom" onclick="setStatsRange('custom', this)">Свой</button>
+    </div>
+
+    <!-- Отображение выбранного периода -->
+    <div class="stats-period-lbl" id="statsPeriodLbl"></div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-lbl">Расходы</div>
+        <div class="metric-val red" id="statExpense">0 ₽</div>
+        <div class="metric-sub" id="statExpenseSub">за период</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-lbl">Доходы</div>
+        <div class="metric-val green" id="statIncome">0 ₽</div>
+        <div class="metric-sub" id="statIncomeSub">за период</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-lbl">В среднем в день</div>
+        <div class="metric-val" id="statAvg">0 ₽</div>
+        <div class="metric-sub">трат</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-lbl">Макс. трата</div>
+        <div class="metric-val" id="statMax">0 ₽</div>
+        <div class="metric-sub" id="statMaxCat">категория</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title" id="barChartTitle">Динамика за неделю</div>
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Расходы по категориям</div>
+      <div class="pie-wrap">
+        <div class="pie-chart" id="pieChart">
+          <div class="pie-center">
+            <div class="pie-center-lbl">Всего</div>
+            <div class="pie-center-val" id="pieTotal">0 ₽</div>
+          </div>
+        </div>
+      </div>
+      <div class="pie-legend" id="pieLegend"></div>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 4: КАТЕГОРИИ -->
+  <div class="content-area" id="view-categories" style="display:none;">
+    <header class="header">
+      <button class="back-btn" type="button" onclick="switchView('home')" aria-label="На главную">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <div>
+        <div class="header-title">Категории</div>
+        <div class="header-sub">Настройка</div>
+      </div>
+    </header>
+
+    <div class="cat-section">
+      <div class="cat-section-title">Расходы</div>
+      <div class="cat-grid" id="catGridExpense"></div>
+      <button class="add-cat-btn" type="button" onclick="openCatModal('expense')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Добавить категорию
+      </button>
+    </div>
+
+    <div class="cat-section">
+      <div class="cat-section-title">Доходы</div>
+      <div class="cat-grid" id="catGridIncome"></div>
+      <button class="add-cat-btn" type="button" onclick="openCatModal('income')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Добавить категорию
+      </button>
+    </div>
+  </div>
+
+  <!-- НАВИГАЦИЯ -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" type="button" id="nav-home" onclick="switchView('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Главная
+    </button>
+    <button class="nav-btn" type="button" id="nav-history" onclick="switchView('history')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      История
+    </button>
+    <button class="nav-btn" type="button" id="nav-stats" onclick="switchView('stats')">
+      <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-6"/></svg>
+      Статистика
+    </button>
+    <button class="nav-btn" type="button" id="nav-categories" onclick="switchView('categories')">
+      <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+      Категории
+    </button>
+  </nav>
+
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab" type="button" onclick="openCalc()" aria-label="Добавить операцию">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div class="backdrop" id="backdrop" onclick="closeAllModals()"></div>
+
+<!-- КАЛЬКУЛЯТОР -->
+<div class="calc-sheet" id="calcSheet">
+  <div class="calc-handle"></div>
+  <div class="calc-type">
+    <button class="active" type="button" id="btnExpense" onclick="switchCalcType('expense')">Расход</button>
+    <button type="button" id="btnIncome" onclick="switchCalcType('income')">Доход</button>
+  </div>
+
+  <div class="calc-display">
+    <div class="calc-amount empty" id="calcAmount">0<span class="cur">₽</span></div>
+    <div class="calc-result" id="calcResult"></div>
+  </div>
+
+  <div class="calc-cats" id="calcCats"></div>
+
+  <div class="keypad">
+    <button class="key" type="button" onclick="press('7')">7</button>
+    <button class="key" type="button" onclick="press('8')">8</button>
+    <button class="key" type="button" onclick="press('9')">9</button>
+    <button class="key operator" type="button" onclick="press('÷')">÷</button>
+    <button class="key" type="button" onclick="press('4')">4</button>
+    <button class="key" type="button" onclick="press('5')">5</button>
+    <button class="key" type="button" onclick="press('6')">6</button>
+    <button class="key operator" type="button" onclick="press('×')">×</button>
+    <button class="key" type="button" onclick="press('1')">1</button>
+    <button class="key" type="button" onclick="press('2')">2</button>
+    <button class="key" type="button" onclick="press('3')">3</button>
+    <button class="key operator" type="button" onclick="press('-')">−</button>
+    <button class="key action" type="button" onclick="press('.')">,</button>
+    <button class="key" type="button" onclick="press('0')">0</button>
+    <button class="key action" type="button" onclick="press('back')">⌫</button>
+    <button class="key operator" type="button" onclick="press('+')">+</button>
+    <button class="key submit" type="button" id="btnSubmit" onclick="submitTx()">Сохранить</button>
+  </div>
+</div>
+
+<!-- МОДАЛКА КАТЕГОРИЙ -->
+<div class="cat-modal" id="catModal" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
+  <div class="cat-modal-title" id="catModalTitle">Новая категория</div>
+  <input type="text" class="cat-input" id="newCatName" placeholder="Название" autocomplete="off">
+  <div class="emoji-scroll">
+    <div class="emoji-grid" id="emojiGrid"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-cancel" type="button" onclick="closeAllModals()">Отмена</button>
+    <button class="btn-save" type="button" onclick="saveNewCategory()">Сохранить</button>
+  </div>
+</div>
+
+<!-- МОДАЛКА БАЛАНСА -->
+<div class="balance-modal" id="balanceModal" role="dialog" aria-modal="true" aria-labelledby="balanceModalTitle">
+  <div class="cat-modal-title" id="balanceModalTitle">Задать баланс</div>
+  <input type="number" class="cat-input" id="balanceInput" placeholder="0" autocomplete="off" inputmode="decimal">
+  <div class="modal-actions">
+    <button class="btn-cancel" type="button" onclick="closeAllModals()">Отмена</button>
+    <button class="btn-save" type="button" onclick="saveBalance()">Сохранить</button>
+  </div>
+</div>
+
+<!-- МОДАЛКА РЕДАКТИРОВАНИЯ ОПЕРАЦИИ -->
+<div class="cat-modal" id="txEditModal" role="dialog" aria-modal="true" aria-labelledby="txEditTitle">
+  <div class="cat-modal-title" id="txEditTitle">Редактировать операцию</div>
+
+  <div class="calc-type" style="margin-bottom: 16px;">
+    <button type="button" id="editBtnExpense" onclick="editTxType('expense')">Расход</button>
+    <button type="button" id="editBtnIncome" onclick="editTxType('income')">Доход</button>
+  </div>
+
+  <label for="editTxAmount" style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.04em;">Сумма</label>
+  <input type="number" class="cat-input" id="editTxAmount" placeholder="0" autocomplete="off" inputmode="decimal" style="font-size: 22px; font-weight: 800;">
+
+  <label style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.04em;">Категория</label>
+  <div class="calc-cats" id="editTxCats" style="margin-bottom: 20px;"></div>
+
+  <div class="modal-actions">
+    <button class="btn-cancel" type="button" onclick="closeAllModals()">Отмена</button>
+    <button class="btn-save" type="button" onclick="saveTxEdit()">Сохранить</button>
+  </div>
+</div>
+
+<!-- МОДАЛКА КАЛЕНДАРЯ (ВЫБОР ПЕРИОДА) -->
+<div class="cat-modal" id="datePickerModal" style="max-width: 320px;" role="dialog" aria-modal="true" aria-labelledby="datePickerTitle">
+  <div class="cat-modal-title" id="datePickerTitle">Выберите период</div>
+
+  <div style="display:flex; gap:10px; margin-bottom:16px;">
+    <div style="flex:1; background:#F5F1EA; padding:10px; border-radius:12px; text-align:center;">
+      <div style="font-size:10px; color:var(--muted); font-weight:700;">С</div>
+      <div id="pickStartLbl" style="font-size:14px; font-weight:800; margin-top:2px;">—</div>
+    </div>
+    <div style="flex:1; background:#F5F1EA; padding:10px; border-radius:12px; text-align:center;">
+      <div style="font-size:10px; color:var(--muted); font-weight:700;">По</div>
+      <div id="pickEndLbl" style="font-size:14px; font-weight:800; margin-top:2px;">—</div>
+    </div>
+  </div>
+
+  <!-- Навигация по месяцам -->
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <button class="month-btn" type="button" onclick="changePickMonth(-1)" aria-label="Предыдущий месяц">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <div id="pickMonthLbl" style="font-weight:800; font-size:14px;">Октябрь 2026</div>
+    <button class="month-btn" type="button" onclick="changePickMonth(1)" aria-label="Следующий месяц">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+
+  <!-- Сетка дней -->
+  <div class="cal-header">
+    <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+  </div>
+  <div class="cal-grid-days" id="calDaysGrid"></div>
+
+  <div class="modal-actions" style="margin-top:20px;">
+    <button class="btn-cancel" type="button" onclick="closeAllModals()">Отмена</button>
+    <button class="btn-save" type="button" onclick="applyCustomRange()">Применить</button>
+  </div>
+</div>
+
+<!-- МОДАЛКА СПИСКА ОПЕРАЦИЙ ПО КАТЕГОРИИ -->
+<div class="cat-modal" id="catStatsModal" style="max-width: 360px;" role="dialog" aria-modal="true" aria-labelledby="catStatsTitle">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <div class="cat-modal-title" id="catStatsTitle" style="margin-bottom:0;">Категория</div>
+    <div style="font-size:18px; font-weight:800; color:var(--coral);" id="catStatsSum">0 ₽</div>
+  </div>
+  <div class="cat-stats-list" id="catStatsList" style="overflow-y:auto; max-height:50vh; margin-bottom:16px; padding-right:4px;">
+     <!-- Список операций -->
+  </div>
+  <button class="btn-save" type="button" onclick="closeAllModals()" style="width:100%;">Закрыть</button>
+</div>
+
+<!-- ACTION SHEET ДЛЯ КАТЕГОРИЙ -->
+<div class="action-sheet-backdrop" id="actionBackdrop" onclick="closeCatActionSheet()"></div>
+<div class="action-sheet" id="actionSheet">
+  <div class="action-sheet-title" id="actionSheetTitle">Категория</div>
+  <button class="action-btn" type="button" onclick="editCategoryFromSheet()">Редактировать</button>
+  <button class="action-btn danger" type="button" onclick="deleteCategoryFromSheet()">Удалить</button>
+  <button class="action-btn" type="button" onclick="closeCatActionSheet()" style="margin-top: 8px; background: #fff; border: 1px solid var(--line);">Отмена</button>
+</div>
+
+<!-- ACTION SHEET ДЛЯ ОПЕРАЦИЙ -->
+<div class="action-sheet-backdrop" id="txActionBackdrop" onclick="closeTxActionSheet()"></div>
+<div class="action-sheet" id="txActionSheet">
+  <div class="action-sheet-title" id="txActionTitle">Операция</div>
+  <button class="action-btn" type="button" onclick="editTxFromSheet()">Редактировать</button>
+  <button class="action-btn danger" type="button" onclick="deleteTxFromSheet()">Удалить</button>
+  <button class="action-btn" type="button" onclick="closeTxActionSheet()" style="margin-top: 8px; background: #fff; border: 1px solid var(--line);">Отмена</button>
+</div>
+
+</body>
+</html>

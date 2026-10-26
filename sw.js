@@ -1,9 +1,12 @@
 'use strict';
 
-const CACHE_NAME = 'expense-tracker-v56';
+const CACHE_NAME = 'expense-tracker-v57';
 const PRECACHE_URLS = [
   './',
   './index.html',
+  './finance.html',
+  './finance.css',
+  './finance.js',
   './styles.css',
   './styles-modern.css',
   './styles-preview.css',
