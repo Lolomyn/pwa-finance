@@ -129,7 +129,7 @@ body::before{
 }
 .tx-info{flex:1;min-width:0}
 .tx-name{font-size:15px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tx-cat{font-size:12px;color:var(--muted);font-weight:500}
+.tx-cat{font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tx-amt{font-size:15px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
 .tx-amt.income{color:var(--green)}
 .tx-empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
@@ -346,6 +346,14 @@ body::before{
 }
 .calc-cat.active { background: var(--coral-soft); border-color: var(--coral); color: var(--coral); }
 .calc-cats-empty{font-size:13px;color:var(--muted);padding:8px 0;white-space:nowrap}
+.calc-note{
+  width:100%;border:2px solid var(--line);background:#F5F1EA;
+  border-radius:14px;padding:10px 14px;margin-bottom:12px;
+  font-family:inherit;font-size:14px;font-weight:500;color:var(--ink);
+  outline:none;transition:.15s;
+}
+.calc-note::placeholder{color:var(--faint);font-weight:500}
+.calc-note:focus{border-color:var(--coral);background:#fff}
 .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .key {
   padding: 16px 0; border-radius: 16px; background: #F5F1EA; border: none;

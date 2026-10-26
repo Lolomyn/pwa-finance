@@ -429,7 +429,7 @@ function addTransactionRecord(data) {
     const store = transaction.objectStore(EXPENSES_STORE);
     const payload = {
       amount: Number(data.amount),
-      note: '',
+      note: typeof data.note === 'string' ? data.note.trim() : '',
       category: data.category,
       date: data.date,
       createdAt: new Date().toISOString(),
@@ -732,7 +732,7 @@ function renderTxList(containerId, items) {
           <div class="tx-icon" style="background:${escapeHtml(category.bg)}; color:${escapeHtml(category.fg)}">${escapeHtml(category.emoji)}</div>
           <div class="tx-info">
             <div class="tx-name">${escapeHtml(category.name)}</div>
-            <div class="tx-cat">${isIncome ? 'Доход' : 'Расход'}</div>
+            <div class="tx-cat">${isIncome ? 'Доход' : 'Расход'}${item.note ? ` · ${escapeHtml(item.note)}` : ''}</div>
           </div>
           <div class="tx-amt ${isIncome ? 'income' : ''}">
             ${isIncome ? '+' : '−'}${fmt(item.amount)} ₽
@@ -1509,6 +1509,7 @@ function openTxEdit(id) {
   state.editTxCatId = category ? category.id : (getCategoriesByType(transaction.type)[0]?.id ?? null);
 
   document.getElementById('editTxAmount').value = transaction.amount;
+  document.getElementById('editTxNote').value = transaction.note || '';
   updateEditTypeUI();
   renderEditTxCats();
   openModal('txEditModal');
@@ -1569,7 +1570,8 @@ async function saveTxEdit() {
     await updateTransactionRecord(transaction.id, {
       amount,
       type: state.editTxType,
-      category: category.name
+      category: category.name,
+      note: document.getElementById('editTxNote').value.trim()
     });
 
     await reloadTransactions();
@@ -1591,6 +1593,8 @@ function openCalc() {
   state.calcType = 'expense';
   const categories = getCategoriesByType('expense');
   state.calcCatId = categories[0]?.id ?? null;
+
+  document.getElementById('calcNote').value = '';
 
   updateCalcTypeUI();
   renderCalcCats();
@@ -1774,6 +1778,7 @@ async function submitTx() {
   const amount = evaluateExpression(state.calcExpr);
   const category = getCatById(state.calcCatId);
   const display = document.getElementById('calcAmount');
+  const note = document.getElementById('calcNote').value.trim();
 
   if (!amount || amount <= 0 || !category) {
     display.style.color = '#FF6B4A';
@@ -1786,7 +1791,8 @@ async function submitTx() {
       type: state.calcType,
       amount,
       category: category.name,
-      date: todayISO()
+      date: todayISO(),
+      note
     });
 
     state.transactions.push(normalizeTransaction(created));

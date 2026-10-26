@@ -219,6 +219,8 @@
     <div class="calc-result" id="calcResult"></div>
   </div>
 
+  <input type="text" class="calc-note" id="calcNote" placeholder="Комментарий (необязательно)" maxlength="120" autocomplete="off" enterkeyhint="done">
+
   <div class="calc-cats" id="calcCats"></div>
 
   <div class="keypad">
@@ -279,6 +281,9 @@
 
   <label style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.04em;">Категория</label>
   <div class="calc-cats" id="editTxCats" style="margin-bottom: 20px;"></div>
+
+  <label for="editTxNote" style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.04em;">Комментарий</label>
+  <input type="text" class="cat-input" id="editTxNote" placeholder="Необязательно" maxlength="120" autocomplete="off">
 
   <div class="modal-actions">
     <button class="btn-cancel" type="button" onclick="closeAllModals()">Отмена</button>
