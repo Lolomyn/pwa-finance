@@ -41,7 +41,7 @@ body::before{
 
 .content-area{
   flex:1;overflow-y:auto;overflow-x:hidden;
-  padding:24px 20px calc(124px + env(safe-area-inset-bottom, 0px));
+  padding:24px 20px calc(142px + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling:touch;
   scrollbar-width:none;
 }
@@ -294,12 +294,12 @@ body::before{
 /* НАВИГАЦИЯ */
 .bottom-nav{
   position:absolute;bottom:0;left:0;right:0;
-  height:calc(96px + env(safe-area-inset-bottom, 0px));
+  height:calc(114px + env(safe-area-inset-bottom, 0px));
   background:var(--surface);
   border-radius:30px 30px 0 0;
   box-shadow:0 -4px 20px rgba(26,24,21,.05);
   display:flex;justify-content:space-around;align-items:center;
-  padding:10px 10px calc(26px + env(safe-area-inset-bottom, 0px));z-index:10;
+  padding:10px 10px calc(44px + env(safe-area-inset-bottom, 0px));z-index:10;
 }
 .nav-btn{
   background:none;border:none;
@@ -361,7 +361,7 @@ body::before{
 
 /* FAB */
 .fab {
-  position: fixed; bottom: calc(112px + env(safe-area-inset-bottom, 0px)); right: calc(50% - 180px);
+  position: fixed; bottom: calc(130px + env(safe-area-inset-bottom, 0px)); right: calc(50% - 180px);
   width: 56px; height: 56px; border-radius: 50%; background: var(--coral);
   color: #fff; border: none; display: grid; place-items: center;
   box-shadow: 0 8px 20px rgba(255,107,74,.4); cursor: pointer; z-index: 20; transition: .2s;
