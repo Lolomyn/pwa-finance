@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'expense-tracker-v55';
+const CACHE_NAME = 'expense-tracker-v56';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -11,7 +11,11 @@ const PRECACHE_URLS = [
   './app.js',
   './notes.js',
   './manifest.json',
-  './icons/icon.svg'
+  './icons/icon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-512-maskable.png',
+  './icons/apple-touch-icon.png'
 ];
 
 async function precacheAssets() {
