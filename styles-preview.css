@@ -9,30 +9,34 @@
   --surface-soft: #fbf9f5;
   --soft: #f5f2ec;
   --soft-strong: #ede8df;
-  --text: #141416;
-  --ink: #141416;
-  --ink-2: #3d3d42;
-  --muted: #6f6a63;
+  --text: #1a1815;
+  --ink: #1a1815;
+  --ink-2: #4a4640;
+  --muted: #8e8a82;
   --muted-soft: #8b8780;
   --faint: #c7c3bb;
   --border: #edeae4;
-  --line: #edeae4;
-  --primary: #141416;
+  --line: #ede8df;
+  --primary: #1a1815;
   --primary-hover: #000000;
-  --accent: #c54122;
-  --accent-hover: #a9351b;
+  --accent: #ff6b4a;
+  --accent-hover: #f05536;
   --accent-2: #ff7a8a;
-  --accent-bright: #ff5c38;
-  --accent-ink: #a9351b;
-  --accent-soft: #ffe8e2;
-  --accent-grad: linear-gradient(135deg, #c54122 0%, #a9351b 100%);
-  --income: #146c3c;
-  --income-soft: #d6f5df;
-  --expense: #141416;
-  --danger: #a9351b;
-  --danger-hover: #8e2a14;
-  --danger-soft: #ffe8e2;
-  --green: #1b8048;
+  --accent-bright: #ff6b4a;
+  --accent-ink: #e04a24;
+  --accent-soft: rgba(255, 107, 74, 0.1);
+  --accent-grad: linear-gradient(135deg, #ff6b4a 0%, #ffa07a 100%);
+  --income: #10b981;
+  --income-soft: rgba(16, 185, 129, 0.1);
+  --expense: #1a1815;
+  --danger: #ff6b4a;
+  --danger-hover: #f05536;
+  --danger-soft: rgba(255, 107, 74, 0.1);
+  --green: #10b981;
+  --green-soft: rgba(16, 185, 129, 0.1);
+  --coral: #ff6b4a;
+  --coral-light: #ffa07a;
+  --coral-soft: rgba(255, 107, 74, 0.1);
   --shadow-card: 0 1px 2px rgba(20, 20, 22, 0.02);
   --shadow-float: 0 10px 32px rgba(20, 20, 22, 0.16);
   --radius-card: 22px;
@@ -5024,4 +5028,51 @@ button.set:active {
 
 .avatar {
   display: none !important;
+}
+
+
+/* ==========================================================================
+   Preview finance screens - final conformance layer
+   --------------------------------------------------------------------------
+   Style pass aligned to the provided Finance app preview:
+   - coral action accents (balance card, FAB, nav, keys, metrics, charts)
+   - light segmented control (Expense/Income)
+   - full-width coral submit key on the operation composer
+   - bottom-sheet drag handle on the composer
+   ========================================================================== */
+
+/* Calculator submit key: full-width coral gradient action */
+.key.submit {
+  grid-column: span 4;
+  display: block;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ff6b4a 0%, #ffa07a 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
+}
+
+.key.submit:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 6px rgba(255, 107, 74, 0.2);
+}
+
+/* Composer bottom-sheet handle */
+.compose-handle {
+  width: 40px;
+  height: 4px;
+  background: #e5e1d9;
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.compose-card:has(.compose-handle) {
+  padding-top: 0;
 }

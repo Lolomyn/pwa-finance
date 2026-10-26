@@ -522,42 +522,50 @@
         </div>
 
         <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
-          <div class="metrics-grid">
-            <div class="metric-card">
-              <div class="metric-lbl">Расходы</div>
-              <div class="metric-val red" id="stats-expense">0 ₽</div>
-              <div class="metric-sub" id="statExpenseSub">за период</div>
+          <section class="stats-hero" aria-live="polite">
+            <div class="stats-lbl">Расходы за период</div>
+            <div class="stats-num"><strong id="stats-expense">0 ₽</strong></div>
+          </section>
+
+          <div class="stats-mini-grid">
+            <div class="stat-mini">
+              <span class="metric-lbl">Доходы</span>
+              <strong id="stats-income" class="stat-mini-value is-income">0 ₽</strong>
             </div>
-            <div class="metric-card">
-              <div class="metric-lbl">Доходы</div>
-              <div class="metric-val green" id="stats-income">0 ₽</div>
-              <div class="metric-sub" id="statIncomeSub">за период</div>
+            <div class="stat-mini">
+              <span class="metric-lbl">Чистый поток</span>
+              <strong id="stats-net" class="stat-mini-value is-income">0 ₽</strong>
             </div>
-            <div class="metric-card">
-              <div class="metric-lbl">В среднем в день</div>
-              <div class="metric-val" id="stats-avg">0 ₽</div>
-              <div class="metric-sub">трат</div>
+            <div class="stat-mini">
+              <span class="metric-lbl">Средний день</span>
+              <strong id="stats-avg" class="stat-mini-value">0 ₽</strong>
             </div>
-            <div class="metric-card">
-              <div class="metric-lbl">Макс. трата</div>
-              <div class="metric-val" id="stats-max">0 ₽</div>
-              <div class="metric-sub" id="stats-max-cat">категория</div>
+            <div class="stat-mini stat-mini--forecast">
+              <div id="month-forecast" class="month-forecast" hidden></div>
             </div>
           </div>
 
           <div class="chart-card">
             <div class="chart-title" id="bar-chart-title">Динамика за неделю</div>
             <div class="bar-chart" id="bar-chart"></div>
+            <div class="chart-legend" aria-label="Легенда графика">
+              <span class="chart-legend-item">
+                <span class="chart-legend-swatch chart-legend-swatch--income" aria-hidden="true"></span>
+                Доход
+              </span>
+              <span class="chart-legend-item">
+                <span class="chart-legend-swatch chart-legend-swatch--expense" aria-hidden="true"></span>
+                Расход
+              </span>
+            </div>
           </div>
 
           <div class="chart-card">
             <div class="chart-title">Расходы по категориям</div>
-            <div class="pie-wrap">
-              <div class="pie-chart" id="pie-chart">
-                <div class="pie-center">
-                  <div class="pie-center-lbl">Всего</div>
-                  <div class="pie-center-val" id="pie-total">0 ₽</div>
-                </div>
+            <div class="pie-chart" id="pie-chart">
+              <div class="pie-center">
+                <div class="pie-center-lbl">Всего</div>
+                <div class="pie-center-val" id="pie-total">0 ₽</div>
               </div>
             </div>
             <div class="pie-legend" id="pie-legend"></div>
@@ -826,6 +834,7 @@
       tabindex="-1"
     >
       <form id="expense-form" novalidate>
+        <div class="compose-handle" aria-hidden="true"></div>
         <div class="compose-head">
           <button
             id="operation-modal-close"

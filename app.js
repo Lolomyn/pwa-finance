@@ -220,8 +220,9 @@ const statsNet = document.getElementById('stats-net');
 const statsAvg = document.getElementById('stats-avg');
 const statsChart = document.getElementById('bar-chart');
 const barChartTitle = document.getElementById('bar-chart-title');
-const statsMax = document.getElementById('stats-max');
-const statsMaxCat = document.getElementById('stats-max-cat');
+const pieChart = document.getElementById('pie-chart');
+const pieTotal = document.getElementById('pie-total');
+const pieLegend = document.getElementById('pie-legend');
 const balanceChartTitle = document.getElementById('balance-chart-title');
 const statsBalanceChart = document.getElementById('stats-balance-chart');
 const statsComparison = document.getElementById('stats-comparison');
@@ -3480,15 +3481,6 @@ function renderBarChart(container, chartData, period) {
     return;
   }
 
-  const width = Math.max(1, Math.round(container.clientWidth || 320));
-  const height = Math.max(1, Math.round(container.clientHeight || 160));
-  const chartLeft = 8;
-  const chartRight = width - 8;
-  const chartTop = 8;
-  const chartBottom = height - 28;
-  const plotWidth = Math.max(1, chartRight - chartLeft);
-  const plotHeight = Math.max(1, chartBottom - chartTop);
-
   const maxValue = points.reduce((max, point) => {
     const income = Number(point.income);
     const expense = Number(point.expense);
@@ -3498,94 +3490,132 @@ function renderBarChart(container, chartData, period) {
     return Math.max(max, safeIncome, safeExpense);
   }, 0);
 
-  const slotWidth = plotWidth / points.length;
-  const barWidth = Math.max(0.5, slotWidth * 0.4);
-  const barGap = Math.max(0.25, slotWidth * 0.08);
-  const pairWidth = barWidth * 2 + barGap;
-
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  svg.setAttribute('preserveAspectRatio', 'none');
-  svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', 'График доходов и расходов за период');
+  const chartHeight = Math.max(60, Math.round(container.clientHeight || 120));
 
   points.forEach((point, index) => {
     const incomeValue = Number(point.income);
     const expenseValue = Number(point.expense);
     const safeIncome = Number.isFinite(incomeValue) && incomeValue > 0 ? incomeValue : 0;
     const safeExpense = Number.isFinite(expenseValue) && expenseValue > 0 ? expenseValue : 0;
-    const incomeHeight = (safeIncome / maxValue) * plotHeight;
-    const expenseHeight = (safeExpense / maxValue) * plotHeight;
-    const pairLeft = chartLeft + slotWidth * index + (slotWidth - pairWidth) / 2;
-    const incomeX = pairLeft;
-    const expenseX = pairLeft + barWidth + barGap;
+    const incomeHeight = maxValue > 0 ? (safeIncome / maxValue) * chartHeight : 0;
+    const expenseHeight = maxValue > 0 ? (safeExpense / maxValue) * chartHeight : 0;
 
-    svg.append(
-      createChartBar(
-        incomeX,
-        chartBottom - incomeHeight,
-        barWidth,
-        incomeHeight,
-        'income',
-        point.label,
-        safeIncome
-      ),
-      createChartBar(
-        expenseX,
-        chartBottom - expenseHeight,
-        barWidth,
-        expenseHeight,
-        'expense',
-        point.label,
-        safeExpense
-      )
-    );
+    const column = document.createElement('div');
+    column.className = 'bar-col';
+
+    const barsRow = document.createElement('div');
+    barsRow.style.display = 'flex';
+    barsRow.style.alignItems = 'flex-end';
+    barsRow.style.justifyContent = 'center';
+    barsRow.style.gap = '4px';
+
+    const incomeBar = document.createElement('div');
+    incomeBar.className = 'bar';
+    incomeBar.style.height = `${Math.max(0, incomeHeight)}px`;
+    incomeBar.style.background = 'var(--income)';
+
+    const expenseBar = document.createElement('div');
+    expenseBar.className = 'bar';
+    expenseBar.style.height = `${Math.max(0, expenseHeight)}px`;
+    expenseBar.style.background = 'var(--accent)';
+
+    barsRow.append(incomeBar, expenseBar);
+    column.append(barsRow);
+
+    const label = document.createElement('div');
+    label.className = 'bar-lbl';
+    label.textContent = point.label || '';
+    column.append(label);
+
+    container.append(column);
   });
+}
 
-  const labelIndices = getChartLabelIndices(points, period, plotWidth);
+function renderPieChart(container, categories, total) {
+  if (!container) {
+    return;
+  }
 
-  labelIndices.forEach((index) => {
-    const point = points[index];
-    const x = chartLeft + slotWidth * (index + 0.5);
-    const text = document.createElementNS(SVG_NS, 'text');
+  container.replaceChildren();
 
-    text.setAttribute('x', x.toFixed(2));
-    text.setAttribute('y', (height - 8).toFixed(2));
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', '#6f6a63');
-    text.setAttribute('font-size', String(CHART_FONT_SIZE));
-    text.classList.add('bar-chart-label');
-    text.textContent = point.label;
-    svg.append(text);
-  });
+  const entries = Object.entries(categories || {})
+    .filter(([, sum]) => Number.isFinite(sum) && sum > 0)
+    .sort((a, b) => b[1] - a[1]);
 
-  container.append(svg);
+  const grandTotal = entries.reduce((sum, [, value]) => sum + value, 0);
+  const safeTotal = Number.isFinite(Number(total)) ? Number(total) : grandTotal;
 
-  const labelElements = Array.from(svg.querySelectorAll('.bar-chart-label'));
-  const containerRect = container.getBoundingClientRect();
-  const leftLimit = containerRect.left + chartLeft;
-  const rightLimit = containerRect.left + chartRight;
+  if (entries.length === 0 || grandTotal <= 0) {
+    container.hidden = true;
 
-  labelElements.forEach((label) => {
-    const rect = label.getBoundingClientRect();
-
-    if (rect.left < leftLimit) {
-      label.setAttribute('text-anchor', 'start');
-      label.setAttribute('x', chartLeft.toFixed(2));
-    } else if (rect.right > rightLimit) {
-      label.setAttribute('text-anchor', 'end');
-      label.setAttribute('x', chartRight.toFixed(2));
+    if (pieLegend) {
+      pieLegend.replaceChildren();
     }
+
+    return;
+  }
+
+  container.hidden = false;
+
+  let accumulated = 0;
+  const slices = entries.map(([category, sum]) => {
+    const from = accumulated;
+    accumulated += sum;
+    const to = accumulated;
+    const color = 'var(--accent-bright)';
+
+    return { category, sum, from, to, color };
   });
 
-  for (let index = labelElements.length - 2; index >= 1; index -= 1) {
-    const currentRect = labelElements[index].getBoundingClientRect();
-    const nextRect = labelElements[index + 1].getBoundingClientRect();
+  const gradientStops = slices.map((slice) => {
+    const fromAngle = (slice.from / grandTotal) * 360;
+    const toAngle = (slice.to / grandTotal) * 360;
 
-    if (currentRect.right + 2 > nextRect.left) {
-      labelElements[index].remove();
-      labelElements.splice(index, 1);
-    }
+    return `${slice.color} ${fromAngle}deg ${toAngle}deg`;
+  });
+
+  const pieElement = document.createElement('div');
+  pieElement.className = 'pie-chart';
+  pieElement.style.background = `conic-gradient(from 0deg, ${gradientStops.join(', ')})`;
+  container.append(pieElement);
+
+  const center = document.createElement('div');
+  center.className = 'pie-center';
+  const centerLabel = document.createElement('div');
+  centerLabel.className = 'pie-center-lbl';
+  centerLabel.textContent = 'Всего';
+  const centerValue = document.createElement('div');
+  centerValue.className = 'pie-center-val';
+  centerValue.textContent = formatAmount(safeTotal);
+  center.append(centerLabel, centerValue);
+  pieElement.append(center);
+
+  if (pieLegend) {
+    pieLegend.replaceChildren();
+
+    slices.forEach((slice) => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+
+      const left = document.createElement('div');
+      left.className = 'legend-left';
+
+      const dot = document.createElement('span');
+      dot.className = 'legend-dot';
+      dot.style.background = slice.color;
+
+      const name = document.createElement('span');
+      name.className = 'legend-name';
+      name.textContent = slice.category;
+
+      const percent = document.createElement('span');
+      percent.className = 'legend-pct';
+      percent.textContent = `${Math.round((slice.sum / grandTotal) * 100)}%`;
+
+      left.append(dot, name);
+      item.append(left, percent);
+      pieLegend.append(item);
+    });
   }
 }
 
@@ -4022,25 +4052,6 @@ async function renderStats(result) {
   statsNet.classList.toggle('is-income', netFlow >= 0);
   statsNet.classList.toggle('is-expense', netFlow < 0);
   statsAvg.textContent = formatAmount(result.avgPerDay);
-
-  let maxTx = { amount: 0, category: '' };
-  (result.filtered || []).forEach((expense) => {
-    if (getTransactionType(expense) !== 'expense') {
-      return;
-    }
-
-    if (expense.amount > maxTx.amount) {
-      maxTx = { amount: expense.amount, category: expense.category };
-    }
-  });
-
-  if (statsMax) {
-    statsMax.textContent = formatAmount(maxTx.amount);
-  }
-
-  if (statsMaxCat) {
-    statsMaxCat.textContent = maxTx.category || '—';
-  }
   renderMonthForecast(monthForecast);
 
   const expenseCount = renderCategoryBreakdown(
@@ -4075,6 +4086,7 @@ async function renderStats(result) {
     barChartTitle.textContent = titleMap[period] || 'Динамика';
   }
 
+  renderPieChart(pieChart, result.expenseByCategory, result.expenseTotal);
   renderBarChart(statsChart, result.chartData, lastChartPeriod);
 
   balanceChartTitle.textContent = result.balanceGranularity === 'month'
