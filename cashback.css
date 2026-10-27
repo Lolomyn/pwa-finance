@@ -1,0 +1,593 @@
+/* Виджет кэшбэка в хабе: карточка, список банков и нижняя шторка. */
+
+.cashback-widget {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 20px;
+  border-radius: 24px;
+  background: var(--surface, #ffffff);
+  box-shadow: 0 8px 24px rgba(26, 24, 21, 0.05);
+}
+
+.cb-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line, #ede8df);
+}
+
+.cb-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cb-lbl {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted, #8e8a82);
+}
+
+.cb-month-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: #f5f1ea;
+}
+
+.cb-month-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-2, #4a4640);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.cb-month-btn:active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.cb-month-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cb-month {
+  min-width: 112px;
+  padding: 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink, #1a1815);
+  text-align: center;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.cb-add-btn {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink, #1a1815);
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.cb-add-btn:active {
+  transform: scale(0.92);
+  background: #000000;
+}
+
+.cb-add-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cb-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.cb-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line, #ede8df);
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.cb-item:last-child {
+  border-bottom: 0;
+}
+
+.cb-item:active {
+  opacity: 0.7;
+}
+
+.cb-logo {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.cb-logo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cb-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cb-name {
+  margin-bottom: 6px;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink, #1a1815);
+}
+
+.cb-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cb-cat {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #f5f1ea;
+  color: var(--ink-2, #4a4640);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.cb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 26px 16px 18px;
+  text-align: center;
+  color: var(--muted, #8e8a82);
+}
+
+.cb-empty svg {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.35;
+}
+
+.cb-empty-title {
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-2, #4a4640);
+}
+
+.cb-empty-sub {
+  max-width: 240px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* ═══ Шторка добавления и редактирования ═══ */
+
+.cb-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(26, 24, 21, 0.4);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.cb-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cb-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 401;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 400px;
+  max-height: 88vh;
+  max-height: 88dvh;
+  margin: 0 auto;
+  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  border-radius: 30px 30px 0 0;
+  background: var(--surface, #ffffff);
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  scrollbar-width: none;
+}
+
+.cb-modal::-webkit-scrollbar {
+  display: none;
+}
+
+.cb-modal.open {
+  transform: translateY(0);
+}
+
+.cb-handle {
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 16px;
+  border-radius: 2px;
+  background: #e5e1d9;
+}
+
+.cb-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cb-modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.cb-modal-close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f5f1ea;
+  color: var(--ink-2, #4a4640);
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.cb-modal-close:active {
+  background: #ebe5da;
+}
+
+.cb-field-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted, #8e8a82);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cb-bank-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.cb-bank-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  background: #f5f1ea;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.cb-bank-opt:active {
+  transform: scale(0.96);
+}
+
+.cb-bank-opt.selected {
+  border-color: var(--coral, #ff6b4a);
+  background: rgba(255, 107, 74, 0.05);
+}
+
+.cb-bank-opt:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.cb-bank-opt-logo {
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.cb-bank-opt-logo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cb-bank-opt-name {
+  color: var(--ink-2, #4a4640);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cb-bank-note {
+  margin: -10px 0 20px;
+  color: var(--muted, #8e8a82);
+  font-size: 12.5px;
+}
+
+.cb-edit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line, #ede8df);
+}
+
+.cb-edit-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cb-edit-name {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.cb-delete-btn {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--coral, #ff6b4a);
+  cursor: pointer;
+}
+
+.cb-delete-btn:active {
+  background: rgba(255, 107, 74, 0.1);
+}
+
+.cb-delete-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cb-cat-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+  margin-bottom: 16px;
+}
+
+.cb-cat-empty {
+  width: 100%;
+  padding: 8px 0;
+  color: var(--muted, #8e8a82);
+  font-size: 12.5px;
+}
+
+.cb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px 8px 12px;
+  border-radius: 10px;
+  background: #f5f1ea;
+  color: var(--ink, #1a1815);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cb-chip button {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--muted, #8e8a82);
+  cursor: pointer;
+}
+
+.cb-chip button:active {
+  color: var(--coral, #ff6b4a);
+}
+
+.cb-chip svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cb-cat-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cb-cat-input-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: #f5f1ea;
+  color: var(--ink, #1a1815);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.cb-cat-input-row input:focus {
+  border-color: var(--coral, #ff6b4a);
+  background: #ffffff;
+}
+
+.cb-cat-input-row button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ink, #1a1815);
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.cb-cat-input-row button:active {
+  transform: scale(0.94);
+}
+
+.cb-cat-input-row button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cb-error {
+  margin: 4px 0 8px;
+  color: var(--coral, #ff6b4a);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.cb-save-btn {
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--coral, #ff6b4a);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.cb-save-btn:active {
+  transform: scale(0.98);
+  background: #e85a3a;
+}
+
+body.cb-modal-open {
+  overflow: hidden;
+}
+
+@media (max-width: 360px) {
+  .cashback-widget {
+    padding: 16px;
+  }
+
+  .cb-bank-grid {
+    gap: 8px;
+  }
+
+  .cb-bank-opt {
+    padding: 10px 6px;
+  }
+
+  .cb-bank-opt-logo {
+    width: 34px;
+    height: 34px;
+  }
+}

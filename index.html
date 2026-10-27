@@ -20,8 +20,10 @@
   <link rel="stylesheet" href="styles-modern.css">
   <link rel="stylesheet" href="styles-preview.css">
   <link rel="stylesheet" href="notes.css">
+  <link rel="stylesheet" href="cashback.css">
   <script src="app.js" defer></script>
   <script src="notes.js" defer></script>
+  <script src="cashback.js" defer></script>
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
@@ -139,7 +141,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.2.3</div>
+        <div class="hub-version" id="hub-version">v1.3.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" aria-label="Открыть приложение Финансы">
@@ -185,6 +187,27 @@
             <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
           </button>
         </form>
+
+        <section class="cashback-widget" id="cashbackWidget" aria-labelledby="cashbackTitle">
+          <div class="cb-head">
+            <div class="cb-head-left">
+              <h2 class="cb-lbl" id="cashbackTitle">Кэшбэк</h2>
+              <div class="cb-month-nav">
+                <button class="cb-month-btn" type="button" id="cbPrevMonth" aria-label="Предыдущий месяц">
+                  <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="cb-month" id="cbMonthLabel" aria-live="polite">Октябрь 2026</div>
+                <button class="cb-month-btn" type="button" id="cbNextMonth" aria-label="Следующий месяц">
+                  <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </div>
+            </div>
+            <button class="cb-add-btn" type="button" id="cbAddBank" aria-label="Добавить банк" title="Добавить банк">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <div class="cb-list" id="cbList"></div>
+        </section>
       </div>
     </section>
 
@@ -1748,6 +1771,52 @@
         <p id="pin-recovery-error" class="security-modal-error" role="alert" hidden></p>
       </div>
     </div>
+  </div>
+
+  <!-- Кэшбэк: шторка добавления и редактирования банка -->
+  <div class="cb-backdrop" id="cbBackdrop"></div>
+  <div class="cb-modal" id="cbModal" role="dialog" aria-modal="true" aria-labelledby="cbModalTitle">
+    <div class="cb-handle"></div>
+    <div class="cb-modal-head">
+      <div class="cb-modal-title" id="cbModalTitle">Добавить банк</div>
+      <button class="cb-modal-close" type="button" id="cbClose" aria-label="Закрыть" title="Закрыть">✕</button>
+    </div>
+
+    <div id="cbBankSelectorWrap">
+      <div class="cb-field-label" id="cbBankLabel">Выберите банк</div>
+      <div class="cb-bank-grid" id="cbBankGrid" role="group" aria-labelledby="cbBankLabel"></div>
+    </div>
+
+    <div class="cb-edit-head" id="cbEditHead" hidden>
+      <div class="cb-edit-info">
+        <div class="cb-logo" id="cbEditLogo"></div>
+        <div class="cb-edit-name" id="cbEditName"></div>
+      </div>
+      <button class="cb-delete-btn" type="button" id="cbDeleteBank" aria-label="Удалить банк" title="Удалить банк">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
+    </div>
+
+    <label class="cb-field-label" for="cbCatInput">Категории кэшбэка</label>
+    <div class="cb-cat-editor" id="cbCatEditor"></div>
+
+    <div class="cb-cat-input-row">
+      <input
+        type="text"
+        id="cbCatInput"
+        placeholder="Напр. Супермаркеты 5%"
+        maxlength="40"
+        autocomplete="off"
+        enterkeyhint="done"
+      >
+      <button type="button" id="cbAddCat" aria-label="Добавить категорию" title="Добавить категорию">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+
+    <p class="cb-error" id="cbError" role="alert" hidden></p>
+
+    <button class="cb-save-btn" type="button" id="cbSave">Сохранить</button>
   </div>
 
   <script>

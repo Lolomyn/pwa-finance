@@ -10253,7 +10253,7 @@ async function init() {
 
   try {
     db = await openDB();
-    const financeState = await getSettings([FINANCE_CATEGORIES_KEY]);
+    const financeState = await getSettings([FINANCE_CATEGORIES_KEY, 'cashbackData']);
 
     if (financeState[FINANCE_CATEGORIES_KEY] !== true) {
       await seedDefaultsIfEmpty();
@@ -10280,6 +10280,12 @@ async function init() {
       await window.Notes?.init?.();
     } catch (notesError) {
       console.warn('Не удалось инициализировать заметки:', notesError);
+    }
+
+    try {
+      window.Cashback?.init?.(financeState.cashbackData);
+    } catch (cashbackError) {
+      console.warn('Не удалось инициализировать кэшбэк:', cashbackError);
     }
 
     await render(expenses);
