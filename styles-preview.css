@@ -420,6 +420,18 @@ p {
   background: transparent;
 }
 
+/* ═══ Версия проекта ═══ */
+.hub-version {
+  align-self: flex-end;
+  margin: -10px 6px -2px 0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  color: var(--faint);
+  background: none;
+}
+
 /* ═══ Карточки приложений ═══ */
 .hub-apps {
   display: grid;
