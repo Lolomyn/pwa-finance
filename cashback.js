@@ -248,10 +248,30 @@
   }
 
   function closeModal() {
+    closeConfirm();
     byId('cbBackdrop').classList.remove('open');
     byId('cbModal').classList.remove('open');
     document.body.classList.remove('cb-modal-open');
     clearError();
+  }
+
+  function openConfirm() {
+    const bankEntry = getCurrentList().find((item) => String(item.id) === String(editingId));
+    const bank = bankEntry ? BANKS.find((entry) => entry.id === bankEntry.bankId) : null;
+
+    if (!bank) {
+      return;
+    }
+
+    byId('cbConfirmText').textContent =
+      `Банк «${bank.name}» и его категории за ${MONTH_NAMES[currentMonth].toLowerCase()} ${currentYear} будут удалены.`;
+    byId('cbConfirmBackdrop').classList.add('open');
+    byId('cbConfirm').classList.add('open');
+  }
+
+  function closeConfirm() {
+    byId('cbConfirmBackdrop').classList.remove('open');
+    byId('cbConfirm').classList.remove('open');
   }
 
   function openAddModal() {
@@ -446,6 +466,8 @@
       return;
     }
 
+    closeConfirm();
+
     const key = monthKey();
     const next = getCurrentList().filter((item) => String(item.id) !== String(editingId));
 
@@ -479,7 +501,10 @@
     byId('cbClose').addEventListener('click', closeModal);
     byId('cbBackdrop').addEventListener('click', closeModal);
     byId('cbSave').addEventListener('click', saveBank);
-    byId('cbDeleteBank').addEventListener('click', deleteBank);
+    byId('cbDeleteBank').addEventListener('click', openConfirm);
+    byId('cbConfirmCancel').addEventListener('click', closeConfirm);
+    byId('cbConfirmBackdrop').addEventListener('click', closeConfirm);
+    byId('cbConfirmDelete').addEventListener('click', deleteBank);
     byId('cbAddCat').addEventListener('click', addCategory);
 
     byId('cbCatInput').addEventListener('keydown', (event) => {
@@ -519,7 +544,13 @@
     });
 
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && byId('cbModal').classList.contains('open')) {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      if (byId('cbConfirm').classList.contains('open')) {
+        closeConfirm();
+      } else if (byId('cbModal').classList.contains('open')) {
         closeModal();
       }
     });

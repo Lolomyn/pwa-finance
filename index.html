@@ -141,7 +141,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.3.0</div>
+        <div class="hub-version" id="hub-version">v1.4.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" aria-label="Открыть приложение Финансы">
@@ -1779,7 +1779,9 @@
     <div class="cb-handle"></div>
     <div class="cb-modal-head">
       <div class="cb-modal-title" id="cbModalTitle">Добавить банк</div>
-      <button class="cb-modal-close" type="button" id="cbClose" aria-label="Закрыть" title="Закрыть">✕</button>
+      <button class="cb-modal-close" type="button" id="cbClose" aria-label="Закрыть" title="Закрыть">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+      </button>
     </div>
 
     <div id="cbBankSelectorWrap">
@@ -1817,6 +1819,16 @@
     <p class="cb-error" id="cbError" role="alert" hidden></p>
 
     <button class="cb-save-btn" type="button" id="cbSave">Сохранить</button>
+  </div>
+
+  <div class="cb-confirm-backdrop" id="cbConfirmBackdrop"></div>
+  <div class="cb-confirm" id="cbConfirm" role="dialog" aria-modal="true" aria-labelledby="cbConfirmTitle">
+    <div class="cb-confirm-title" id="cbConfirmTitle">Удалить банк?</div>
+    <p class="cb-confirm-text" id="cbConfirmText"></p>
+    <div class="cb-confirm-actions">
+      <button class="cb-confirm-cancel" type="button" id="cbConfirmCancel">Отмена</button>
+      <button class="cb-confirm-delete" type="button" id="cbConfirmDelete">Удалить</button>
+    </div>
   </div>
 
   <script>
