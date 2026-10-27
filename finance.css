@@ -418,6 +418,12 @@ body::before{
 .btn-cancel { flex: 1; padding: 14px; border-radius: 14px; background: #F5F1EA; border: none; font-family: inherit; font-size: 15px; font-weight: 700; color: var(--ink-2); cursor: pointer; }
 .btn-save { flex: 1; padding: 14px; border-radius: 14px; background: var(--coral); border: none; font-family: inherit; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; }
 
+/* Подтверждение удаления */
+.confirm-summary{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.confirm-note{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:6px;word-break:break-word}
+.confirm-note:empty{display:none}
+.confirm-hint{font-size:12px;color:var(--faint);font-weight:500;margin-bottom:20px}
+
 /* Баланс */
 .balance-modal {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%, -45%);

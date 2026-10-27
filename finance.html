@@ -291,6 +291,18 @@
   </div>
 </div>
 
+<!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ -->
+<div class="cat-modal" id="deleteTxModal" role="dialog" aria-modal="true" aria-labelledby="deleteTxTitle">
+  <div class="cat-modal-title" id="deleteTxTitle">Удалить операцию?</div>
+  <p class="confirm-summary" id="deleteTxSummary">Операция</p>
+  <p class="confirm-note" id="deleteTxNote"></p>
+  <p class="confirm-hint">Это действие нельзя отменить.</p>
+  <div class="modal-actions">
+    <button class="btn-cancel" type="button" onclick="cancelDeleteTx()">Отмена</button>
+    <button class="btn-save" type="button" onclick="confirmDeleteTx()">Удалить</button>
+  </div>
+</div>
+
 <!-- МОДАЛКА КАЛЕНДАРЯ (ВЫБОР ПЕРИОДА) -->
 <div class="cat-modal" id="datePickerModal" style="max-width: 320px;" role="dialog" aria-modal="true" aria-labelledby="datePickerTitle">
   <div class="cat-modal-title" id="datePickerTitle">Выберите период</div>

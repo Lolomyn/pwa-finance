@@ -123,6 +123,7 @@ const state = {
   editCatId: null,
   activeActionCatId: null,
   activeTxId: null,
+  pendingDeleteTxId: null,
   editTxType: 'expense',
   editTxCatId: null,
   pickYear: new Date().getFullYear(),
@@ -1477,8 +1478,41 @@ function deleteTxFromSheet() {
     return;
   }
   const id = state.activeTxId;
+  state.pendingDeleteTxId = id;
   closeTxActionSheet();
-  setTimeout(() => deleteTransaction(id), 150);
+  setTimeout(() => openDeleteTxModal(id), 150);
+}
+
+function openDeleteTxModal(id) {
+  const transaction = state.transactions.find((item) => String(item.id) === String(id));
+  if (!transaction) {
+    state.pendingDeleteTxId = null;
+    return;
+  }
+
+  const category = getCatForTransaction(transaction);
+  document.getElementById('deleteTxSummary').textContent =
+    `${category.name} · ${fmt(transaction.amount)} ₽`;
+  document.getElementById('deleteTxNote').textContent = transaction.note || '';
+  openModal('deleteTxModal');
+}
+
+function cancelDeleteTx() {
+  state.pendingDeleteTxId = null;
+  closeAllModals();
+}
+
+async function confirmDeleteTx() {
+  const id = state.pendingDeleteTxId;
+  state.pendingDeleteTxId = null;
+
+  if (id === null) {
+    closeAllModals();
+    return;
+  }
+
+  closeAllModals();
+  await deleteTransaction(id);
 }
 
 async function deleteTransaction(id) {
@@ -1821,11 +1855,13 @@ function closeAllModals() {
     'catModal',
     'balanceModal',
     'txEditModal',
+    'deleteTxModal',
     'datePickerModal',
     'catStatsModal'
   ].forEach((id) => {
     document.getElementById(id).classList.remove('open');
   });
+  state.pendingDeleteTxId = null;
 }
 
 function openBalanceModal() {
