@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#FAF6EF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Заметки">
+<meta name="description" content="Личные заметки: текст, чек-листы, цвета и поиск. Работают офлайн.">
+<title>Заметки</title>
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="./icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="notes-page.css">
+<script src="notes.js" defer></script>
+<script src="notes-page.js" defer></script>
+</head>
+<body>
+
+<div class="app-screen">
+
+  <div class="content-area" id="mainContentArea">
+    <header class="header">
+      <button class="back-btn" id="backBtn" type="button" aria-label="Вернуться в хаб" title="В хаб">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <div class="header-title">Заметки</div>
+    </header>
+
+    <div class="search" id="searchWrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Поиск по заметкам..."
+        autocomplete="off"
+        aria-label="Поиск по заметкам"
+      >
+    </div>
+
+    <div class="notes-list" id="notesList"></div>
+
+    <div class="empty" id="emptyState" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      <div class="empty-title" id="emptyTitle">Нет заметок</div>
+      <div class="empty-sub" id="emptySub">Нажмите на плюс внизу, чтобы<br>создать первую заметку</div>
+    </div>
+  </div>
+
+  <button class="fab" id="fab" type="button" aria-label="Новая заметка" title="Новая заметка">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+
+<!-- Редактор заметки -->
+<div class="editor-sheet" id="editorSheet" role="dialog" aria-modal="true" aria-label="Редактор заметки" aria-hidden="true">
+  <div class="calc-handle"></div>
+
+  <div class="editor-header">
+    <div class="editor-actions">
+      <button class="editor-btn" id="pinBtn" type="button" aria-label="Закрепить" aria-pressed="false" title="Закрепить">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 3h6v7l2 2v2H7v-2l2-2V3z"/><path d="M12 14v7"/>
+        </svg>
+      </button>
+      <div class="color-picker" id="colorPicker" role="group" aria-label="Цвет заметки">
+        <button class="color-opt" type="button" data-color="plain" style="background:var(--note-default)" aria-label="Без цвета"></button>
+        <button class="color-opt" type="button" data-color="yellow" style="background:var(--note-yellow)" aria-label="Жёлтый"></button>
+        <button class="color-opt" type="button" data-color="green" style="background:var(--note-mint)" aria-label="Зелёный"></button>
+        <button class="color-opt" type="button" data-color="blue" style="background:var(--note-blue)" aria-label="Голубой"></button>
+        <button class="color-opt" type="button" data-color="pink" style="background:var(--note-pink)" aria-label="Розовый"></button>
+      </div>
+    </div>
+
+    <div class="editor-actions">
+      <button class="editor-btn delete" id="deleteBtn" type="button" aria-label="Удалить заметку" title="Удалить">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+        </svg>
+      </button>
+      <button class="editor-btn" id="saveBtn" type="button" aria-label="Сохранить заметку" title="Сохранить">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="note-type-toggle" id="typeToggle">
+    <button class="note-type-btn active" id="typeBtnText" type="button">Текст</button>
+    <button class="note-type-btn" id="typeBtnChecklist" type="button">Список</button>
+  </div>
+
+  <input type="text" class="editor-title" id="editTitle" placeholder="Заголовок" maxlength="120" autocomplete="off">
+
+  <textarea class="editor-body" id="editBody" placeholder="Текст заметки..."></textarea>
+
+  <div class="checklist-editor" id="editChecklist" hidden></div>
+</div>
+
+<!-- Подтверждение удаления -->
+<div class="confirm-backdrop" id="confirmBackdrop"></div>
+<div class="confirm-modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-hidden="true">
+  <div class="confirm-title" id="confirmTitle">Удалить заметку?</div>
+  <div class="confirm-desc">Это действие нельзя будет отменить. Заметка исчезнет навсегда.</div>
+  <div class="confirm-actions">
+    <button class="btn-confirm cancel" id="confirmCancel" type="button">Отмена</button>
+    <button class="btn-confirm delete" id="confirmDelete" type="button">Удалить</button>
+  </div>
+</div>
+
+</body>
+</html>

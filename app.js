@@ -4690,29 +4690,20 @@ function initHub() {
     });
   }
 
-  const notesExitButton = document.getElementById('notes-exit');
-
-  if (notesExitButton) {
-    notesExitButton.addEventListener('click', () => {
-      hapticFeedback(8);
-      showTab('hub');
-    });
-  }
-
   const hubNotesButton = document.getElementById('hub-notes');
   const hubNotesWidget = document.getElementById('hub-notes-widget');
 
   if (hubNotesButton) {
     hubNotesButton.addEventListener('click', () => {
       hapticFeedback(8);
-      showTab('notes');
+      window.location.href = './notes.html';
     });
   }
 
   if (hubNotesWidget) {
     hubNotesWidget.addEventListener('click', () => {
       hapticFeedback(8);
-      showTab('notes');
+      window.location.href = './notes.html';
     });
   }
 
@@ -4720,7 +4711,7 @@ function initHub() {
   const hubQuickInput = document.getElementById('hub-quick-input');
 
   if (hubQuickForm) {
-    hubQuickForm.addEventListener('submit', (event) => {
+    hubQuickForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const text = hubQuickInput.value.trim();
 
@@ -4729,8 +4720,12 @@ function initHub() {
         return;
       }
 
-      if (window.Notes && typeof window.Notes.createQuickNote === 'function') {
-        const created = window.Notes.createQuickNote(text);
+      const notesReady = window.Notes
+        && typeof window.Notes.createQuickNote === 'function'
+        && (typeof window.Notes.isLoaded !== 'function' || window.Notes.isLoaded());
+
+      if (notesReady) {
+        const created = await window.Notes.createQuickNote(text);
 
         if (created) {
           hubQuickInput.value = '';
@@ -4809,6 +4804,11 @@ function onTabShow(tabName) {
 }
 
 function showTab(tabName, { push = true } = {}) {
+  if (tabName === 'notes') {
+    window.location.href = './notes.html';
+    return;
+  }
+
   const targetTab = TAB_NAMES.includes(tabName) ? tabName : 'home';
   const previousTab = activeTab;
   const isTabChange = previousTab !== targetTab;

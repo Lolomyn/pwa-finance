@@ -1,0 +1,831 @@
+/* Приложение «Заметки»: отдельный экран в стиле макета.
+   Подключается только на notes.html. */
+
+:root {
+  --bg: #FAF6EF;
+  --surface: #FFFFFF;
+  --ink: #1A1815;
+  --ink-2: #4A4640;
+  --muted: #8E8A82;
+  --line: #EDE8DF;
+  --coral: #FF6B4A;
+  --coral-light: #FFA07A;
+  --coral-soft: rgba(255, 107, 74, 0.1);
+
+  --note-default: #FFFFFF;
+  --note-yellow: #FFF5D1;
+  --note-mint: #E3F5E9;
+  --note-blue: #E4F0FF;
+  --note-pink: #FFE4EB;
+  --note-purple: #F0E6FF;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum" 1;
+  font-size: 15px;
+  line-height: 1.4;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: -150px;
+  right: -150px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255, 107, 74, 0.12), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+button:focus-visible,
+.color-opt:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 2px;
+}
+
+.app-screen {
+  width: 100%;
+  max-width: 400px;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px 100px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.content-area::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Шапка ───────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: none;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 12px rgba(26, 24, 21, 0.05);
+  color: var(--ink);
+  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: #FFFFFF;
+}
+
+.back-btn:active {
+  transform: scale(0.92);
+}
+
+.back-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+.header-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  flex: 1;
+}
+
+/* ── Поиск ───────────────────────────────────────────────────────────── */
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(26, 24, 21, 0.02);
+  transition: box-shadow 0.2s ease;
+}
+
+.search:focus-within {
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.15), 0 2px 10px rgba(26, 24, 21, 0.02);
+}
+
+.search svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  flex-shrink: 0;
+  stroke-width: 2;
+}
+
+.search input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 0;
+  min-width: 0;
+}
+
+.search input::placeholder {
+  color: var(--muted);
+}
+
+/* ── Список заметок ──────────────────────────────────────────────────── */
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.swipe-wrapper {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--bg);
+  touch-action: pan-y;
+}
+
+.swipe-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  z-index: 1;
+}
+
+.swipe-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.swipe-btn:active {
+  opacity: 0.5;
+  transform: scale(0.94);
+}
+
+.swipe-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.swipe-btn.pin svg {
+  stroke: var(--ink-2);
+}
+
+.swipe-btn.del svg {
+  stroke: var(--coral);
+}
+
+.note-card {
+  position: relative;
+  z-index: 2;
+  background: var(--note-default);
+  border-radius: 20px;
+  padding: 18px 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(26, 24, 21, 0.03);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
+  -webkit-user-select: none;
+  transform: translateX(0);
+}
+
+.note-header {
+  margin-bottom: 6px;
+}
+
+.note-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  word-break: break-word;
+  padding-right: 24px;
+  color: var(--ink);
+}
+
+.note-pin-icon {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  color: rgba(0, 0, 0, 0.3);
+}
+
+.note-pin-icon svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
+}
+
+.note-snippet {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.45;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  opacity: 0.85;
+  white-space: pre-wrap;
+}
+
+.note-checklist-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.checklist-preview-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  opacity: 0.9;
+}
+
+.checklist-preview-item.done {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.checklist-preview-item svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  stroke-width: 2.5;
+}
+
+.checklist-more {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 22px;
+  margin-top: 2px;
+}
+
+.note-date {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ── Пустое состояние ────────────────────────────────────────────────── */
+
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.empty svg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+  stroke-width: 1.5;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+
+.empty-sub {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Плавающая кнопка ────────────────────────────────────────────────── */
+
+.fab {
+  position: fixed;
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  right: calc(50% - 180px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--coral);
+  color: #FFFFFF;
+  border: none;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 20px rgba(255, 107, 74, 0.4);
+  cursor: pointer;
+  z-index: 20;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+@media (max-width: 440px) {
+  .fab {
+    right: 20px;
+  }
+}
+
+.fab:hover {
+  background: var(--coral);
+}
+
+.fab:active {
+  transform: scale(0.92);
+}
+
+.fab svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
+}
+
+/* ── Затемнение ──────────────────────────────────────────────────────── */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 24, 21, 0.4);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Редактор (нижняя шторка) ────────────────────────────────────────── */
+
+.editor-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border-radius: 30px 30px 0 0;
+  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 100;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  height: 85vh;
+  height: 85dvh;
+}
+
+.editor-sheet.open {
+  transform: translateY(0);
+}
+
+.calc-handle {
+  width: 40px;
+  height: 4px;
+  background: #E5E1D9;
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.editor-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.editor-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-2);
+  transition: color 0.15s ease, background 0.15s ease;
+  padding: 6px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.editor-btn:hover {
+  background: none;
+}
+
+.editor-btn:active {
+  background: #F5F1EA;
+}
+
+.editor-btn.delete {
+  color: var(--coral);
+}
+
+.editor-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+.color-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.color-opt {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+}
+
+.color-opt.active {
+  border-color: var(--ink);
+  transform: scale(1.1);
+}
+
+.note-type-toggle {
+  display: flex;
+  background: #F5F1EA;
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 16px;
+  align-self: flex-start;
+  gap: 2px;
+}
+
+.note-type-btn {
+  border: none;
+  background: transparent;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.note-type-btn:hover {
+  background: transparent;
+}
+
+.note-type-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.editor-title {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 12px;
+  padding: 0;
+}
+
+.editor-title::placeholder {
+  color: #D1D5DB;
+}
+
+.editor-body {
+  width: 100%;
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  resize: none;
+  min-height: 0;
+}
+
+.editor-body::placeholder {
+  color: #D1D5DB;
+}
+
+.checklist-editor {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+  min-height: 0;
+}
+
+.checklist-editor::-webkit-scrollbar {
+  width: 4px;
+}
+
+.checklist-editor::-webkit-scrollbar-thumb {
+  background: #E5E1D9;
+  border-radius: 4px;
+}
+
+.checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checklist-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--coral);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checklist-row input[type="text"] {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 6px 0;
+  min-width: 0;
+}
+
+.checklist-row input[type="text"]:focus {
+  border-bottom: 1px solid var(--coral);
+}
+
+.checklist-row.done input[type="text"] {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.checklist-del {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.5;
+  display: grid;
+  place-items: center;
+}
+
+.checklist-del:hover {
+  background: none;
+}
+
+.checklist-del:active {
+  opacity: 1;
+  color: var(--coral);
+}
+
+.checklist-del svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+.add-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: var(--coral);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-top: 4px;
+  align-self: flex-start;
+}
+
+.add-checklist-item:hover {
+  background: none;
+}
+
+.add-checklist-item svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+/* ── Подтверждение удаления ──────────────────────────────────────────── */
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 24, 21, 0.4);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.confirm-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.confirm-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -45%);
+  width: calc(100% - 40px);
+  max-width: 320px;
+  background: var(--surface);
+  border-radius: 24px;
+  padding: 24px;
+  z-index: 201;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.confirm-modal.open {
+  transform: translate(-50%, -50%);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.confirm-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.confirm-desc {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.4;
+}
+
+.confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-confirm {
+  width: 100%;
+  padding: 16px;
+  border-radius: 16px;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn-confirm.cancel {
+  background: #F5F1EA;
+  color: var(--ink);
+}
+
+.btn-confirm.cancel:hover {
+  background: #F5F1EA;
+}
+
+.btn-confirm.cancel:active {
+  background: #EBE5DA;
+  transform: scale(0.99);
+}
+
+.btn-confirm.delete {
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+
+.btn-confirm.delete:hover {
+  background: var(--coral-soft);
+}
+
+.btn-confirm.delete:active {
+  background: rgba(255, 107, 74, 0.2);
+  transform: scale(0.99);
+}
+
+@media (max-width: 360px) {
+  .content-area {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .editor-sheet {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .color-picker {
+    gap: 6px;
+  }
+
+  .color-opt {
+    width: 22px;
+    height: 22px;
+  }
+
+  .editor-actions {
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

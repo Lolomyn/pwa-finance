@@ -141,7 +141,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.4.1</div>
+        <div class="hub-version" id="hub-version">v1.5.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" aria-label="Открыть приложение Финансы">
@@ -796,55 +796,6 @@
         </div>
       </section>
 
-      <section data-tab="notes" class="tab-panel" id="tab-notes" hidden>
-        <div class="notes-head">
-          <button
-            id="notes-exit"
-            class="hub-back notes-exit"
-            type="button"
-            aria-label="Вернуться в хаб"
-            title="В хаб"
-          >
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg>
-          </button>
-          <div class="notes-head-copy">
-            <div id="notes-count-label" class="notes-head-title">Заметки</div>
-            <p class="notes-head-sub">Автосохранение включено</p>
-          </div>
-          <button id="notes-add" class="notes-add" type="button" aria-label="Новая заметка" title="Новая заметка">
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
-          </button>
-        </div>
-
-        <div class="notes-tools" role="group" aria-label="Разделы заметок">
-          <button id="notes-toggle-archive" class="notes-tool" type="button" aria-expanded="false">
-            <span>Архив</span>
-            <span id="notes-archive-count" class="notes-tool-count" hidden>0</span>
-          </button>
-          <button id="notes-toggle-trash" class="notes-tool" type="button" aria-expanded="false">
-            <span>Корзина</span>
-            <span id="notes-trash-count" class="notes-tool-count" hidden>0</span>
-          </button>
-        </div>
-
-        <div id="notes-list" class="notes-list" role="list"></div>
-        <p id="notes-empty" class="notes-empty" hidden>Пока нет заметок. Нажмите «+», чтобы создать первую.</p>
-
-        <section id="notes-archive-section" class="notes-extra" hidden>
-          <h3 class="notes-extra-title">Архив</h3>
-          <div id="notes-archive-list" class="notes-list" role="list"></div>
-          <p id="notes-archive-empty" class="notes-empty" hidden>Архив пуст.</p>
-        </section>
-
-        <section id="notes-trash-section" class="notes-extra" hidden>
-          <h3 class="notes-extra-title">
-            Корзина
-            <span class="notes-extra-note">заметки удаляются безвозвратно через 30 дней</span>
-          </h3>
-          <div id="notes-trash-list" class="notes-list" role="list"></div>
-          <p id="notes-trash-empty" class="notes-empty" hidden>Корзина пуста.</p>
-        </section>
-      </section>
     </main>
   </div>
 
@@ -1489,112 +1440,6 @@
       </section>
 
       <p id="security-modal-error" class="security-modal-error" role="alert" hidden></p>
-    </div>
-  </div>
-
-  <div id="notes-editor" class="modal-overlay notes-editor-overlay" hidden>
-    <div
-      class="modal-card notes-editor-card"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="notes-editor-title"
-      tabindex="-1"
-    >
-      <div class="notes-editor-head">
-        <button
-          id="notes-editor-back"
-          class="close-btn"
-          type="button"
-          aria-label="Закрыть редактор"
-          title="Закрыть"
-        >
-          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
-        </button>
-        <h2 id="notes-editor-title" class="notes-editor-title">Новая заметка</h2>
-        <button
-          id="notes-editor-preview"
-          class="notes-editor-eye"
-          type="button"
-          aria-label="Показать форматирование"
-          aria-pressed="false"
-          title="Просмотр"
-        >👁</button>
-      </div>
-
-      <div class="notes-editor-meta">
-        <div class="note-palette" role="group" aria-label="Цвет заметки">
-          <button class="note-palette-swatch" data-color="plain" type="button" aria-label="Без цвета"></button>
-          <button class="note-palette-swatch" data-color="yellow" type="button" aria-label="Жёлтый"></button>
-          <button class="note-palette-swatch" data-color="pink" type="button" aria-label="Розовый"></button>
-          <button class="note-palette-swatch" data-color="green" type="button" aria-label="Зелёный"></button>
-          <button class="note-palette-swatch" data-color="blue" type="button" aria-label="Голубой"></button>
-          <button class="note-palette-swatch" data-color="violet" type="button" aria-label="Сиреневый"></button>
-        </div>
-        <div class="notes-editor-actions">
-          <button id="note-pin" class="note-action" type="button" aria-label="Закрепить" aria-pressed="false" title="Закрепить">📌</button>
-          <button id="note-archive" class="note-action" type="button" aria-label="В архив" aria-pressed="false" title="В архив">🗃️</button>
-          <button id="note-delete" class="note-action note-action--danger" type="button" aria-label="В корзину" title="В корзину">🗑️</button>
-        </div>
-      </div>
-
-      <div class="seg notes-mode-seg" role="tablist" aria-label="Режим заметки">
-        <button
-          id="note-mode-text"
-          class="seg-button is-active"
-          type="button"
-          role="tab"
-          aria-selected="true"
-        >Текст</button>
-        <button
-          id="note-mode-checklist"
-          class="seg-button"
-          type="button"
-          role="tab"
-          aria-selected="false"
-        >Чек-лист</button>
-      </div>
-
-      <input
-        id="note-title-input"
-        class="note-title-input"
-        type="text"
-        maxlength="120"
-        placeholder="Заголовок"
-        autocomplete="off"
-      >
-      <textarea
-        id="note-text-input"
-        class="note-text-input"
-        placeholder="Текст заметки… Поддерживается **жирный**, *курсив* и списки «- »"
-        rows="8"
-      ></textarea>
-
-      <div id="note-checklist-editor" class="note-checklist" hidden>
-        <ul id="note-check-items" class="note-check-items"></ul>
-        <div class="note-check-add">
-          <input
-            id="note-check-new"
-            type="text"
-            placeholder="Новый пункт…"
-            maxlength="200"
-            autocomplete="off"
-            aria-label="Новый пункт чек-листа"
-          >
-          <button id="note-check-add-button" class="note-check-add-button" type="button" aria-label="Добавить пункт" title="Добавить пункт">
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg>
-          </button>
-        </div>
-      </div>
-
-      <div id="note-md-preview" class="note-md" hidden></div>
-    </div>
-  </div>
-
-  <div id="notes-undo-toast" class="undo-toast" role="status" aria-live="polite" hidden>
-    <span class="undo-toast-progress" aria-hidden="true"></span>
-    <div class="undo-toast-content">
-      <span id="notes-undo-text">Заметка удалена.</span>
-      <button id="notes-undo-button" class="undo-toast-button" type="button">Отменить</button>
     </div>
   </div>
 
