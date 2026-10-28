@@ -112,7 +112,11 @@ const state = {
   initialBalance: 0,
   view: 'home',
   historyDate: startOfMonth(new Date()),
+  historyMode: 'month',
+  historyRangeStart: null,
+  historyRangeEnd: null,
   historyType: 'all',
+  datePickerTarget: 'stats',
   statsRange: 'week',
   customStart: addDays(startOfDay(new Date()), -6),
   customEnd: startOfDay(new Date()),
@@ -769,10 +773,22 @@ function renderHistory() {
   const year = state.historyDate.getFullYear();
   const month = state.historyDate.getMonth();
   const prefix = `${year}-${pad(month + 1)}`;
+  const isRange = state.historyMode === 'range' && state.historyRangeStart && state.historyRangeEnd;
+  const labelElement = document.getElementById('historyMonthLabel');
 
-  document.getElementById('historyMonthLabel').textContent = `${MONTH_NAMES[month]} ${year}`;
+  if (isRange) {
+    labelElement.textContent = `${fmtDateShort(state.historyRangeStart)} — ${fmtDateShort(state.historyRangeEnd)}`;
+  } else {
+    labelElement.textContent = `${MONTH_NAMES[month]} ${year}`;
+  }
+  labelElement.classList.toggle('range', Boolean(isRange));
 
-  const monthItems = state.transactions.filter((item) => item.date.startsWith(prefix));
+  const monthItems = state.transactions.filter((item) => {
+    if (isRange) {
+      return item.date >= isoDate(state.historyRangeStart) && item.date <= isoDate(state.historyRangeEnd);
+    }
+    return item.date.startsWith(prefix);
+  });
   const totals = calculateTotals(monthItems);
 
   document.getElementById('historyExpenseTotal').textContent = `${fmt(totals.expense)} ₽`;
@@ -807,12 +823,28 @@ function setHistoryType(type) {
 }
 
 function changeMonth(delta) {
+  if (state.historyMode === 'range' && state.historyRangeStart) {
+    state.historyDate = startOfMonth(state.historyRangeStart);
+  }
+  state.historyMode = 'month';
+  state.historyRangeStart = null;
+  state.historyRangeEnd = null;
   state.historyDate = new Date(
     state.historyDate.getFullYear(),
     state.historyDate.getMonth() + delta,
     1
   );
   renderHistory();
+}
+
+function openHistoryRangePicker() {
+  const isRange = state.historyMode === 'range' && state.historyRangeStart && state.historyRangeEnd;
+  const start = isRange ? state.historyRangeStart : startOfMonth(state.historyDate);
+  const end = isRange
+    ? state.historyRangeEnd
+    : new Date(state.historyDate.getFullYear(), state.historyDate.getMonth() + 1, 0);
+
+  openDatePicker('history', start, end);
 }
 
 /* ------------------------------------------------------------------ */
@@ -958,7 +990,7 @@ function renderStats() {
   } else {
     labelElement.innerHTML = `${fmtDateShort(range.start)} — ${fmtDateShort(range.end)} <span style="font-size:11px; margin-left:4px;">(изменить)</span>`;
     labelElement.className = 'stats-period-lbl clickable';
-    labelElement.onclick = openDatePicker;
+    labelElement.onclick = () => openDatePicker('stats');
   }
 
   document.getElementById('barChartTitle').textContent = range.title;
@@ -1172,11 +1204,17 @@ function openCategoryStats(categoryName) {
 /* Календарь                                                           */
 /* ------------------------------------------------------------------ */
 
-function openDatePicker() {
-  state.pickYear = state.customStart.getFullYear();
-  state.pickMonth = state.customStart.getMonth();
-  state.tempStart = new Date(state.customStart);
-  state.tempEnd = new Date(state.customEnd);
+function openDatePicker(target = 'stats', initialStart, initialEnd) {
+  const start = initialStart || state.customStart;
+  const end = initialEnd || state.customEnd;
+
+  state.datePickerTarget = target;
+  state.pickYear = start.getFullYear();
+  state.pickMonth = start.getMonth();
+  state.tempStart = new Date(start);
+  state.tempEnd = new Date(end);
+  document.getElementById('datePickerTitle').textContent =
+    target === 'history' ? 'Период истории' : 'Выберите период';
   renderDatePicker();
   openModal('datePickerModal');
 }
@@ -1267,8 +1305,21 @@ function applyCustomRange() {
     return;
   }
 
-  state.customStart = startOfDay(state.tempStart);
-  state.customEnd = startOfDay(state.tempEnd || state.tempStart);
+  const start = startOfDay(state.tempStart);
+  const end = startOfDay(state.tempEnd || state.tempStart);
+
+  if (state.datePickerTarget === 'history') {
+    state.historyMode = 'range';
+    state.historyRangeStart = start;
+    state.historyRangeEnd = end;
+    state.historyDate = startOfMonth(start);
+    closeAllModals();
+    renderHistory();
+    return;
+  }
+
+  state.customStart = start;
+  state.customEnd = end;
   state.statsRange = 'custom';
 
   document.querySelectorAll('.stats-tab').forEach((tab) => {

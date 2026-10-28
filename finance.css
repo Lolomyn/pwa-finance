@@ -148,7 +148,21 @@ body::before{
 }
 .month-btn:active{background:#EBE5DA}
 .month-btn svg{width:16px;height:16px}
-.month-lbl{font-size:15px;font-weight:700;text-transform:capitalize}
+.month-lbl{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:inherit;font-size:15px;font-weight:700;text-transform:capitalize;
+  color:var(--ink);background:transparent;border:none;border-radius:12px;
+  padding:6px 10px;cursor:pointer;
+  transition:background .2s ease,transform .15s ease;
+}
+.month-lbl:hover{background:#F5F1EA}
+.month-lbl:active{transform:scale(.97);background:#EBE5DA}
+.month-lbl.range{text-transform:none}
+.month-lbl::after{
+  content:"";width:6px;height:6px;margin-top:-4px;
+  border-right:2px solid var(--faint);border-bottom:2px solid var(--faint);
+  transform:rotate(45deg);
+}
 
 /* Итоги месяца в истории */
 .history-pills{
