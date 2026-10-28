@@ -112,6 +112,7 @@ const state = {
   initialBalance: 0,
   view: 'home',
   historyDate: startOfMonth(new Date()),
+  historyType: 'all',
   statsRange: 'week',
   customStart: addDays(startOfDay(new Date()), -6),
   customEnd: startOfDay(new Date()),
@@ -771,8 +772,38 @@ function renderHistory() {
 
   document.getElementById('historyMonthLabel').textContent = `${MONTH_NAMES[month]} ${year}`;
 
-  const items = state.transactions.filter((item) => item.date.startsWith(prefix));
+  const monthItems = state.transactions.filter((item) => item.date.startsWith(prefix));
+  const totals = calculateTotals(monthItems);
+
+  document.getElementById('historyExpenseTotal').textContent = `${fmt(totals.expense)} ₽`;
+  document.getElementById('historyIncomeTotal').textContent = `${fmt(totals.income)} ₽`;
+
+  const expensePill = document.getElementById('historyExpensePill');
+  const incomePill = document.getElementById('historyIncomePill');
+
+  expensePill.classList.toggle('active', state.historyType === 'expense');
+  incomePill.classList.toggle('active', state.historyType === 'income');
+  expensePill.setAttribute('aria-pressed', String(state.historyType === 'expense'));
+  incomePill.setAttribute('aria-pressed', String(state.historyType === 'income'));
+
+  const items = state.historyType === 'all'
+    ? monthItems
+    : monthItems.filter((item) => (
+      state.historyType === 'income'
+        ? item.type === 'income'
+        : item.type !== 'income'
+    ));
+
   renderTxList('historyTxList', items);
+}
+
+function setHistoryType(type) {
+  if (type !== 'expense' && type !== 'income') {
+    return;
+  }
+
+  state.historyType = state.historyType === type ? 'all' : type;
+  renderHistory();
 }
 
 function changeMonth(delta) {

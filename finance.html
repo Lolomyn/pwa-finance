@@ -79,6 +79,17 @@
       </button>
     </div>
 
+    <div class="history-pills" id="historyPills" role="group" aria-label="Итоги месяца">
+      <button class="history-pill expense" id="historyExpensePill" type="button" onclick="setHistoryType('expense')" aria-pressed="false">
+        <span class="history-pill-val" id="historyExpenseTotal">0 ₽</span>
+        <span class="history-pill-lbl">расходы</span>
+      </button>
+      <button class="history-pill income" id="historyIncomePill" type="button" onclick="setHistoryType('income')" aria-pressed="false">
+        <span class="history-pill-val" id="historyIncomeTotal">0 ₽</span>
+        <span class="history-pill-lbl">доходы</span>
+      </button>
+    </div>
+
     <div id="historyTxList"></div>
   </div>
 
