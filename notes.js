@@ -2,7 +2,7 @@
 
 /* Данные приложения «Заметки».
    Стор `notes` в общей базе `expense-tracker-db`, статистика на хабе,
-   быстрая заметка, экспорт и импорт. Интерфейс экрана — notes-page.js. */
+   экспорт и импорт. Интерфейс экрана — notes-page.js. */
 
 (function () {
   const NOTES_STORE = 'notes';
@@ -404,40 +404,6 @@
     return lastChecklistItemId;
   }
 
-  async function createQuickNote(text) {
-    if (!loaded) {
-      return null;
-    }
-
-    const trimmed = String(text || '').trim();
-
-    if (!trimmed) {
-      return null;
-    }
-
-    const firstLine = trimmed.split(/\r?\n/)[0].trim().slice(0, 60);
-    const stamp = nowMs();
-    const note = normalizeNote({
-      title: firstLine,
-      text: trimmed,
-      color: 'plain',
-      mode: 'text',
-      deletedAt: null,
-      createdAt: stamp,
-      updatedAt: stamp
-    });
-
-    try {
-      await putNote(note);
-      await reloadNotes();
-    } catch (error) {
-      return null;
-    }
-
-    renderHub();
-    return true;
-  }
-
   /* ------------------------------------------------------------------ */
   /* Экспорт и импорт                                                   */
   /* ------------------------------------------------------------------ */
@@ -571,13 +537,11 @@
     init,
     render,
     renderHub,
-    createQuickNote,
     exportJson,
     importJson,
     list,
     save,
     remove,
-    nextChecklistItemId,
-    isLoaded: () => loaded
+    nextChecklistItemId
   };
 })();

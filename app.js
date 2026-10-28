@@ -4707,41 +4707,6 @@ function initHub() {
     });
   }
 
-  const hubQuickForm = document.getElementById('hub-quick-note');
-  const hubQuickInput = document.getElementById('hub-quick-input');
-
-  if (hubQuickForm) {
-    hubQuickForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const text = hubQuickInput.value.trim();
-
-      if (!text) {
-        hubQuickInput.focus();
-        return;
-      }
-
-      const notesReady = window.Notes
-        && typeof window.Notes.createQuickNote === 'function'
-        && (typeof window.Notes.isLoaded !== 'function' || window.Notes.isLoaded());
-
-      if (notesReady) {
-        const created = await window.Notes.createQuickNote(text);
-
-        if (created) {
-          hubQuickInput.value = '';
-          hapticFeedback(8);
-          showInfoToast('Заметка сохранена');
-          renderHubScreen();
-          return;
-        }
-
-        showInfoToast('Не удалось сохранить заметку');
-      } else {
-        showInfoToast('Приложение заметок ещё загружается');
-      }
-    });
-  }
-
   document.getElementById('hub-close')?.addEventListener('click', () => showTab('home'));
   renderHubScreen();
 }
