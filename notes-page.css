@@ -727,9 +727,16 @@ button:focus-visible,
   color: transparent;
 }
 
-.editor-sheet.is-view .checklist-row input[type="checkbox"],
 .editor-sheet.is-view .checklist-row input[type="text"] {
   pointer-events: none;
+}
+
+.editor-mode-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-right: 2px;
 }
 
 .editor-hint {

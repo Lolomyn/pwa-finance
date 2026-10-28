@@ -391,7 +391,7 @@
 
     const rows = state.checklist.map((item) => `
       <div class="checklist-row${item.done ? ' done' : ''}" data-id="${item.id}">
-        <input type="checkbox" ${item.done ? 'checked' : ''} aria-label="Готово"${view ? ' tabindex="-1"' : ''}>
+        <input type="checkbox" ${item.done ? 'checked' : ''} aria-label="Готово">
         <input
           type="text"
           value="${escapeHtml(item.text)}"
@@ -455,6 +455,7 @@
     els.editorTitle.readOnly = view;
     els.editBody.readOnly = view;
     els.editorHint.hidden = !view;
+    els.editorModeLabel.hidden = !view;
     els.pinBtn.hidden = view && !state.pinned;
 
     if (state.type === 'checklist') {
@@ -597,6 +598,34 @@
     await refresh();
   }
 
+  async function persistChecklistState() {
+    if (state.editingId === null) {
+      return;
+    }
+
+    const existing = state.notes.find((item) => item.id === state.editingId);
+
+    if (!existing) {
+      return;
+    }
+
+    const note = {
+      ...existing,
+      items: state.checklist.map((item) => ({ ...item })),
+      updatedAt: Date.now()
+    };
+
+    try {
+      await window.Notes.save(note);
+    } catch (error) {
+      console.error('Не удалось сохранить отметки чек-листа:', error);
+      return;
+    }
+
+    state.notes = window.Notes.list();
+    renderList();
+  }
+
   /* ── Удаление ──────────────────────────────────────────────────────── */
 
   function askDelete(id) {
@@ -671,6 +700,7 @@
     els.editBody = byId('editBody');
     els.editChecklist = byId('editChecklist');
     els.editorHint = byId('editorHint');
+    els.editorModeLabel = byId('editorModeLabel');
     els.pinBtn = byId('pinBtn');
     els.colorPicker = byId('colorPicker');
     els.deleteBtn = byId('deleteBtn');
@@ -703,6 +733,10 @@
       }
 
       if (!event.target.closest('.editor-title, .editor-body, .checklist-editor')) {
+        return;
+      }
+
+      if (event.target.closest('.checklist-row input[type="checkbox"]')) {
         return;
       }
 
@@ -799,6 +833,10 @@
 
       item.done = event.target.checked;
       row.classList.toggle('done', item.done);
+
+      if (state.sheetMode === 'view') {
+        persistChecklistState();
+      }
     });
 
     els.editChecklist.addEventListener('input', (event) => {
