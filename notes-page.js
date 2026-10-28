@@ -23,6 +23,7 @@
     openCardId: null,
     suppressClickUntil: 0,
     editorOpen: false,
+    sheetMode: 'edit',
     editingId: null,
     color: 'plain',
     pinned: false,
@@ -33,6 +34,7 @@
   };
 
   let drag = null;
+  const lastContentTap = { time: 0, x: 0, y: 0 };
 
   /* ── Утилиты ───────────────────────────────────────────────────────── */
 
@@ -385,9 +387,11 @@
   }
 
   function renderChecklistEditor() {
+    const view = state.sheetMode === 'view';
+
     const rows = state.checklist.map((item) => `
       <div class="checklist-row${item.done ? ' done' : ''}" data-id="${item.id}">
-        <input type="checkbox" ${item.done ? 'checked' : ''} aria-label="Готово">
+        <input type="checkbox" ${item.done ? 'checked' : ''} aria-label="Готово"${view ? ' tabindex="-1"' : ''}>
         <input
           type="text"
           value="${escapeHtml(item.text)}"
@@ -395,6 +399,7 @@
           maxlength="200"
           autocomplete="off"
           aria-label="Текст пункта"
+          ${view ? 'readonly tabindex="-1"' : ''}
         >
         <button class="checklist-del" type="button" aria-label="Удалить пункт">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -440,6 +445,54 @@
     }
   }
 
+  function applySheetMode(mode) {
+    state.sheetMode = mode;
+
+    const view = mode === 'view';
+
+    els.editorSheet.classList.toggle('is-view', view);
+    els.editorSheet.setAttribute('aria-label', view ? 'Просмотр заметки' : 'Редактор заметки');
+    els.editorTitle.readOnly = view;
+    els.editBody.readOnly = view;
+    els.editorHint.hidden = !view;
+    els.pinBtn.hidden = view && !state.pinned;
+
+    if (state.type === 'checklist') {
+      renderChecklistEditor();
+    }
+
+    if (view) {
+      document.activeElement?.blur?.();
+    }
+  }
+
+  function enterEditMode(source) {
+    if (state.sheetMode !== 'view' || state.editingId === null) {
+      return;
+    }
+
+    applySheetMode('edit');
+
+    const tappedBody = source instanceof Element && source.closest('.editor-body');
+    const tappedChecklist = source instanceof Element && source.closest('.checklist-editor');
+
+    window.setTimeout(() => {
+      if (state.type === 'checklist') {
+        if (tappedChecklist) {
+          focusFirstChecklistInput();
+        }
+
+        return;
+      }
+
+      const field = tappedBody ? els.editBody : els.editorTitle;
+      const end = field.value.length;
+
+      field.focus();
+      field.setSelectionRange(end, end);
+    }, 30);
+  }
+
   function openEditor(id) {
     const noteId = Number.isFinite(id) ? id : null;
     const note = noteId !== null ? state.notes.find((item) => item.id === noteId) : null;
@@ -449,6 +502,7 @@
     state.pinned = Boolean(note && note.pinned);
     state.type = note ? note.mode : 'text';
     state.checklist = note ? note.items.map((item) => ({ ...item })) : [];
+    state.sheetMode = note ? 'view' : 'edit';
 
     els.editorTitle.value = note ? note.title : '';
     els.editBody.value = note && note.mode === 'text' ? note.text : '';
@@ -457,6 +511,7 @@
     syncPin();
     syncColors();
     syncType({ focus: false });
+    applySheetMode(state.sheetMode);
 
     els.backdrop.classList.add('open');
     els.editorSheet.classList.add('open');
@@ -464,6 +519,10 @@
     els.editorSheet.style.zIndex = '';
     els.backdrop.style.zIndex = '';
     state.editorOpen = true;
+
+    if (note) {
+      return;
+    }
 
     window.setTimeout(() => els.editorTitle.focus(), 300);
   }
@@ -611,6 +670,7 @@
     els.editorTitle = byId('editTitle');
     els.editBody = byId('editBody');
     els.editChecklist = byId('editChecklist');
+    els.editorHint = byId('editorHint');
     els.pinBtn = byId('pinBtn');
     els.colorPicker = byId('colorPicker');
     els.deleteBtn = byId('deleteBtn');
@@ -635,6 +695,36 @@
 
     els.fab.addEventListener('click', () => openEditor(null));
     els.backdrop.addEventListener('click', closeEditor);
+
+    els.editorSheet.addEventListener('pointerup', (event) => {
+      if (state.sheetMode !== 'view') {
+        lastContentTap.time = 0;
+        return;
+      }
+
+      if (!event.target.closest('.editor-title, .editor-body, .checklist-editor')) {
+        return;
+      }
+
+      const now = Date.now();
+      const sameSpot = Math.abs(event.clientX - lastContentTap.x) < 32
+        && Math.abs(event.clientY - lastContentTap.y) < 32;
+      const isDoubleTap = now - lastContentTap.time < 350 && sameSpot;
+
+      lastContentTap.time = isDoubleTap ? 0 : now;
+      lastContentTap.x = event.clientX;
+      lastContentTap.y = event.clientY;
+
+      if (isDoubleTap) {
+        enterEditMode(event.target);
+      }
+    });
+
+    els.editorSheet.addEventListener('dblclick', (event) => {
+      if (event.target.closest('.editor-title, .editor-body, .checklist-editor')) {
+        enterEditMode(event.target);
+      }
+    });
 
     els.notesList.addEventListener('click', onListClick);
     els.notesList.addEventListener('pointerdown', onPointerDown);

@@ -442,6 +442,7 @@ button:focus-visible,
   flex-direction: column;
   height: 85vh;
   height: 85dvh;
+  touch-action: manipulation;
 }
 
 .editor-sheet.open {
@@ -693,6 +694,52 @@ button:focus-visible,
   width: 16px;
   height: 16px;
   stroke-width: 2;
+}
+
+/* ── Режим просмотра ─────────────────────────────────────────────────── */
+
+.editor-sheet.is-view .color-picker,
+.editor-sheet.is-view #saveBtn,
+.editor-sheet.is-view .note-type-toggle,
+.editor-sheet.is-view .add-checklist-item,
+.editor-sheet.is-view .checklist-del {
+  display: none;
+}
+
+.editor-sheet.is-view #pinBtn {
+  pointer-events: none;
+}
+
+.editor-sheet.is-view .editor-title,
+.editor-sheet.is-view .editor-body,
+.editor-sheet.is-view .checklist-row {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.editor-sheet.is-view .editor-title,
+.editor-sheet.is-view .editor-body {
+  caret-color: transparent;
+}
+
+.editor-sheet.is-view .editor-title::placeholder,
+.editor-sheet.is-view .editor-body::placeholder {
+  color: transparent;
+}
+
+.editor-sheet.is-view .checklist-row input[type="checkbox"],
+.editor-sheet.is-view .checklist-row input[type="text"] {
+  pointer-events: none;
+}
+
+.editor-hint {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
 }
 
 /* ── Подтверждение удаления ──────────────────────────────────────────── */
