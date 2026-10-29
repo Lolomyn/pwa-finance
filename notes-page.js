@@ -882,16 +882,6 @@
     });
   }
 
-  function registerServiceWorker() {
-    if (!('serviceWorker' in navigator)) {
-      return;
-    }
-
-    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch((error) => {
-      console.error('Не удалось зарегистрировать service worker:', error);
-    });
-  }
-
   async function init() {
     cacheElements();
     bindEvents();
@@ -903,7 +893,6 @@
     }
 
     await refresh();
-    registerServiceWorker();
   }
 
   init();

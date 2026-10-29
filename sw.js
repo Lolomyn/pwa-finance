@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'expense-tracker-v80';
+const CACHE_NAME = 'expense-tracker-v81';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -16,10 +16,12 @@ const PRECACHE_URLS = [
   './notes.css',
   './cashback.css',
   './calendar.css',
+  './update-banner.css',
   './app.js',
   './notes.js',
   './cashback.js',
   './calendar.js',
+  './update-banner.js',
   './manifest.json',
   './icons/icon.svg',
   './icons/icon-192.png',
@@ -58,6 +60,12 @@ self.addEventListener('activate', (event) => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {

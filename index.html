@@ -35,10 +35,12 @@
   <link rel="stylesheet" href="notes.css">
   <link rel="stylesheet" href="cashback.css">
   <link rel="stylesheet" href="calendar.css">
+  <link rel="stylesheet" href="update-banner.css">
   <script src="app.js" defer></script>
   <script src="notes.js" defer></script>
   <script src="cashback.js" defer></script>
   <script src="calendar.js" defer></script>
+  <script src="update-banner.js" defer></script>
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
@@ -176,7 +178,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.13.0</div>
+        <div class="hub-version" id="hub-version">v1.14.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" data-card-id="app-finance" data-card-name="Приложение «Финансы»" aria-label="Открыть приложение Финансы">
@@ -1831,16 +1833,5 @@
     </div>
   </div>
 
-  <script>
-    window.addEventListener('load', () => {
-      if (!('serviceWorker' in navigator)) {
-        return;
-      }
-
-      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch((error) => {
-        console.error('Не удалось зарегистрировать service worker:', error);
-      });
-    });
-  </script>
 </body>
 </html>

@@ -2148,12 +2148,6 @@ async function init() {
   document.addEventListener('click', handleDelegatedClick);
   document.addEventListener('keydown', handleKeydown);
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch((error) => {
-      console.warn('Не удалось зарегистрировать service worker:', error);
-    });
-  }
-
   try {
     await loadState();
     renderHome();
