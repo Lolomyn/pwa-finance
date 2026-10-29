@@ -5274,8 +5274,7 @@ button.set:active {
   user-select: none;
 }
 
-.hub-widget.is-card-pressing,
-.hub-app.is-card-pressing {
+[data-card-id].is-card-pressing {
   transform: scale(0.96);
   opacity: 0.82;
   transition: transform 0.15s ease, opacity 0.15s ease;

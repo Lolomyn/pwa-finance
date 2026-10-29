@@ -4826,10 +4826,14 @@ function initThemeSettings() {
 /* ------------------------------------------------------------------ */
 
 const HIDDEN_HUB_CARDS_KEY = 'expense-tracker-hidden-hub-cards';
+// Любая новая карточка хаба должна быть добавлена сюда и получить
+// data-card-id + data-card-name в разметке, чтобы её можно было скрыть
+// долгим нажатием и вернуть из настроек.
 const HUB_CARD_NAMES = {
   'widget-days': 'Виджет «Рабочих дней»',
   'app-finance': 'Приложение «Финансы»',
-  'app-notes': 'Приложение «Заметки»'
+  'app-notes': 'Приложение «Заметки»',
+  'widget-cashback': 'Виджет «Кэшбэк»'
 };
 const HUB_CARD_IDS = Object.keys(HUB_CARD_NAMES);
 
@@ -5058,6 +5062,15 @@ function initHubCardHiding() {
   document.querySelectorAll('[data-card-id]').forEach((card) => {
     card.addEventListener('pointerdown', (event) => {
       if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+      }
+
+      const target = event.target instanceof Element ? event.target : null;
+      const interactive = target?.closest('button, a, input, select, textarea, [role="button"]');
+
+      // Внутри карточки могут быть свои кнопки: долгое нажатие на них
+      // не должно скрывать всю карточку.
+      if (interactive && interactive !== card) {
         return;
       }
 
