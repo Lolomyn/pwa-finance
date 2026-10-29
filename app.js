@@ -4769,6 +4769,7 @@ function initThemeSettings() {
       hideTimer = null;
     }
 
+    renderHiddenHubCardsList();
     backdrop.hidden = false;
     sheet.hidden = false;
 
@@ -4778,9 +4779,9 @@ function initThemeSettings() {
     window.requestAnimationFrame(() => {
       backdrop.classList.add('open');
       sheet.classList.add('open');
+      syncHubOverlayLock();
     });
 
-    document.body.classList.add('modal-open');
     hapticFeedback(6);
     closeButton?.focus({ preventScroll: true });
   };
@@ -4792,7 +4793,7 @@ function initThemeSettings() {
 
     backdrop.classList.remove('open');
     sheet.classList.remove('open');
-    document.body.classList.remove('modal-open');
+    syncHubOverlayLock();
 
     hideTimer = window.setTimeout(() => {
       backdrop.hidden = true;
@@ -4816,6 +4817,299 @@ function initThemeSettings() {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !sheet.hidden) {
       closeSettings();
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Скрытие карточек хаба                                               */
+/* ------------------------------------------------------------------ */
+
+const HIDDEN_HUB_CARDS_KEY = 'expense-tracker-hidden-hub-cards';
+const HUB_CARD_NAMES = {
+  'widget-days': 'Виджет «Рабочих дней»',
+  'app-finance': 'Приложение «Финансы»',
+  'app-notes': 'Приложение «Заметки»'
+};
+const HUB_CARD_IDS = Object.keys(HUB_CARD_NAMES);
+
+const hiddenHubCards = new Set();
+
+let currentHubCardToHide = null;
+let hubCardPressTimer = null;
+let hubCardPressCard = null;
+let hubCardPressOrigin = null;
+let lastHubCardLongPress = null;
+let hubCardActionHideTimer = null;
+
+function syncHubOverlayLock() {
+  const hasOpenSheet = ['hubSettingsSheet', 'hubCardActionSheet'].some((id) => {
+    const element = document.getElementById(id);
+    return element && !element.hidden && element.classList.contains('open');
+  });
+
+  document.body.classList.toggle('modal-open', hasOpenSheet);
+}
+
+function loadHiddenHubCards() {
+  hiddenHubCards.clear();
+
+  try {
+    const stored = localStorage.getItem(HIDDEN_HUB_CARDS_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+
+    if (Array.isArray(parsed)) {
+      parsed.forEach((id) => {
+        if (HUB_CARD_IDS.includes(id)) {
+          hiddenHubCards.add(id);
+        }
+      });
+    }
+  } catch (error) {}
+
+  applyHiddenHubCards();
+}
+
+function saveHiddenHubCards() {
+  try {
+    localStorage.setItem(HIDDEN_HUB_CARDS_KEY, JSON.stringify([...hiddenHubCards]));
+  } catch (error) {}
+}
+
+function applyHiddenHubCards() {
+  HUB_CARD_IDS.forEach((id) => {
+    const card = document.querySelector(`[data-card-id="${id}"]`);
+
+    if (card) {
+      card.classList.toggle('card-hidden', hiddenHubCards.has(id));
+    }
+  });
+}
+
+function renderHiddenHubCardsList() {
+  const wrap = document.getElementById('hiddenCardsWrap');
+  const list = document.getElementById('hiddenCardsList');
+
+  if (!wrap || !list) {
+    return;
+  }
+
+  list.textContent = '';
+  wrap.hidden = hiddenHubCards.size === 0;
+
+  if (hiddenHubCards.size === 0) {
+    return;
+  }
+
+  HUB_CARD_IDS.forEach((id) => {
+    if (!hiddenHubCards.has(id)) {
+      return;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'hidden-card-row';
+
+    const name = document.createElement('span');
+    name.className = 'hidden-card-name';
+    name.textContent = HUB_CARD_NAMES[id];
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'restore-btn';
+    button.dataset.cardId = id;
+    button.textContent = 'Вернуть';
+
+    row.append(name, button);
+    list.append(row);
+  });
+}
+
+function openHubCardAction(card) {
+  const backdrop = document.getElementById('hubCardActionBackdrop');
+  const sheet = document.getElementById('hubCardActionSheet');
+  const title = document.getElementById('hubCardActionTitle');
+  const closeButton = document.getElementById('hubCardActionClose');
+
+  if (!backdrop || !sheet || !card) {
+    return;
+  }
+
+  const id = card.dataset.cardId;
+  currentHubCardToHide = id || null;
+
+  if (title) {
+    title.textContent = card.dataset.cardName || HUB_CARD_NAMES[id] || 'Карточка';
+  }
+
+  if (hubCardActionHideTimer) {
+    window.clearTimeout(hubCardActionHideTimer);
+    hubCardActionHideTimer = null;
+  }
+
+  backdrop.hidden = false;
+  sheet.hidden = false;
+  void sheet.offsetHeight;
+
+  window.requestAnimationFrame(() => {
+    backdrop.classList.add('open');
+    sheet.classList.add('open');
+    syncHubOverlayLock();
+  });
+
+  hapticFeedback(18);
+  closeButton?.focus({ preventScroll: true });
+}
+
+function closeHubCardAction() {
+  const backdrop = document.getElementById('hubCardActionBackdrop');
+  const sheet = document.getElementById('hubCardActionSheet');
+
+  if (!backdrop || !sheet || sheet.hidden) {
+    return;
+  }
+
+  backdrop.classList.remove('open');
+  sheet.classList.remove('open');
+  currentHubCardToHide = null;
+  syncHubOverlayLock();
+
+  hubCardActionHideTimer = window.setTimeout(() => {
+    backdrop.hidden = true;
+    sheet.hidden = true;
+    hubCardActionHideTimer = null;
+  }, 350);
+}
+
+function hideCurrentHubCard() {
+  const id = currentHubCardToHide;
+
+  if (!id) {
+    return;
+  }
+
+  hiddenHubCards.add(id);
+  saveHiddenHubCards();
+  applyHiddenHubCards();
+  renderHiddenHubCardsList();
+  closeHubCardAction();
+  hapticFeedback(10);
+}
+
+function restoreHubCard(id) {
+  if (!hiddenHubCards.delete(id)) {
+    return;
+  }
+
+  saveHiddenHubCards();
+  applyHiddenHubCards();
+  renderHiddenHubCardsList();
+  hapticFeedback(8);
+}
+
+function cancelHubCardPress() {
+  if (hubCardPressTimer) {
+    window.clearTimeout(hubCardPressTimer);
+    hubCardPressTimer = null;
+  }
+
+  if (hubCardPressCard) {
+    hubCardPressCard.classList.remove('is-card-pressing');
+    hubCardPressCard = null;
+  }
+
+  hubCardPressOrigin = null;
+}
+
+function startHubCardPress(card, event) {
+  cancelHubCardPress();
+
+  hubCardPressCard = card;
+  hubCardPressOrigin = { x: event.clientX, y: event.clientY };
+
+  hubCardPressTimer = window.setTimeout(() => {
+    hubCardPressTimer = null;
+
+    const id = card.dataset.cardId;
+
+    if (!id || hiddenHubCards.has(id)) {
+      return;
+    }
+
+    lastHubCardLongPress = { id, at: Date.now() };
+    card.classList.add('is-card-pressing');
+    openHubCardAction(card);
+  }, 450);
+}
+
+function initHubCardHiding() {
+  const backdrop = document.getElementById('hubCardActionBackdrop');
+  const sheet = document.getElementById('hubCardActionSheet');
+  const closeButton = document.getElementById('hubCardActionClose');
+  const hideButton = document.getElementById('hubCardActionHide');
+  const list = document.getElementById('hiddenCardsList');
+
+  loadHiddenHubCards();
+  renderHiddenHubCardsList();
+
+  if (!backdrop || !sheet) {
+    return;
+  }
+
+  document.querySelectorAll('[data-card-id]').forEach((card) => {
+    card.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+      }
+
+      startHubCardPress(card, event);
+    });
+
+    card.addEventListener('pointerup', cancelHubCardPress);
+    card.addEventListener('pointercancel', cancelHubCardPress);
+    card.addEventListener('pointerleave', cancelHubCardPress);
+    card.addEventListener('contextmenu', (event) => event.preventDefault());
+
+    card.addEventListener('click', (event) => {
+      if (
+        lastHubCardLongPress &&
+        lastHubCardLongPress.id === card.dataset.cardId &&
+        Date.now() - lastHubCardLongPress.at < 700
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    }, true);
+  });
+
+  document.addEventListener('pointermove', (event) => {
+    if (!hubCardPressCard || !hubCardPressOrigin) {
+      return;
+    }
+
+    if (
+      Math.abs(event.clientX - hubCardPressOrigin.x) > 10 ||
+      Math.abs(event.clientY - hubCardPressOrigin.y) > 10
+    ) {
+      cancelHubCardPress();
+    }
+  }, { passive: true });
+
+  closeButton?.addEventListener('click', closeHubCardAction);
+  hideButton?.addEventListener('click', hideCurrentHubCard);
+  backdrop.addEventListener('click', closeHubCardAction);
+
+  list?.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target?.closest('.restore-btn');
+
+    if (button?.dataset.cardId) {
+      restoreHubCard(button.dataset.cardId);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !sheet.hidden) {
+      closeHubCardAction();
     }
   });
 }
@@ -10305,6 +10599,7 @@ async function init() {
   initTabNavigation();
   initSwipeGestures();
   initThemeSettings();
+  initHubCardHiding();
   showTab(getTabFromHash(), { push: false });
   showTab('hub', { push: true });
   initHub();

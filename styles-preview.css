@@ -439,6 +439,10 @@ p {
   gap: 14px;
 }
 
+.hub-apps:has(.hub-app.card-hidden) {
+  grid-template-columns: 1fr;
+}
+
 .hub-app {
   appearance: none;
   border: 0;
@@ -5077,7 +5081,8 @@ button.set:active {
   height: 21px;
 }
 
-.hub-settings-backdrop {
+.hub-settings-backdrop,
+.hub-card-action-backdrop {
   position: fixed;
   inset: 0;
   z-index: 99;
@@ -5089,12 +5094,14 @@ button.set:active {
   transition: opacity 0.3s ease;
 }
 
-.hub-settings-backdrop.open {
+.hub-settings-backdrop.open,
+.hub-card-action-backdrop.open {
   opacity: 1;
   pointer-events: auto;
 }
 
-.hub-settings-sheet {
+.hub-settings-sheet,
+.hub-card-action-sheet {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -5116,7 +5123,8 @@ button.set:active {
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
 }
 
-.hub-settings-sheet.open {
+.hub-settings-sheet.open,
+.hub-card-action-sheet.open {
   transform: translateY(0);
 }
 
@@ -5259,6 +5267,130 @@ button.set:active {
   left: 27px;
 }
 
+/* ═══ Скрытие карточек хаба ═══ */
+[data-card-id] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.hub-widget.is-card-pressing,
+.hub-app.is-card-pressing {
+  transform: scale(0.96);
+  opacity: 0.82;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.card-hidden {
+  display: none !important;
+}
+
+.hub-card-action-backdrop {
+  z-index: 119;
+}
+
+.hub-card-action-sheet {
+  z-index: 120;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+.hub-card-action-sheet .hub-settings-title {
+  font-size: 18px;
+}
+
+.hub-card-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--coral);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  min-height: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.hub-card-action-btn:hover {
+  background: rgba(255, 107, 74, 0.16);
+}
+
+.hub-card-action-btn:active {
+  transform: scale(0.98);
+  background: rgba(255, 107, 74, 0.22);
+}
+
+.hub-card-action-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* ═══ Скрытые карточки в настройках ═══ */
+.hidden-cards-wrap {
+  padding-top: 8px;
+}
+
+.hidden-cards-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hidden-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hidden-card-row:last-child {
+  border-bottom: none;
+}
+
+.hidden-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.restore-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  min-height: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--coral);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.restore-btn:hover {
+  background: var(--accent-hover);
+}
+
+.restore-btn:active {
+  transform: scale(0.94);
+}
+
 /* ═══ Тёмная тема ═══ */
 html[data-theme="dark"] {
   color-scheme: dark;
@@ -5301,6 +5433,7 @@ html[data-theme="dark"] .hub-settings-btn {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
-html[data-theme="dark"] .hub-settings-backdrop {
+html[data-theme="dark"] .hub-settings-backdrop,
+html[data-theme="dark"] .hub-card-action-backdrop {
   background: rgba(0, 0, 0, 0.62);
 }

@@ -152,7 +152,7 @@
           </button>
         </div>
 
-        <div class="hub-widget" aria-live="polite">
+        <div class="hub-widget" id="hub-widget" data-card-id="widget-days" data-card-name="Виджет «Рабочих дней»" aria-live="polite">
           <div class="hub-widget-head">
             <div class="hub-widget-lbl">Рабочих дней</div>
             <div id="hub-widget-month" class="hub-widget-month">октябрь 2026</div>
@@ -163,10 +163,10 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.10.1</div>
+        <div class="hub-version" id="hub-version">v1.11.0</div>
 
         <div class="hub-apps">
-          <button id="hub-finance" class="hub-app hub-app-finance" type="button" aria-label="Открыть приложение Финансы">
+          <button id="hub-finance" class="hub-app hub-app-finance" type="button" data-card-id="app-finance" data-card-name="Приложение «Финансы»" aria-label="Открыть приложение Финансы">
             <div class="hub-app-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2.5" y="5.5" width="19" height="13" rx="3"/>
@@ -181,7 +181,7 @@
             </div>
           </button>
 
-          <button id="hub-notes" class="hub-app hub-app-notes" type="button" aria-label="Открыть приложение Заметки">
+          <button id="hub-notes" class="hub-app hub-app-notes" type="button" data-card-id="app-notes" data-card-name="Приложение «Заметки»" aria-label="Открыть приложение Заметки">
             <div class="hub-app-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M6 3h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
@@ -1719,6 +1719,11 @@
         </div>
       </div>
 
+      <div class="hidden-cards-wrap" id="hiddenCardsWrap" hidden>
+        <span class="hidden-cards-title">Скрытые карточки</span>
+        <div id="hiddenCardsList"></div>
+      </div>
+
       <div class="hub-setting-item">
         <div class="hub-setting-info">
           <div class="hub-setting-name">Экспорт данных</div>
@@ -1733,6 +1738,24 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div class="hub-card-action-backdrop" id="hubCardActionBackdrop" hidden></div>
+  <div class="hub-card-action-sheet" id="hubCardActionSheet" role="dialog" aria-modal="true" aria-labelledby="hubCardActionTitle" hidden>
+    <div class="hub-settings-handle" aria-hidden="true"></div>
+    <div class="hub-settings-head">
+      <div class="hub-settings-title" id="hubCardActionTitle">Карточка</div>
+      <button class="hub-settings-close" id="hubCardActionClose" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <button class="hub-card-action-btn" id="hubCardActionHide" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+      </svg>
+      Скрыть карточку
+    </button>
   </div>
 
   <script>
