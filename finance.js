@@ -120,6 +120,7 @@ const state = {
   statsRange: 'week',
   customStart: addDays(startOfDay(new Date()), -6),
   customEnd: startOfDay(new Date()),
+  barChartBars: [],
   calcType: 'expense',
   calcCatId: null,
   calcExpr: '',
@@ -1000,19 +1001,49 @@ function renderStats() {
 
 function renderBarChart(range, filtered) {
   const barChart = document.getElementById('barChart');
+  const periods = getBarPeriods(range);
+  const bars = periods.map((period) => {
+    const startIso = isoDate(period.start);
+    const endIso = isoDate(period.end);
+    const amount = filtered
+      .filter((item) => item.type === 'expense' && item.date >= startIso && item.date <= endIso)
+      .reduce((sum, item) => sum + item.amount, 0);
+
+    return { ...period, amount };
+  });
+
+  state.barChartBars = bars;
+
+  const max = Math.max(...bars.map((bar) => bar.amount), 1);
+  barChart.innerHTML = bars.map((bar, index) => {
+    const percent = (bar.amount / max) * 100;
+    return `
+      <div class="bar-col" data-bar-index="${index}" title="${escapeHtml(bar.title)} — ${fmt(bar.amount)} ₽">
+        <div class="bar ${bar.amount > 0 ? 'active' : ''}" style="height: ${Math.max(4, percent)}%"></div>
+        <div class="bar-lbl">${escapeHtml(bar.label)}</div>
+      </div>`;
+  }).join('');
+}
+
+function getBarPeriods(range) {
+  const periods = [];
   const now = startOfDay(new Date());
-  const bars = [];
 
   if (range.kind === 'week') {
     for (let index = 6; index >= 0; index -= 1) {
       const date = addDays(now, -index);
-      const dateKey = isoDate(date);
-      const amount = filtered
-        .filter((item) => item.type === 'expense' && item.date === dateKey)
-        .reduce((sum, item) => sum + item.amount, 0);
-      bars.push({ label: WEEKDAY_NAMES[date.getDay()], amount });
+      periods.push({
+        label: WEEKDAY_NAMES[date.getDay()],
+        start: date,
+        end: date,
+        title: fmtDayMonth(date),
+        caption: 'Расходы за день'
+      });
     }
-  } else if (range.kind === 'month') {
+    return periods;
+  }
+
+  if (range.kind === 'month') {
     const year = range.start.getFullYear();
     const month = range.start.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1020,70 +1051,63 @@ function renderBarChart(range, filtered) {
     for (let index = 0; index < 4; index += 1) {
       const firstDay = 1 + index * 7;
       const lastDay = index === 3 ? daysInMonth : 7 + index * 7;
-      const amount = filtered
-        .filter((item) => {
-          if (item.type !== 'expense') {
-            return false;
-          }
-          const date = parseISODate(item.date);
-          return date.getFullYear() === year &&
-            date.getMonth() === month &&
-            date.getDate() >= firstDay &&
-            date.getDate() <= lastDay;
-        })
-        .reduce((sum, item) => sum + item.amount, 0);
-      bars.push({ label: `${index + 1} нед`, amount });
+      periods.push({
+        label: `${index + 1} нед`,
+        start: new Date(year, month, firstDay),
+        end: new Date(year, month, lastDay),
+        title: `${firstDay}–${lastDay} ${MONTHS_SHORT[month]}`,
+        caption: 'Расходы за неделю'
+      });
     }
-  } else if (range.kind === 'year') {
-    const year = range.start.getFullYear();
-    for (let month = 0; month < 12; month += 1) {
-      const monthKey = `${year}-${pad(month + 1)}`;
-      const amount = filtered
-        .filter((item) => item.type === 'expense' && item.date.startsWith(monthKey))
-        .reduce((sum, item) => sum + item.amount, 0);
-      bars.push({ label: MONTHS_SHORT_TITLE[month], amount });
-    }
-  } else {
-    const diffDays = Math.max(1, Math.round((range.end - range.start) / 86400000) + 1);
-
-    if (diffDays <= 14) {
-      for (let index = 0; index < diffDays; index += 1) {
-        const date = addDays(range.start, index);
-        const dateKey = isoDate(date);
-        const amount = filtered
-          .filter((item) => item.type === 'expense' && item.date === dateKey)
-          .reduce((sum, item) => sum + item.amount, 0);
-        bars.push({ label: `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`, amount });
-      }
-    } else {
-      let cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
-      while (cursor <= range.end) {
-        const year = cursor.getFullYear();
-        const month = cursor.getMonth();
-        const amount = filtered
-          .filter((item) => {
-            if (item.type !== 'expense') {
-              return false;
-            }
-            const date = parseISODate(item.date);
-            return date.getFullYear() === year && date.getMonth() === month;
-          })
-          .reduce((sum, item) => sum + item.amount, 0);
-        bars.push({ label: MONTHS_SHORT_TITLE[month], amount });
-        cursor = new Date(year, month + 1, 1);
-      }
-    }
+    return periods;
   }
 
-  const max = Math.max(...bars.map((bar) => bar.amount), 1);
-  barChart.innerHTML = bars.map((bar) => {
-    const percent = (bar.amount / max) * 100;
-    return `
-      <div class="bar-col">
-        <div class="bar ${bar.amount > 0 ? 'active' : ''}" style="height: ${Math.max(4, percent)}%"></div>
-        <div class="bar-lbl">${escapeHtml(bar.label)}</div>
-      </div>`;
-  }).join('');
+  if (range.kind === 'year') {
+    const year = range.start.getFullYear();
+    for (let month = 0; month < 12; month += 1) {
+      periods.push({
+        label: MONTHS_SHORT_TITLE[month],
+        start: new Date(year, month, 1),
+        end: new Date(year, month + 1, 0),
+        title: `${MONTH_NAMES[month]} ${year}`,
+        caption: 'Расходы за месяц'
+      });
+    }
+    return periods;
+  }
+
+  const diffDays = Math.max(1, Math.round((range.end - range.start) / 86400000) + 1);
+
+  if (diffDays <= 14) {
+    for (let index = 0; index < diffDays; index += 1) {
+      const date = addDays(range.start, index);
+      periods.push({
+        label: `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`,
+        start: date,
+        end: date,
+        title: fmtDayMonth(date),
+        caption: 'Расходы за день'
+      });
+    }
+    return periods;
+  }
+
+  let cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+  while (cursor <= range.end) {
+    const month = cursor.getMonth();
+    const year = cursor.getFullYear();
+    const monthEnd = new Date(year, month + 1, 0);
+    periods.push({
+      label: MONTHS_SHORT_TITLE[month],
+      start: startOfDay(new Date(Math.max(cursor.getTime(), range.start.getTime()))),
+      end: startOfDay(new Date(Math.min(monthEnd.getTime(), range.end.getTime()))),
+      title: `${MONTH_NAMES[month]} ${year}`,
+      caption: 'Расходы за месяц'
+    });
+    cursor = new Date(year, month + 1, 1);
+  }
+
+  return periods;
 }
 
 function renderPieChart(filtered, expenseTotal, range) {
@@ -1176,6 +1200,7 @@ function openCategoryStats(categoryName) {
   const sum = items.reduce((total, item) => total + item.amount, 0);
 
   document.getElementById('catStatsTitle').textContent = category.name;
+  document.getElementById('catStatsSub').textContent = 'Расходы по категории';
   document.getElementById('catStatsSum').textContent = `${fmt(sum)} ₽`;
 
   const list = document.getElementById('catStatsList');
@@ -1191,6 +1216,50 @@ function openCategoryStats(categoryName) {
           <div class="tx-info">
             <div class="tx-name">${escapeHtml(category.name)}</div>
             <div class="tx-cat">${fmtDayMonth(date)}</div>
+          </div>
+          <div class="tx-amt">−${fmt(item.amount)} ₽</div>
+        </div>`;
+    }).join('');
+  }
+
+  openModal('catStatsModal');
+}
+
+function openBarStats(index) {
+  const bar = (state.barChartBars || [])[index];
+
+  if (!bar) {
+    return;
+  }
+
+  const startIso = isoDate(bar.start);
+  const endIso = isoDate(bar.end);
+  const items = state.transactions
+    .filter((item) => {
+      return item.type === 'expense' && item.date >= startIso && item.date <= endIso;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date) || Number(b.id) - Number(a.id));
+
+  const sum = items.reduce((total, item) => total + item.amount, 0);
+
+  document.getElementById('catStatsTitle').textContent = bar.title;
+  document.getElementById('catStatsSub').textContent = bar.caption;
+  document.getElementById('catStatsSum').textContent = `${fmt(sum)} ₽`;
+
+  const list = document.getElementById('catStatsList');
+
+  if (items.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:14px">Нет операций</div>';
+  } else {
+    list.innerHTML = items.map((item) => {
+      const category = getCatForTransaction(item);
+      const date = parseISODate(item.date);
+      return `
+        <div class="tx-item" data-tx-id="${escapeHtml(item.id)}" style="box-shadow:none; border-bottom:1px solid var(--line); border-radius:0; padding:12px 0; margin-bottom:0;">
+          <div class="tx-icon" style="background:${escapeHtml(category.bg)}; color:${escapeHtml(category.fg)}">${escapeHtml(category.emoji)}</div>
+          <div class="tx-info">
+            <div class="tx-name">${escapeHtml(category.name)}</div>
+            <div class="tx-cat">${fmtDayMonth(date)}${item.note ? ` · ${escapeHtml(item.note)}` : ''}</div>
           </div>
           <div class="tx-amt">−${fmt(item.amount)} ₽</div>
         </div>`;
@@ -1996,6 +2065,12 @@ function handleDelegatedClick(event) {
   const calendarDay = target.closest('[data-cal-day]');
   if (calendarDay) {
     selectCalDay(Number(calendarDay.dataset.calDay));
+    return;
+  }
+
+  const barColumn = target.closest('[data-bar-index]');
+  if (barColumn) {
+    openBarStats(Number(barColumn.dataset.barIndex));
     return;
   }
 

@@ -247,7 +247,11 @@ body::before{
 .bar-col{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
   height:100%;gap:6px;
+  cursor:pointer;border-radius:12px;
+  transition:background .15s ease;
 }
+.bar-col:hover{background:#F5F1EA}
+.bar-col:active{background:#EBE5DA}
 .bar{
   width:100%;max-width:16px;background:var(--coral-soft);
   border-radius:4px;transition:height .5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -573,6 +577,7 @@ body::before{
   color: #fff;
 }
 
-/* Список операций в модалке категории */
+/* Список операций в модалке категории и периода */
+.cat-stats-sub{font-size:12px;font-weight:600;color:var(--muted);margin-top:4px;}
 .cat-stats-list::-webkit-scrollbar { width: 4px; }
 .cat-stats-list::-webkit-scrollbar-thumb { background: #E5E1D9; border-radius: 4px; }

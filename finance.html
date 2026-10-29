@@ -354,9 +354,12 @@
 
 <!-- МОДАЛКА СПИСКА ОПЕРАЦИЙ ПО КАТЕГОРИИ -->
 <div class="cat-modal" id="catStatsModal" style="max-width: 360px;" role="dialog" aria-modal="true" aria-labelledby="catStatsTitle">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-    <div class="cat-modal-title" id="catStatsTitle" style="margin-bottom:0;">Категория</div>
-    <div style="font-size:18px; font-weight:800; color:var(--coral);" id="catStatsSum">0 ₽</div>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px;">
+    <div style="min-width:0;">
+      <div class="cat-modal-title" id="catStatsTitle" style="margin-bottom:0;">Категория</div>
+      <div class="cat-stats-sub" id="catStatsSub">Расходы по категории</div>
+    </div>
+    <div style="font-size:18px; font-weight:800; color:var(--coral); flex-shrink:0;" id="catStatsSum">0 ₽</div>
   </div>
   <div class="cat-stats-list" id="catStatsList" style="overflow-y:auto; max-height:50vh; margin-bottom:16px; padding-right:4px;">
      <!-- Список операций -->
