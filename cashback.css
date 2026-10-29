@@ -761,3 +761,45 @@ body.cb-modal-open {
     height: 34px;
   }
 }
+
+/* ═══ Тёмная тема ═══ */
+html[data-theme="dark"] .cashback-widget {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .cb-month-nav,
+html[data-theme="dark"] .cb-cat,
+html[data-theme="dark"] .cb-modal-close,
+html[data-theme="dark"] .cb-bank-opt,
+html[data-theme="dark"] .cb-chip,
+html[data-theme="dark"] .cb-cat-input-row input,
+html[data-theme="dark"] .cb-confirm-cancel {
+  background: #2A2724;
+}
+
+html[data-theme="dark"] .cb-month-btn:hover,
+html[data-theme="dark"] .cb-month-btn:active,
+html[data-theme="dark"] .cb-modal-close:active,
+html[data-theme="dark"] .cb-bank-opt:hover,
+html[data-theme="dark"] .cb-confirm-cancel:hover,
+html[data-theme="dark"] .cb-confirm-cancel:active {
+  background: #35312B;
+}
+
+html[data-theme="dark"] .cb-bank-opt.selected,
+html[data-theme="dark"] .cb-bank-opt.selected:hover {
+  background: rgba(255, 107, 74, 0.14);
+}
+
+html[data-theme="dark"] .cb-cat-input-row input:focus {
+  background: #201E1B;
+}
+
+html[data-theme="dark"] .cb-handle {
+  background: #3A352F;
+}
+
+html[data-theme="dark"] .cb-logo,
+html[data-theme="dark"] .cb-bank-opt-logo {
+  background: #F5F1EA;
+}

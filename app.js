@@ -4711,6 +4711,106 @@ function initHub() {
   renderHubScreen();
 }
 
+/* ------------------------------------------------------------------ */
+/* Тема оформления                                                     */
+/* ------------------------------------------------------------------ */
+
+const THEME_STORAGE_KEY = 'expense-tracker-theme';
+
+function isDarkTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
+function applyTheme(theme, persist = true) {
+  const dark = theme === 'dark';
+
+  if (dark) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    meta.setAttribute('content', dark ? '#141311' : '#F6F3EE');
+  }
+
+  const switchElement = document.getElementById('themeSwitch');
+  if (switchElement) {
+    switchElement.setAttribute('aria-checked', String(dark));
+    switchElement.setAttribute('aria-label', dark ? 'Отключить тёмную тему' : 'Включить тёмную тему');
+  }
+
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, dark ? 'dark' : 'light');
+    } catch (error) {}
+  }
+}
+
+function initThemeSettings() {
+  const button = document.getElementById('hubSettingsBtn');
+  const overlay = document.getElementById('hubSettingsOverlay');
+  const closeButton = document.getElementById('hubSettingsClose');
+  const switchElement = document.getElementById('themeSwitch');
+
+  if (!overlay) {
+    return;
+  }
+
+  applyTheme(isDarkTheme() ? 'dark' : 'light', false);
+
+  let hideTimer = null;
+
+  const openSettings = () => {
+    if (hideTimer) {
+      window.clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+
+    overlay.hidden = false;
+    window.requestAnimationFrame(() => overlay.classList.add('open'));
+    document.body.classList.add('modal-open');
+    hapticFeedback(6);
+    switchElement?.focus({ preventScroll: true });
+  };
+
+  const closeSettings = () => {
+    if (overlay.hidden) {
+      return;
+    }
+
+    overlay.classList.remove('open');
+    document.body.classList.remove('modal-open');
+    hideTimer = window.setTimeout(() => {
+      overlay.hidden = true;
+      hideTimer = null;
+    }, 220);
+    button?.focus({ preventScroll: true });
+  };
+
+  button?.addEventListener('click', openSettings);
+  closeButton?.addEventListener('click', closeSettings);
+
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      closeSettings();
+    }
+  });
+
+  switchElement?.addEventListener('click', () => {
+    const next = isDarkTheme() ? 'light' : 'dark';
+    applyTheme(next);
+    hapticFeedback(6);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !overlay.hidden) {
+      closeSettings();
+    }
+  });
+}
+
 async function render(items) {
   historyDirty = true;
   markStatsDirty();
@@ -10195,6 +10295,7 @@ async function init() {
   initBalanceReconcileUi();
   initTabNavigation();
   initSwipeGestures();
+  initThemeSettings();
   showTab(getTabFromHash(), { push: false });
   showTab('hub', { push: true });
   initHub();

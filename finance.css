@@ -581,3 +581,51 @@ body::before{
 .cat-stats-sub{font-size:12px;font-weight:600;color:var(--muted);margin-top:4px;}
 .cat-stats-list::-webkit-scrollbar { width: 4px; }
 .cat-stats-list::-webkit-scrollbar-thumb { background: #E5E1D9; border-radius: 4px; }
+
+/* ═══ Тёмная тема ═══ */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#141311;
+  --surface:#1F1D1A;
+  --ink:#F5F1EA;
+  --ink-2:#C9C4BB;
+  --muted:#9C978E;
+  --line:#302C27;
+  --faint:#6F6A63;
+  --coral-soft:rgba(255,107,74,.16);
+  --green-soft:rgba(16,185,129,.16);
+}
+html[data-theme="dark"] .tx-item:active{background:#1E1C19}
+html[data-theme="dark"] .month-btn{background:#26231F}
+html[data-theme="dark"] .month-btn:active{background:#322E29}
+html[data-theme="dark"] .month-lbl:hover{background:#26231F}
+html[data-theme="dark"] .month-lbl:active{background:#322E29}
+html[data-theme="dark"] .stats-tab.active{background:#322E29}
+html[data-theme="dark"] .bar-col:hover{background:#26231F}
+html[data-theme="dark"] .bar-col:active{background:#322E29}
+html[data-theme="dark"] .legend-item:hover{background:#26231F}
+html[data-theme="dark"] .add-cat-btn:active{background:#26231F;border-color:#3A352F}
+html[data-theme="dark"] .calc-handle{background:#3A352F}
+html[data-theme="dark"] .calc-type{background:#26231F}
+html[data-theme="dark"] .calc-amount.empty{color:#6F6A63}
+html[data-theme="dark"] .calc-cat{background:#26231F}
+html[data-theme="dark"] .calc-note{background:#26231F}
+html[data-theme="dark"] .calc-note:focus{background:#141311}
+html[data-theme="dark"] .key{background:#26231F}
+html[data-theme="dark"] .key:active{background:#322E29}
+html[data-theme="dark"] .cat-input{background:#26231F}
+html[data-theme="dark"] .cat-input:focus{background:#141311}
+html[data-theme="dark"] .emoji-scroll::-webkit-scrollbar-thumb{background:#3A352F}
+html[data-theme="dark"] .emoji-btn{background:#26231F}
+html[data-theme="dark"] .btn-cancel{background:#26231F}
+html[data-theme="dark"] .action-btn{background:#26231F}
+html[data-theme="dark"] .action-btn:active{background:#322E29}
+html[data-theme="dark"] .action-btn.danger{background:var(--coral-soft)}
+html[data-theme="dark"] .action-btn.danger:active{background:rgba(255,107,74,.26)}
+html[data-theme="dark"] .cal-day:hover{background:#26231F}
+html[data-theme="dark"] .cal-day.in-range{background:rgba(255,107,74,.16)}
+html[data-theme="dark"] .cat-stats-list::-webkit-scrollbar-thumb{background:#3A352F}
+html[data-theme="dark"] .backdrop,
+html[data-theme="dark"] .action-sheet-backdrop{background:rgba(0,0,0,.62)}
+html[data-theme="dark"] .cat-modal,
+html[data-theme="dark"] .balance-modal{box-shadow:0 20px 40px rgba(0,0,0,.5)}

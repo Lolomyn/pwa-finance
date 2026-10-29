@@ -5039,3 +5039,233 @@ button.set:active {
 .compose-card:has(.compose-handle) {
   padding-top: 0;
 }
+
+/* ═══ Настройки хаба ═══ */
+.hub-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 -4px;
+}
+
+.hub-settings-btn {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgba(26, 24, 21, 0.06);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hub-settings-btn:hover {
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(26, 24, 21, 0.1);
+}
+
+.hub-settings-btn:active {
+  transform: scale(0.92);
+  background: var(--soft);
+}
+
+.hub-settings-btn svg {
+  width: 21px;
+  height: 21px;
+}
+
+.hub-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(20, 19, 17, 0.5);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.hub-settings-overlay.open {
+  opacity: 1;
+}
+
+.hub-settings-card {
+  width: 100%;
+  max-width: 340px;
+  padding: 22px;
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(20, 19, 17, 0.28);
+  transform: translateY(10px) scale(0.98);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hub-settings-overlay.open .hub-settings-card {
+  transform: translateY(0) scale(1);
+}
+
+.hub-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.hub-settings-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.hub-settings-close {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--soft);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.hub-settings-close:hover {
+  background: var(--soft-strong);
+}
+
+.hub-settings-close:active {
+  transform: scale(0.9);
+}
+
+.hub-settings-close svg {
+  width: 15px;
+  height: 15px;
+}
+
+.hub-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+
+.hub-setting-info {
+  min-width: 0;
+}
+
+.hub-setting-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hub-setting-desc {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.hub-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 50px;
+  height: 30px;
+  padding: 4px;
+  border: 0;
+  border-radius: 99px;
+  background: #DED8CE;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.hub-switch[aria-checked="true"] {
+  background: var(--coral);
+}
+
+.hub-switch-knob {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(20, 19, 17, 0.25);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hub-switch[aria-checked="true"] .hub-switch-knob {
+  transform: translateX(20px);
+}
+
+/* ═══ Тёмная тема ═══ */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141311;
+  --surface: #1F1D1A;
+  --surface-soft: #24221E;
+  --soft: #26231F;
+  --soft-strong: #322E29;
+  --text: #F5F1EA;
+  --ink: #F5F1EA;
+  --ink-2: #C9C4BB;
+  --muted: #9C978E;
+  --muted-soft: #948F86;
+  --faint: #6F6A63;
+  --border: #35312B;
+  --line: #302C27;
+  --primary: #2B2824;
+  --primary-hover: #3A3630;
+  --accent-soft: rgba(255, 107, 74, 0.16);
+  --green-soft: rgba(16, 185, 129, 0.16);
+  --coral-soft: rgba(255, 107, 74, 0.16);
+  --income-soft: rgba(16, 185, 129, 0.16);
+  --danger-soft: rgba(255, 107, 74, 0.16);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 12px 36px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme="dark"] body {
+  background:
+    radial-gradient(ellipse 500px 400px at 90% -100px, rgba(255, 107, 74, 0.14), transparent 70%),
+    radial-gradient(ellipse 400px 300px at -80px 60%, rgba(34, 211, 238, 0.06), transparent 70%),
+    var(--bg);
+}
+
+html[data-theme="dark"] ::selection {
+  background: rgba(255, 107, 74, 0.3);
+}
+
+html[data-theme="dark"] .hub-settings-btn {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .hub-settings-overlay {
+  background: rgba(0, 0, 0, 0.66);
+}
+
+html[data-theme="dark"] .hub-switch {
+  background: #4A453E;
+}
+
+html[data-theme="dark"] .hub-switch[aria-checked="true"] {
+  background: var(--coral);
+}
+
+html[data-theme="dark"] .hub-switch-knob {
+  background: #F5F1EA;
+}

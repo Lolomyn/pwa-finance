@@ -4,6 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#F6F3EE">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('expense-tracker-theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) {
+            meta.setAttribute('content', '#141311');
+          }
+        }
+      } catch (error) {}
+    })();
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Расходы">
@@ -130,6 +143,15 @@
   <div id="app" class="app">
     <section data-tab="hub" class="tab-panel hub-screen" id="tab-hub" aria-label="Общий хаб">
       <div class="hub-wrap">
+        <div class="hub-topbar">
+          <button class="hub-settings-btn" id="hubSettingsBtn" type="button" aria-label="Настройки" title="Настройки">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+
         <div class="hub-widget" aria-live="polite">
           <div class="hub-widget-head">
             <div class="hub-widget-lbl">Рабочих дней</div>
@@ -141,7 +163,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.9.0</div>
+        <div class="hub-version" id="hub-version">v1.10.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" aria-label="Открыть приложение Финансы">
@@ -1661,6 +1683,28 @@
       <button class="cb-confirm-delete" type="button" id="cbConfirmDelete">Удалить</button>
     </div>
   </div>
+
+
+      <div class="hub-settings-overlay" id="hubSettingsOverlay" hidden>
+        <div class="hub-settings-card" role="dialog" aria-modal="true" aria-labelledby="hubSettingsTitle">
+          <div class="hub-settings-head">
+            <div class="hub-settings-title" id="hubSettingsTitle">Настройки</div>
+            <button class="hub-settings-close" id="hubSettingsClose" type="button" aria-label="Закрыть настройки">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+
+          <div class="hub-setting-row">
+            <div class="hub-setting-info">
+              <div class="hub-setting-name">Тёмная тема</div>
+              <div class="hub-setting-desc">Тёмное оформление всех экранов</div>
+            </div>
+            <button class="hub-switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="Тёмная тема">
+              <span class="hub-switch-knob"></span>
+            </button>
+          </div>
+        </div>
+      </div>
 
   <script>
     window.addEventListener('load', () => {
