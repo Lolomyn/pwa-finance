@@ -163,7 +163,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.10.0</div>
+        <div class="hub-version" id="hub-version">v1.10.1</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" aria-label="Открыть приложение Финансы">
@@ -1685,26 +1685,55 @@
   </div>
 
 
-      <div class="hub-settings-overlay" id="hubSettingsOverlay" hidden>
-        <div class="hub-settings-card" role="dialog" aria-modal="true" aria-labelledby="hubSettingsTitle">
-          <div class="hub-settings-head">
-            <div class="hub-settings-title" id="hubSettingsTitle">Настройки</div>
-            <button class="hub-settings-close" id="hubSettingsClose" type="button" aria-label="Закрыть настройки">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
-            </button>
-          </div>
+  <div class="hub-settings-backdrop" id="hubSettingsBackdrop" hidden></div>
+  <div class="hub-settings-sheet" id="hubSettingsSheet" role="dialog" aria-modal="true" aria-labelledby="hubSettingsTitle" hidden>
+    <div class="hub-settings-handle" aria-hidden="true"></div>
+    <div class="hub-settings-head">
+      <div class="hub-settings-title" id="hubSettingsTitle">Настройки</div>
+      <button class="hub-settings-close" id="hubSettingsClose" type="button" aria-label="Закрыть настройки">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
 
-          <div class="hub-setting-row">
-            <div class="hub-setting-info">
-              <div class="hub-setting-name">Тёмная тема</div>
-              <div class="hub-setting-desc">Тёмное оформление всех экранов</div>
-            </div>
-            <button class="hub-switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="Тёмная тема">
-              <span class="hub-switch-knob"></span>
-            </button>
-          </div>
+    <div class="hub-settings-list">
+      <div class="hub-setting-item">
+        <div class="hub-setting-info">
+          <div class="hub-setting-name">Тёмная тема</div>
+          <div class="hub-setting-desc">Включить тёмное оформление</div>
+        </div>
+        <button class="hub-switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="Тёмная тема">
+          <span class="hub-switch-knob"></span>
+        </button>
+      </div>
+
+      <div class="hub-setting-item">
+        <div class="hub-setting-info">
+          <div class="hub-setting-name">Безопасность</div>
+          <div class="hub-setting-desc">PIN-код и Face ID</div>
+        </div>
+        <div class="hub-setting-placeholder" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
         </div>
       </div>
+
+      <div class="hub-setting-item">
+        <div class="hub-setting-info">
+          <div class="hub-setting-name">Экспорт данных</div>
+          <div class="hub-setting-desc">JSON · CSV</div>
+        </div>
+        <div class="hub-setting-placeholder" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     window.addEventListener('load', () => {

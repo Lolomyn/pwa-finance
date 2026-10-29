@@ -4750,11 +4750,12 @@ function applyTheme(theme, persist = true) {
 
 function initThemeSettings() {
   const button = document.getElementById('hubSettingsBtn');
-  const overlay = document.getElementById('hubSettingsOverlay');
+  const backdrop = document.getElementById('hubSettingsBackdrop');
+  const sheet = document.getElementById('hubSettingsSheet');
   const closeButton = document.getElementById('hubSettingsClose');
   const switchElement = document.getElementById('themeSwitch');
 
-  if (!overlay) {
+  if (!backdrop || !sheet) {
     return;
   }
 
@@ -4768,35 +4769,43 @@ function initThemeSettings() {
       hideTimer = null;
     }
 
-    overlay.hidden = false;
-    window.requestAnimationFrame(() => overlay.classList.add('open'));
+    backdrop.hidden = false;
+    sheet.hidden = false;
+
+    // Принудительный reflow, чтобы transition сработал после снятия hidden.
+    void sheet.offsetHeight;
+
+    window.requestAnimationFrame(() => {
+      backdrop.classList.add('open');
+      sheet.classList.add('open');
+    });
+
     document.body.classList.add('modal-open');
     hapticFeedback(6);
-    switchElement?.focus({ preventScroll: true });
+    closeButton?.focus({ preventScroll: true });
   };
 
   const closeSettings = () => {
-    if (overlay.hidden) {
+    if (sheet.hidden) {
       return;
     }
 
-    overlay.classList.remove('open');
+    backdrop.classList.remove('open');
+    sheet.classList.remove('open');
     document.body.classList.remove('modal-open');
+
     hideTimer = window.setTimeout(() => {
-      overlay.hidden = true;
+      backdrop.hidden = true;
+      sheet.hidden = true;
       hideTimer = null;
-    }, 220);
+    }, 350);
+
     button?.focus({ preventScroll: true });
   };
 
   button?.addEventListener('click', openSettings);
   closeButton?.addEventListener('click', closeSettings);
-
-  overlay.addEventListener('click', (event) => {
-    if (event.target === overlay) {
-      closeSettings();
-    }
-  });
+  backdrop.addEventListener('click', closeSettings);
 
   switchElement?.addEventListener('click', () => {
     const next = isDarkTheme() ? 'light' : 'dark';
@@ -4805,7 +4814,7 @@ function initThemeSettings() {
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !overlay.hidden) {
+    if (event.key === 'Escape' && !sheet.hidden) {
       closeSettings();
     }
   });
