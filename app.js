@@ -4637,6 +4637,9 @@ function renderHubCalendar(container, now) {
   const offset = (firstWeekday + 6) % 7;
   const fragment = document.createDocumentFragment();
 
+  container.dataset.year = String(year);
+  container.dataset.month = String(month + 1);
+
   for (let i = 0; i < offset; i += 1) {
     const cell = document.createElement('div');
     cell.className = 'hub-cal-cell hub-cal-empty';
@@ -4660,10 +4663,12 @@ function renderHubCalendar(container, now) {
     }
 
     cell.className = className;
+    cell.dataset.day = String(day);
     fragment.append(cell);
   }
 
   container.replaceChildren(fragment);
+  window.HubCalendar?.decorateMini?.();
 }
 
 function initHub() {
@@ -4847,7 +4852,7 @@ let lastHubCardLongPress = null;
 let hubCardActionHideTimer = null;
 
 function syncHubOverlayLock() {
-  const hasOpenSheet = ['hubSettingsSheet', 'hubCardActionSheet'].some((id) => {
+  const hasOpenSheet = ['hubSettingsSheet', 'hubCardActionSheet', 'hubCalendarSheet', 'hubDaySheet'].some((id) => {
     const element = document.getElementById(id);
     return element && !element.hidden && element.classList.contains('open');
   });
@@ -10636,7 +10641,7 @@ async function init() {
 
   try {
     db = await openDB();
-    const financeState = await getSettings([FINANCE_CATEGORIES_KEY, 'cashbackData']);
+    const financeState = await getSettings([FINANCE_CATEGORIES_KEY, 'cashbackData', 'calendarEvents']);
 
     if (financeState[FINANCE_CATEGORIES_KEY] !== true) {
       await seedDefaultsIfEmpty();
@@ -10669,6 +10674,12 @@ async function init() {
       window.Cashback?.init?.(financeState.cashbackData);
     } catch (cashbackError) {
       console.warn('Не удалось инициализировать кэшбэк:', cashbackError);
+    }
+
+    try {
+      window.HubCalendar?.init?.(financeState.calendarEvents);
+    } catch (calendarError) {
+      console.warn('Не удалось инициализировать календарь:', calendarError);
     }
 
     await render(expenses);

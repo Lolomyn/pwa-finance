@@ -1,0 +1,410 @@
+/* Календарь событий хаба: большой календарь и карточка дня.
+   Загружается после styles-preview.css и переиспользует переменные темы. */
+
+:root {
+  --calendar-yearly: #7c3aed;
+}
+
+html[data-theme="dark"] {
+  --calendar-yearly: #a78bfa;
+}
+
+/* ═══ Точки событий в мини-календаре виджета ═══ */
+#hub-widget {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.hub-widget:active:not(.is-card-pressing) {
+  transform: scale(0.99);
+}
+
+.hub-cal-cell {
+  position: relative;
+}
+
+.hub-cal-cell.hub-cal-has-event::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 3px;
+  height: 3px;
+  margin-left: -1.5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ═══ Большой календарь ═══ */
+.hub-calendar-sheet {
+  max-height: 88dvh;
+  overflow-y: auto;
+}
+
+.hub-calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 0 2px;
+}
+
+.hub-calendar-nav-group {
+  display: flex;
+  gap: 6px;
+}
+
+.hub-calendar-nav-btn {
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.hub-calendar-nav-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hub-calendar-nav-btn:hover {
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.hub-calendar-nav-btn:active {
+  transform: scale(0.92);
+  background: var(--soft-strong);
+}
+
+.hub-calendar-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: capitalize;
+  color: var(--ink);
+}
+
+.hub-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.hub-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.hub-calendar-day {
+  position: relative;
+  aspect-ratio: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.hub-calendar-day:hover {
+  background: var(--soft);
+}
+
+.hub-calendar-day:active {
+  transform: scale(0.94);
+  background: var(--soft-strong);
+}
+
+.hub-calendar-day.is-outside {
+  color: var(--faint);
+  font-weight: 500;
+}
+
+.hub-calendar-day.is-today {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.hub-calendar-day.has-event::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.hub-calendar-day.is-selected {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.hub-calendar-day.is-selected.has-event::after {
+  background: var(--bg);
+}
+
+/* ═══ Карточка дня ═══ */
+.hub-day-backdrop {
+  z-index: 101;
+}
+
+.hub-day-sheet {
+  z-index: 102;
+  max-height: 88dvh;
+  overflow-y: auto;
+}
+
+.hub-day-date {
+  margin-bottom: 18px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.hub-day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 32dvh;
+  margin-bottom: 18px;
+  overflow-y: auto;
+}
+
+.hub-day-empty {
+  padding: 10px 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.hub-day-event {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.hub-day-event-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hub-day-event-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.hub-day-event-type {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hub-day-event-type.is-yearly {
+  color: var(--calendar-yearly);
+}
+
+.hub-day-delete {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.hub-day-delete svg {
+  width: 17px;
+  height: 17px;
+}
+
+.hub-day-delete:hover {
+  background: var(--accent-soft);
+}
+
+.hub-day-delete:active {
+  transform: scale(0.9);
+}
+
+.hub-day-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.hub-day-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.hub-day-input::placeholder {
+  color: var(--muted);
+}
+
+.hub-day-input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+  outline: none;
+}
+
+.hub-day-input.is-invalid {
+  border-color: var(--accent);
+}
+
+.hub-day-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.hub-day-toggle-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.hub-day-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--line);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.hub-day-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.hub-day-switch[aria-checked="true"] {
+  background: var(--calendar-yearly);
+}
+
+.hub-day-switch[aria-checked="true"]::after {
+  transform: translateX(20px);
+}
+
+.hub-day-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.hub-day-add {
+  width: 100%;
+  min-height: 0;
+  margin-top: 2px;
+  padding: 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.hub-day-add:hover {
+  background: var(--accent-hover);
+}
+
+.hub-day-add:active {
+  transform: scale(0.985);
+}
+
+@media (hover: none) {
+  .hub-calendar-day:hover,
+  .hub-calendar-nav-btn:hover {
+    background: transparent;
+  }
+
+  .hub-day-delete:hover {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-calendar-day,
+  .hub-calendar-nav-btn,
+  .hub-day-delete,
+  .hub-day-switch,
+  .hub-day-switch::after,
+  .hub-day-add {
+    transition: none;
+  }
+}

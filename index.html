@@ -34,9 +34,11 @@
   <link rel="stylesheet" href="styles-preview.css">
   <link rel="stylesheet" href="notes.css">
   <link rel="stylesheet" href="cashback.css">
+  <link rel="stylesheet" href="calendar.css">
   <script src="app.js" defer></script>
   <script src="notes.js" defer></script>
   <script src="cashback.js" defer></script>
+  <script src="calendar.js" defer></script>
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
@@ -152,7 +154,18 @@
           </button>
         </div>
 
-        <div class="hub-widget" id="hub-widget" data-card-id="widget-days" data-card-name="Виджет «Рабочих дней»" aria-live="polite">
+        <div
+          class="hub-widget"
+          id="hub-widget"
+          data-card-id="widget-days"
+          data-card-name="Виджет «Рабочих дней»"
+          role="button"
+          tabindex="0"
+          aria-haspopup="dialog"
+          aria-label="Рабочие дни. Открыть календарь событий"
+          title="Открыть календарь"
+          aria-live="polite"
+        >
           <div class="hub-widget-head">
             <div class="hub-widget-lbl">Рабочих дней</div>
             <div id="hub-widget-month" class="hub-widget-month">октябрь 2026</div>
@@ -163,7 +176,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.12.0</div>
+        <div class="hub-version" id="hub-version">v1.13.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" data-card-id="app-finance" data-card-name="Приложение «Финансы»" aria-label="Открыть приложение Финансы">
@@ -1756,6 +1769,66 @@
       </svg>
       Скрыть карточку
     </button>
+  </div>
+
+  <div class="hub-settings-backdrop" id="hubCalendarBackdrop" hidden></div>
+  <div class="hub-settings-sheet hub-calendar-sheet" id="hubCalendarSheet" role="dialog" aria-modal="true" aria-labelledby="hubCalendarTitle" hidden>
+    <div class="hub-settings-handle" aria-hidden="true"></div>
+    <div class="hub-settings-head">
+      <div class="hub-settings-title" id="hubCalendarTitle">Календарь</div>
+      <button class="hub-settings-close" id="hubCalendarClose" type="button" aria-label="Закрыть календарь">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="hub-calendar-nav">
+      <div class="hub-calendar-nav-group">
+        <button class="hub-calendar-nav-btn" id="hubCalPrevYear" type="button" aria-label="Предыдущий год" title="Предыдущий год">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
+        </button>
+        <button class="hub-calendar-nav-btn" id="hubCalPrevMonth" type="button" aria-label="Предыдущий месяц" title="Предыдущий месяц">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="hub-calendar-title" id="hubCalendarMonth" aria-live="polite">Октябрь 2026</div>
+      <div class="hub-calendar-nav-group">
+        <button class="hub-calendar-nav-btn" id="hubCalNextMonth" type="button" aria-label="Следующий месяц" title="Следующий месяц">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <button class="hub-calendar-nav-btn" id="hubCalNextYear" type="button" aria-label="Следующий год" title="Следующий год">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="hub-calendar-weekdays" aria-hidden="true">
+      <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+    </div>
+    <div class="hub-calendar-grid" id="hubCalendarGrid" role="group" aria-label="Дни месяца"></div>
+  </div>
+
+  <div class="hub-settings-backdrop hub-day-backdrop" id="hubDayBackdrop" hidden></div>
+  <div class="hub-settings-sheet hub-day-sheet" id="hubDaySheet" role="dialog" aria-modal="true" aria-labelledby="hubDayTitle" hidden>
+    <div class="hub-settings-handle" aria-hidden="true"></div>
+    <div class="hub-settings-head">
+      <div class="hub-settings-title" id="hubDayTitle">События</div>
+      <button class="hub-settings-close" id="hubDayClose" type="button" aria-label="Закрыть события дня">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="hub-day-date" id="hubDayDate">22 октября 2026</div>
+    <div class="hub-day-list" id="hubDayList"></div>
+
+    <div class="hub-day-form">
+      <input class="hub-day-input" id="hubDayInput" type="text" placeholder="Название события" maxlength="80" autocomplete="off">
+      <div class="hub-day-toggle-row">
+        <span class="hub-day-toggle-label">Ежегодное событие</span>
+        <button class="hub-day-switch" id="hubDayYearly" type="button" role="switch" aria-checked="false" aria-label="Ежегодное событие"></button>
+      </div>
+      <p class="hub-day-error" id="hubDayError" role="alert" hidden></p>
+      <button class="hub-day-add" id="hubDayAdd" type="button">Добавить событие</button>
+    </div>
   </div>
 
   <script>
