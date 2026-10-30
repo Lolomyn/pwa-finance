@@ -178,7 +178,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.14.0</div>
+        <div class="hub-version" id="hub-version">v1.15.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" data-card-id="app-finance" data-card-name="Приложение «Финансы»" aria-label="Открыть приложение Финансы">
@@ -509,6 +509,30 @@
         </p>
 
         <div id="stats-period-controls" class="stats-controls">
+          <div
+            id="stats-type-tabs"
+            class="period-tabs stats-type-tabs"
+            role="tablist"
+            aria-label="Тип статистики"
+          >
+            <button
+              type="button"
+              class="period-tab is-active"
+              data-stats-type="expense"
+              role="tab"
+              aria-selected="true"
+              aria-controls="stats-panel"
+            >Расходы</button>
+            <button
+              type="button"
+              class="period-tab"
+              data-stats-type="income"
+              role="tab"
+              aria-selected="false"
+              aria-controls="stats-panel"
+            >Доходы</button>
+          </div>
+
           <div class="stats-period-row">
             <div id="period-tabs" class="filters period-tabs stats-tabs" role="tablist" aria-label="Период статистики">
               <button
@@ -573,13 +597,13 @@
 
         <div id="stats-panel" class="stats-panel" role="tabpanel" aria-label="Статистика за выбранный период">
           <section class="stats-hero" aria-live="polite">
-            <div class="stats-lbl">Расходы за период</div>
+            <div class="stats-lbl" id="stats-hero-label">Расходы за период</div>
             <div class="stats-num"><strong id="stats-expense">0 ₽</strong></div>
           </section>
 
           <div class="stats-mini-grid">
             <div class="stat-mini">
-              <span class="metric-lbl">Доходы</span>
+              <span class="metric-lbl" id="stats-secondary-label">Доходы</span>
               <strong id="stats-income" class="stat-mini-value is-income">0 ₽</strong>
             </div>
             <div class="stat-mini">
@@ -599,11 +623,11 @@
             <div class="chart-title" id="bar-chart-title">Динамика за неделю</div>
             <div class="bar-chart" id="bar-chart"></div>
             <div class="chart-legend" aria-label="Легенда графика">
-              <span class="chart-legend-item">
+              <span class="chart-legend-item" data-chart-legend="income">
                 <span class="chart-legend-swatch chart-legend-swatch--income" aria-hidden="true"></span>
                 Доход
               </span>
-              <span class="chart-legend-item">
+              <span class="chart-legend-item" data-chart-legend="expense">
                 <span class="chart-legend-swatch chart-legend-swatch--expense" aria-hidden="true"></span>
                 Расход
               </span>
@@ -611,7 +635,7 @@
           </div>
 
           <div class="chart-card">
-            <div class="chart-title">Расходы по категориям</div>
+            <div class="chart-title" id="pie-chart-title">Расходы по категориям</div>
             <div class="pie-chart" id="pie-chart">
               <div class="pie-center">
                 <div class="pie-center-lbl">Всего</div>
