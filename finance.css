@@ -228,6 +228,23 @@ body::before{
   box-shadow:0 2px 10px rgba(26,24,21,.02);
   display:flex;flex-direction:column;justify-content:space-between;
 }
+.metric-card--toggle{
+  border:0;font-family:inherit;color:inherit;text-align:left;
+  appearance:none;-webkit-appearance:none;cursor:pointer;
+  transition:background .18s ease, box-shadow .18s ease, transform .12s ease;
+}
+.metric-card--toggle:active{transform:scale(.985)}
+.metric-card--toggle:focus-visible{outline:3px solid rgba(255,107,74,.35);outline-offset:2px}
+.metric-card--toggle.income:focus-visible{outline-color:rgba(16,185,129,.35)}
+.metric-card.expense.is-active{
+  background:var(--coral-soft);
+  box-shadow:0 0 0 2px rgba(255,107,74,.45), 0 8px 20px rgba(255,107,74,.08);
+}
+.metric-card.income.is-active{
+  background:var(--green-soft);
+  box-shadow:0 0 0 2px rgba(16,185,129,.45), 0 8px 20px rgba(16,185,129,.08);
+}
+.metric-card.is-active .metric-lbl{color:var(--ink-2)}
 .metric-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
 .metric-val{font-size:20px;font-weight:800;letter-spacing:-.03em}
 .metric-val.red{color:var(--coral)}
@@ -258,6 +275,8 @@ body::before{
   position:relative;
 }
 .bar.active{background:var(--coral)}
+.bar.income{background:var(--green-soft)}
+.bar.income.active{background:var(--green)}
 .bar-lbl{font-size:9px;font-weight:700;color:var(--muted);white-space:nowrap}
 
 .pie-wrap{

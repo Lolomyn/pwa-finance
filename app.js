@@ -208,10 +208,6 @@ const errorMessage = document.getElementById('app-error');
 const statsPanel = document.getElementById('stats-panel');
 const statsPeriodControls = document.getElementById('stats-period-controls');
 const statsTabEmpty = document.getElementById('stats-tab-empty');
-const statsTypeTabs = document.getElementById('stats-type-tabs');
-const statsHeroLabel = document.getElementById('stats-hero-label');
-const statsSecondaryLabel = document.getElementById('stats-secondary-label');
-const pieChartTitle = document.getElementById('pie-chart-title');
 const periodTabs = document.getElementById('period-tabs');
 const customFromInput = document.getElementById('custom-from');
 const customToInput = document.getElementById('custom-to');
@@ -407,7 +403,6 @@ let db = null;
 let expenses = [];
 let currentType = 'expense';
 let currentPeriod = 'month';
-let currentStatsType = 'expense';
 let currentFilter = '';
 let currentSearch = '';
 let currentSort = 'date-desc';
@@ -2773,7 +2768,6 @@ function aggregate(items, period) {
     expenseByCategory: roundCategoryTotals(rawExpenseByCategory),
     incomeByCategory: roundCategoryTotals(rawIncomeByCategory),
     avgPerDay: expenseTotal / Math.max(1, daysInPeriod),
-    avgIncomePerDay: incomeTotal / Math.max(1, daysInPeriod),
     chartData,
     chartPeriod,
     balanceSeries,
@@ -3202,7 +3196,7 @@ function renderTodayLine(container) {
   container.replaceChildren(fragment);
 }
 
-function getMonthTypeAndForecast(type = 'expense') {
+function getMonthExpenseAndForecast() {
   const today = new Date();
   const daysPassed = today.getDate();
   const daysInMonth = new Date(
@@ -3215,15 +3209,14 @@ function getMonthTypeAndForecast(type = 'expense') {
   );
   const todayIso = getTodayISO();
   const pendingDeleteId = getPendingExpenseDeleteId();
-  const transactionType = type === 'income' ? 'income' : 'expense';
-  let rawMonthTotal = 0;
+  let rawMonthExpense = 0;
 
   expenses.forEach((item) => {
     if (item.id === pendingDeleteId) {
       return;
     }
 
-    if (getTransactionType(item) !== transactionType || !isValidDate(item.date)) {
+    if (getTransactionType(item) !== 'expense' || !isValidDate(item.date)) {
       return;
     }
 
@@ -3234,18 +3227,18 @@ function getMonthTypeAndForecast(type = 'expense') {
     const amount = Number(item.amount);
 
     if (Number.isFinite(amount)) {
-      rawMonthTotal += amount;
+      rawMonthExpense += amount;
     }
   });
 
-  const monthTotal = roundCurrency(rawMonthTotal);
-  const avgPerDay = daysPassed > 0 ? monthTotal / daysPassed : 0;
+  const monthExpense = roundCurrency(rawMonthExpense);
+  const avgPerDay = daysPassed > 0 ? monthExpense / daysPassed : 0;
   const forecast = daysPassed > 0
     ? roundCurrency(avgPerDay * daysInMonth)
     : 0;
 
   return {
-    monthTotal,
+    monthExpense,
     avgPerDay,
     daysPassed,
     daysInMonth,
@@ -3253,14 +3246,14 @@ function getMonthTypeAndForecast(type = 'expense') {
   };
 }
 
-function renderMonthForecast(container, type = 'expense') {
+function renderMonthForecast(container) {
   if (!container) {
     return;
   }
 
-  const data = getMonthTypeAndForecast(type);
+  const data = getMonthExpenseAndForecast();
 
-  if (data.daysPassed === 0 || data.monthTotal <= 0) {
+  if (data.daysPassed === 0 || data.monthExpense <= 0) {
     container.replaceChildren();
     container.hidden = true;
     return;
@@ -3268,11 +3261,7 @@ function renderMonthForecast(container, type = 'expense') {
 
   const title = document.createElement('p');
   title.className = 'month-forecast-title';
-  title.append(document.createTextNode(
-    type === 'income'
-      ? 'Прогноз доходов до конца месяца: '
-      : 'Прогноз расходов до конца месяца: '
-  ));
+  title.append(document.createTextNode('Прогноз до конца месяца: '));
 
   const value = document.createElement('strong');
   value.className = 'month-forecast-value';
@@ -3471,16 +3460,18 @@ function createChartBar(x, y, width, height, type, label, value) {
   return shape;
 }
 
-function renderBarChart(container, chartData, period, type = 'expense') {
+function renderBarChart(container, chartData, period) {
   container.replaceChildren();
 
   const points = Array.isArray(chartData) ? chartData : [];
-  const valueKey = type === 'income' ? 'income' : 'expense';
-  const barColor = type === 'income' ? 'var(--income)' : 'var(--accent)';
   const hasValues = points.some((point) => {
-    const value = Number(point[valueKey]);
+    const income = Number(point.income);
+    const expense = Number(point.expense);
 
-    return Number.isFinite(value) && value > 0;
+    return (
+      (Number.isFinite(income) && income > 0) ||
+      (Number.isFinite(expense) && expense > 0)
+    );
   });
 
   if (points.length === 0 || !hasValues) {
@@ -3492,18 +3483,23 @@ function renderBarChart(container, chartData, period, type = 'expense') {
   }
 
   const maxValue = points.reduce((max, point) => {
-    const value = Number(point[valueKey]);
-    const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
+    const income = Number(point.income);
+    const expense = Number(point.expense);
+    const safeIncome = Number.isFinite(income) && income > 0 ? income : 0;
+    const safeExpense = Number.isFinite(expense) && expense > 0 ? expense : 0;
 
-    return Math.max(max, safeValue);
+    return Math.max(max, safeIncome, safeExpense);
   }, 0);
 
   const chartHeight = Math.max(60, Math.round(container.clientHeight || 120));
 
-  points.forEach((point) => {
-    const value = Number(point[valueKey]);
-    const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
-    const height = maxValue > 0 ? (safeValue / maxValue) * chartHeight : 0;
+  points.forEach((point, index) => {
+    const incomeValue = Number(point.income);
+    const expenseValue = Number(point.expense);
+    const safeIncome = Number.isFinite(incomeValue) && incomeValue > 0 ? incomeValue : 0;
+    const safeExpense = Number.isFinite(expenseValue) && expenseValue > 0 ? expenseValue : 0;
+    const incomeHeight = maxValue > 0 ? (safeIncome / maxValue) * chartHeight : 0;
+    const expenseHeight = maxValue > 0 ? (safeExpense / maxValue) * chartHeight : 0;
 
     const column = document.createElement('div');
     column.className = 'bar-col';
@@ -3512,14 +3508,19 @@ function renderBarChart(container, chartData, period, type = 'expense') {
     barsRow.style.display = 'flex';
     barsRow.style.alignItems = 'flex-end';
     barsRow.style.justifyContent = 'center';
+    barsRow.style.gap = '4px';
 
-    const bar = document.createElement('div');
-    bar.className = 'bar';
-    bar.style.height = `${Math.max(0, height)}px`;
-    bar.style.background = barColor;
-    bar.title = `${point.label || ''}: ${formatAmount(safeValue)}`;
+    const incomeBar = document.createElement('div');
+    incomeBar.className = 'bar';
+    incomeBar.style.height = `${Math.max(0, incomeHeight)}px`;
+    incomeBar.style.background = 'var(--income)';
 
-    barsRow.append(bar);
+    const expenseBar = document.createElement('div');
+    expenseBar.className = 'bar';
+    expenseBar.style.height = `${Math.max(0, expenseHeight)}px`;
+    expenseBar.style.background = 'var(--accent)';
+
+    barsRow.append(incomeBar, expenseBar);
     column.append(barsRow);
 
     const label = document.createElement('div');
@@ -3531,7 +3532,7 @@ function renderBarChart(container, chartData, period, type = 'expense') {
   });
 }
 
-function renderPieChart(container, categories, total, type = 'expense') {
+function renderPieChart(container, categories, total) {
   if (!container) {
     return;
   }
@@ -3562,7 +3563,7 @@ function renderPieChart(container, categories, total, type = 'expense') {
     const from = accumulated;
     accumulated += sum;
     const to = accumulated;
-    const color = type === 'income' ? 'var(--income)' : 'var(--accent-bright)';
+    const color = 'var(--accent-bright)';
 
     return { category, sum, from, to, color };
   });
@@ -4044,41 +4045,15 @@ function updateStatsVisibility(hasData) {
 
 async function renderStats(result) {
   const netFlow = result.netFlow;
-  const isIncome = currentStatsType === 'income';
-  const selectedTotal = isIncome ? result.incomeTotal : result.expenseTotal;
-  const selectedByCategory = isIncome
-    ? result.incomeByCategory
-    : result.expenseByCategory;
-  const selectedAverage = isIncome
-    ? result.avgIncomePerDay
-    : result.avgPerDay;
 
   updateStatsVisibility(true);
-  updateStatsTypeTabs();
-  setMoneyValue(statsExpense, selectedTotal);
-  statsExpense.classList.toggle('is-income', isIncome);
-
-  if (statsHeroLabel) {
-    statsHeroLabel.textContent = isIncome
-      ? 'Доходы за период'
-      : 'Расходы за период';
-  }
-
-  if (statsSecondaryLabel) {
-    statsSecondaryLabel.textContent = isIncome ? 'Расходы' : 'Доходы';
-  }
-
-  statsIncome.textContent = formatAmount(
-    isIncome ? result.expenseTotal : result.incomeTotal
-  );
-  statsIncome.classList.toggle('is-income', !isIncome);
-  statsIncome.classList.toggle('is-expense', isIncome);
-
+  setMoneyValue(statsExpense, result.expenseTotal);
+  statsIncome.textContent = formatAmount(result.incomeTotal);
   statsNet.textContent = formatNetAmount(netFlow);
   statsNet.classList.toggle('is-income', netFlow >= 0);
   statsNet.classList.toggle('is-expense', netFlow < 0);
-  statsAvg.textContent = formatAmount(selectedAverage);
-  renderMonthForecast(monthForecast, currentStatsType);
+  statsAvg.textContent = formatAmount(result.avgPerDay);
+  renderMonthForecast(monthForecast);
 
   const expenseCount = renderCategoryBreakdown(
     statsExpenseGroup,
@@ -4095,38 +4070,25 @@ async function renderStats(result) {
     'income'
   );
 
-  statsExpenseGroup.hidden = isIncome || expenseCount === 0;
-  statsIncomeGroup.hidden = !isIncome || incomeCount === 0;
-  statsEmpty.hidden = (isIncome ? incomeCount : expenseCount) > 0;
+  statsEmpty.hidden = expenseCount + incomeCount > 0;
 
   lastChartData = result.chartData;
   lastChartPeriod = result.chartPeriod || currentPeriod;
 
   if (barChartTitle) {
     const period = customRange ? 'custom' : currentPeriod;
-    const periodTitleMap = {
-      week: 'за неделю',
-      month: 'за месяц',
-      year: 'за год',
-      custom: 'за период',
-      all: 'за всё время'
+    const titleMap = {
+      week: 'Динамика за неделю',
+      month: 'Динамика за месяц',
+      year: 'Динамика за год',
+      custom: 'Динамика за период',
+      all: 'Динамика за всё время'
     };
-    const typeTitle = isIncome ? 'доходов' : 'расходов';
-    barChartTitle.textContent = `Динамика ${typeTitle} ${periodTitleMap[period] || ''}`.trim();
+    barChartTitle.textContent = titleMap[period] || 'Динамика';
   }
 
-  if (pieChartTitle) {
-    pieChartTitle.textContent = isIncome
-      ? 'Доходы по категориям'
-      : 'Расходы по категориям';
-  }
-
-  document.querySelectorAll('[data-chart-legend]').forEach((item) => {
-    item.hidden = item.dataset.chartLegend !== currentStatsType;
-  });
-
-  renderPieChart(pieChart, selectedByCategory, selectedTotal, currentStatsType);
-  renderBarChart(statsChart, result.chartData, lastChartPeriod, currentStatsType);
+  renderPieChart(pieChart, result.expenseByCategory, result.expenseTotal);
+  renderBarChart(statsChart, result.chartData, lastChartPeriod);
 
   balanceChartTitle.textContent = result.balanceGranularity === 'month'
     ? 'Баланс по месяцам'
@@ -4248,61 +4210,6 @@ function initCustomPeriod() {
   updateStatsPeriodLabel();
 }
 
-function updateStatsTypeTabs() {
-  if (!statsTypeTabs) {
-    return;
-  }
-
-  statsTypeTabs.querySelectorAll('[data-stats-type]').forEach((tab) => {
-    const isActive = tab.dataset.statsType === currentStatsType;
-    tab.classList.toggle('is-active', isActive);
-    tab.setAttribute('aria-selected', String(isActive));
-  });
-}
-
-function setStatsType(type, { refresh = true } = {}) {
-  const next = type === 'income' ? 'income' : 'expense';
-
-  if (next === currentStatsType) {
-    updateStatsTypeTabs();
-    return;
-  }
-
-  currentStatsType = next;
-  updateStatsTypeTabs();
-  markStatsDirty();
-
-  if (refresh) {
-    refreshStats();
-  }
-}
-
-function initStatsTypeTabs() {
-  updateStatsTypeTabs();
-
-  statsTypeTabs?.addEventListener('click', (event) => {
-    const target = event.target;
-
-    if (!(target instanceof Element)) {
-      return;
-    }
-
-    const tab = target.closest('[data-stats-type]');
-
-    if (!tab || !statsTypeTabs.contains(tab)) {
-      return;
-    }
-
-    setStatsType(tab.dataset.statsType);
-  });
-}
-
-function openStats(type) {
-  setStatsType(type, { refresh: false });
-  markStatsDirty();
-  showTab('stats');
-}
-
 function markStatsDirty() {
   statsDirty = true;
 }
@@ -4320,7 +4227,7 @@ async function refreshStats() {
     if (allExpenses.length === 0) {
       lastChartData = null;
       lastBalanceSeries = null;
-      renderMonthForecast(monthForecast, currentStatsType);
+      renderMonthForecast(monthForecast);
       updateStatsVisibility(false);
       statsDirty = false;
       statsRenderedDay = getTodayISO();
@@ -7632,8 +7539,8 @@ function initComposeUi() {
     }
   });
 
-  metricExpensesCard?.addEventListener('click', () => openStats('expense'));
-  metricIncomeCard?.addEventListener('click', () => openStats('income'));
+  metricExpensesCard?.addEventListener('click', () => showTab('stats'));
+  metricIncomeCard?.addEventListener('click', () => showTab('stats'));
 
   homeLastList?.addEventListener('click', (event) => {
     const target = event.target instanceof Element
@@ -10699,7 +10606,6 @@ async function init() {
   initTypeTabs();
   initComposeUi();
   initPeriodTabs();
-  initStatsTypeTabs();
   initCustomPeriod();
   initCategoryFilter();
   initExpenseListControls();
@@ -10718,7 +10624,7 @@ async function init() {
 
   window.addEventListener('resize', () => {
     if (lastChartData) {
-      renderBarChart(statsChart, lastChartData, lastChartPeriod, currentStatsType);
+      renderBarChart(statsChart, lastChartData, lastChartPeriod);
     }
 
     if (lastBalanceSeries) {

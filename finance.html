@@ -116,7 +116,7 @@
       </button>
       <div>
         <div class="header-title">Статистика</div>
-        <div class="header-sub">Аналитика расходов</div>
+        <div class="header-sub" id="statsSubtitle">Аналитика расходов</div>
       </div>
     </header>
 
@@ -131,23 +131,23 @@
     <div class="stats-period-lbl" id="statsPeriodLbl"></div>
 
     <div class="metrics-grid">
-      <div class="metric-card">
+      <button class="metric-card metric-card--toggle expense is-active" id="statExpenseCard" type="button" onclick="setStatsType('expense')" aria-pressed="true">
         <div class="metric-lbl">Расходы</div>
         <div class="metric-val red" id="statExpense">0 ₽</div>
         <div class="metric-sub" id="statExpenseSub">за период</div>
-      </div>
-      <div class="metric-card">
+      </button>
+      <button class="metric-card metric-card--toggle income" id="statIncomeCard" type="button" onclick="setStatsType('income')" aria-pressed="false">
         <div class="metric-lbl">Доходы</div>
         <div class="metric-val green" id="statIncome">0 ₽</div>
         <div class="metric-sub" id="statIncomeSub">за период</div>
-      </div>
+      </button>
       <div class="metric-card">
         <div class="metric-lbl">В среднем в день</div>
         <div class="metric-val" id="statAvg">0 ₽</div>
-        <div class="metric-sub">трат</div>
+        <div class="metric-sub" id="statAvgSub">трат</div>
       </div>
       <div class="metric-card">
-        <div class="metric-lbl">Макс. трата</div>
+        <div class="metric-lbl" id="statMaxLabel">Макс. трата</div>
         <div class="metric-val" id="statMax">0 ₽</div>
         <div class="metric-sub" id="statMaxCat">категория</div>
       </div>
@@ -159,7 +159,7 @@
     </div>
 
     <div class="chart-card">
-      <div class="chart-title">Расходы по категориям</div>
+      <div class="chart-title" id="pieChartTitle">Расходы по категориям</div>
       <div class="pie-wrap">
         <div class="pie-chart" id="pieChart">
           <div class="pie-center">

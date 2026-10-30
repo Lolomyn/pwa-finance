@@ -1725,37 +1725,6 @@ p {
   margin: 0;
 }
 
-.stats-type-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 10px;
-  padding: 4px;
-  border-radius: 14px;
-  background: var(--soft);
-}
-
-.stats-type-tabs .period-tab {
-  flex: 1;
-}
-
-.stats-type-tabs .period-tab.is-active[data-stats-type="expense"] {
-  border-color: transparent;
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(255, 107, 74, 0.28);
-}
-
-.stats-type-tabs .period-tab.is-active[data-stats-type="income"] {
-  border-color: transparent;
-  background: var(--income);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
-}
-
-#stats-expense.is-income {
-  color: var(--income);
-}
-
 .stats-hero {
   padding: 22px 4px 24px;
 }

@@ -118,6 +118,7 @@ const state = {
   historyType: 'all',
   datePickerTarget: 'stats',
   statsRange: 'week',
+  statsType: 'expense',
   customStart: addDays(startOfDay(new Date()), -6),
   customEnd: startOfDay(new Date()),
   barChartBars: [],
@@ -947,25 +948,50 @@ function setStatsRange(range, button) {
   renderStats();
 }
 
+function setStatsType(type) {
+  if (type !== 'expense' && type !== 'income') {
+    return;
+  }
+
+  state.statsType = type;
+  renderStats();
+}
+
 function renderStats() {
   const range = getStatsRange();
   const startIso = isoDate(range.start);
   const endIso = isoDate(range.end);
+  const isIncome = state.statsType === 'income';
+  const selectedType = isIncome ? 'income' : 'expense';
 
   const filtered = state.transactions.filter((item) => {
     return item.date >= startIso && item.date <= endIso;
   });
 
   const totals = calculateTotals(filtered);
+  const selectedTotal = isIncome ? totals.income : totals.expense;
   const diffDays = Math.max(1, Math.round((range.end - range.start) / 86400000) + 1);
 
   document.getElementById('statExpense').textContent = `${fmt(totals.expense)} ₽`;
   document.getElementById('statIncome').textContent = `${fmt(totals.income)} ₽`;
-  document.getElementById('statAvg').textContent = `${fmt(totals.expense / diffDays)} ₽`;
+  document.getElementById('statAvg').textContent = `${fmt(selectedTotal / diffDays)} ₽`;
+  document.getElementById('statAvgSub').textContent = isIncome ? 'доходов' : 'трат';
+
+  const expenseCard = document.getElementById('statExpenseCard');
+  const incomeCard = document.getElementById('statIncomeCard');
+
+  expenseCard.classList.toggle('is-active', !isIncome);
+  incomeCard.classList.toggle('is-active', isIncome);
+  expenseCard.setAttribute('aria-pressed', String(!isIncome));
+  incomeCard.setAttribute('aria-pressed', String(isIncome));
+
+  document.getElementById('statsSubtitle').textContent = isIncome
+    ? 'Аналитика доходов'
+    : 'Аналитика расходов';
 
   let maxTransaction = null;
   filtered.forEach((item) => {
-    if (item.type !== 'expense') {
+    if (item.type !== selectedType) {
       return;
     }
     if (!maxTransaction || item.amount > maxTransaction.amount) {
@@ -973,6 +999,7 @@ function renderStats() {
     }
   });
 
+  document.getElementById('statMaxLabel').textContent = isIncome ? 'Макс. доход' : 'Макс. трата';
   document.getElementById('statMax').textContent = `${fmt(maxTransaction ? maxTransaction.amount : 0)} ₽`;
   document.getElementById('statMaxCat').textContent = maxTransaction
     ? getCatForTransaction(maxTransaction).name
@@ -994,22 +1021,29 @@ function renderStats() {
     labelElement.onclick = () => openDatePicker('stats');
   }
 
-  document.getElementById('barChartTitle').textContent = range.title;
-  renderBarChart(range, filtered);
-  renderPieChart(filtered, totals.expense, range);
+  const rangeTitles = {
+    week: 'за неделю',
+    month: 'за месяц',
+    year: 'за год',
+    custom: 'за период'
+  };
+  document.getElementById('barChartTitle').textContent =
+    `Динамика ${isIncome ? 'доходов' : 'расходов'} ${rangeTitles[range.kind] || ''}`.trim();
+  renderBarChart(range, filtered, selectedType);
+  renderPieChart(filtered, selectedTotal, selectedType);
 }
 
-function renderBarChart(range, filtered) {
+function renderBarChart(range, filtered, type = 'expense') {
   const barChart = document.getElementById('barChart');
-  const periods = getBarPeriods(range);
+  const periods = getBarPeriods(range, type);
   const bars = periods.map((period) => {
     const startIso = isoDate(period.start);
     const endIso = isoDate(period.end);
     const amount = filtered
-      .filter((item) => item.type === 'expense' && item.date >= startIso && item.date <= endIso)
+      .filter((item) => item.type === type && item.date >= startIso && item.date <= endIso)
       .reduce((sum, item) => sum + item.amount, 0);
 
-    return { ...period, amount };
+    return { ...period, type, amount };
   });
 
   state.barChartBars = bars;
@@ -1019,15 +1053,16 @@ function renderBarChart(range, filtered) {
     const percent = (bar.amount / max) * 100;
     return `
       <div class="bar-col" data-bar-index="${index}" title="${escapeHtml(bar.title)} — ${fmt(bar.amount)} ₽">
-        <div class="bar ${bar.amount > 0 ? 'active' : ''}" style="height: ${Math.max(4, percent)}%"></div>
+        <div class="bar ${type} ${bar.amount > 0 ? 'active' : ''}" style="height: ${Math.max(4, percent)}%"></div>
         <div class="bar-lbl">${escapeHtml(bar.label)}</div>
       </div>`;
   }).join('');
 }
 
-function getBarPeriods(range) {
+function getBarPeriods(range, type = 'expense') {
   const periods = [];
   const now = startOfDay(new Date());
+  const typeLabel = type === 'income' ? 'Доходы' : 'Расходы';
 
   if (range.kind === 'week') {
     for (let index = 6; index >= 0; index -= 1) {
@@ -1037,7 +1072,7 @@ function getBarPeriods(range) {
         start: date,
         end: date,
         title: fmtDayMonth(date),
-        caption: 'Расходы за день'
+        caption: `${typeLabel} за день`
       });
     }
     return periods;
@@ -1056,7 +1091,7 @@ function getBarPeriods(range) {
         start: new Date(year, month, firstDay),
         end: new Date(year, month, lastDay),
         title: `${firstDay}–${lastDay} ${MONTHS_SHORT[month]}`,
-        caption: 'Расходы за неделю'
+        caption: `${typeLabel} за неделю`
       });
     }
     return periods;
@@ -1070,7 +1105,7 @@ function getBarPeriods(range) {
         start: new Date(year, month, 1),
         end: new Date(year, month + 1, 0),
         title: `${MONTH_NAMES[month]} ${year}`,
-        caption: 'Расходы за месяц'
+        caption: `${typeLabel} за месяц`
       });
     }
     return periods;
@@ -1086,7 +1121,7 @@ function getBarPeriods(range) {
         start: date,
         end: date,
         title: fmtDayMonth(date),
-        caption: 'Расходы за день'
+        caption: `${typeLabel} за день`
       });
     }
     return periods;
@@ -1102,7 +1137,7 @@ function getBarPeriods(range) {
       start: startOfDay(new Date(Math.max(cursor.getTime(), range.start.getTime()))),
       end: startOfDay(new Date(Math.min(monthEnd.getTime(), range.end.getTime()))),
       title: `${MONTH_NAMES[month]} ${year}`,
-      caption: 'Расходы за месяц'
+      caption: `${typeLabel} за месяц`
     });
     cursor = new Date(year, month + 1, 1);
   }
@@ -1110,12 +1145,16 @@ function getBarPeriods(range) {
   return periods;
 }
 
-function renderPieChart(filtered, expenseTotal, range) {
+function renderPieChart(filtered, total, type = 'expense') {
   const pieChart = document.getElementById('pieChart');
   const pieLegend = document.getElementById('pieLegend');
-  document.getElementById('pieTotal').textContent = `${fmt(expenseTotal)} ₽`;
+  const isIncome = type === 'income';
+  document.getElementById('pieTotal').textContent = `${fmt(total)} ₽`;
+  document.getElementById('pieChartTitle').textContent = isIncome
+    ? 'Доходы по категориям'
+    : 'Расходы по категориям';
 
-  if (expenseTotal <= 0) {
+  if (total <= 0) {
     pieChart.style.background = '#F5F1EA';
     pieLegend.innerHTML = '<div style="text-align:center;font-size:13px;color:#8E8A82;">Нет данных</div>';
     return;
@@ -1123,7 +1162,7 @@ function renderPieChart(filtered, expenseTotal, range) {
 
   const categoryTotals = new Map();
   filtered.forEach((item) => {
-    if (item.type !== 'expense') {
+    if (item.type !== type) {
       return;
     }
     const key = item.category || 'Удалено';
@@ -1134,17 +1173,19 @@ function renderPieChart(filtered, expenseTotal, range) {
     .map(([name, amount]) => ({
       name,
       amount,
-      category: getCatByName(name, 'expense') || getCatForTransaction({ category: name, type: 'expense' })
+      category: getCatByName(name, type) || getCatForTransaction({ category: name, type })
     }))
     .sort((a, b) => b.amount - a.amount);
 
-  const colors = ['#FF6B4A', '#10B981', '#3E6CB5', '#C13A77', '#B38900', '#6845C7', '#0284C7'];
+  const colors = isIncome
+    ? ['#10B981', '#3E6CB5', '#C13A77', '#B38900', '#6845C7', '#0284C7', '#FF6B4A']
+    : ['#FF6B4A', '#10B981', '#3E6CB5', '#C13A77', '#B38900', '#6845C7', '#0284C7'];
   const gradient = [];
   let currentPercent = 0;
   let legendHtml = '';
 
   sorted.slice(0, 7).forEach((item, index) => {
-    const percent = (item.amount / expenseTotal) * 100;
+    const percent = (item.amount / total) * 100;
     const color = colors[index % colors.length];
 
     gradient.push(`${color} ${currentPercent}% ${currentPercent + percent}%`);
@@ -1181,7 +1222,9 @@ function openCategoryStats(categoryName) {
   const range = getStatsRange();
   const startIso = isoDate(range.start);
   const endIso = isoDate(range.end);
-  const category = getCatByName(categoryName, 'expense') || {
+  const type = state.statsType === 'income' ? 'income' : 'expense';
+  const isIncome = type === 'income';
+  const category = getCatByName(categoryName, type) || {
     name: 'Удалено',
     emoji: '❓',
     bg: '#EEEAE3',
@@ -1190,7 +1233,7 @@ function openCategoryStats(categoryName) {
 
   const items = state.transactions
     .filter((item) => {
-      return item.type === 'expense' &&
+      return item.type === type &&
         item.category === categoryName &&
         item.date >= startIso &&
         item.date <= endIso;
@@ -1200,7 +1243,9 @@ function openCategoryStats(categoryName) {
   const sum = items.reduce((total, item) => total + item.amount, 0);
 
   document.getElementById('catStatsTitle').textContent = category.name;
-  document.getElementById('catStatsSub').textContent = 'Расходы по категории';
+  document.getElementById('catStatsSub').textContent = isIncome
+    ? 'Доходы по категории'
+    : 'Расходы по категории';
   document.getElementById('catStatsSum').textContent = `${fmt(sum)} ₽`;
 
   const list = document.getElementById('catStatsList');
@@ -1217,7 +1262,7 @@ function openCategoryStats(categoryName) {
             <div class="tx-name">${escapeHtml(category.name)}</div>
             <div class="tx-cat">${fmtDayMonth(date)}</div>
           </div>
-          <div class="tx-amt">−${fmt(item.amount)} ₽</div>
+          <div class="tx-amt ${isIncome ? 'income' : ''}">${isIncome ? '+' : '−'}${fmt(item.amount)} ₽</div>
         </div>`;
     }).join('');
   }
@@ -1232,11 +1277,13 @@ function openBarStats(index) {
     return;
   }
 
+  const type = bar.type === 'income' ? 'income' : 'expense';
+  const isIncome = type === 'income';
   const startIso = isoDate(bar.start);
   const endIso = isoDate(bar.end);
   const items = state.transactions
     .filter((item) => {
-      return item.type === 'expense' && item.date >= startIso && item.date <= endIso;
+      return item.type === type && item.date >= startIso && item.date <= endIso;
     })
     .sort((a, b) => b.date.localeCompare(a.date) || Number(b.id) - Number(a.id));
 
@@ -1261,7 +1308,7 @@ function openBarStats(index) {
             <div class="tx-name">${escapeHtml(category.name)}</div>
             <div class="tx-cat">${fmtDayMonth(date)}${item.note ? ` · ${escapeHtml(item.note)}` : ''}</div>
           </div>
-          <div class="tx-amt">−${fmt(item.amount)} ₽</div>
+          <div class="tx-amt ${isIncome ? 'income' : ''}">${isIncome ? '+' : '−'}${fmt(item.amount)} ₽</div>
         </div>`;
     }).join('');
   }
