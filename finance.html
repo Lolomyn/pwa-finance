@@ -230,7 +230,7 @@
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
 </button>
 
-<div class="backdrop" id="backdrop" onclick="closeAllModals()"></div>
+<div class="backdrop" id="backdrop" onclick="dismissModal()"></div>
 
 <!-- КАЛЬКУЛЯТОР -->
 <div class="calc-sheet" id="calcSheet">
@@ -244,6 +244,12 @@
     <div class="calc-amount empty" id="calcAmount">0<span class="cur">₽</span></div>
     <div class="calc-result" id="calcResult"></div>
   </div>
+
+  <button class="calc-date" id="calcDateButton" type="button" onclick="openCalcDatePicker()" aria-haspopup="dialog" aria-controls="datePickerModal">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
+    <span>Дата операции</span>
+    <strong id="calcDateLabel">Сегодня</strong>
+  </button>
 
   <input type="text" class="calc-note" id="calcNote" placeholder="Комментарий (необязательно)" maxlength="120" autocomplete="off" enterkeyhint="done">
 
@@ -333,7 +339,8 @@
 <div class="cat-modal" id="datePickerModal" style="max-width: 320px;" role="dialog" aria-modal="true" aria-labelledby="datePickerTitle">
   <div class="cat-modal-title" id="datePickerTitle">Выберите период</div>
 
-  <div style="display:flex; gap:10px; margin-bottom:16px;">
+  <div id="pickDateSummary" class="pick-date-summary" hidden></div>
+  <div id="pickRangeSummary" style="display:flex; gap:10px; margin-bottom:16px;">
     <div style="flex:1; background:#F5F1EA; padding:10px; border-radius:12px; text-align:center;">
       <div style="font-size:10px; color:var(--muted); font-weight:700;">С</div>
       <div id="pickStartLbl" style="font-size:14px; font-weight:800; margin-top:2px;">—</div>
@@ -362,7 +369,7 @@
   <div class="cal-grid-days" id="calDaysGrid"></div>
 
   <div class="modal-actions" style="margin-top:20px;">
-    <button class="btn-cancel" type="button" onclick="closeAllModals()">Отмена</button>
+    <button class="btn-cancel" type="button" onclick="closeDatePicker()">Отмена</button>
     <button class="btn-save" type="button" onclick="applyCustomRange()">Применить</button>
   </div>
 </div>

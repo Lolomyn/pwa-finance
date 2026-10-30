@@ -125,6 +125,7 @@ const state = {
   calcType: 'expense',
   calcCatId: null,
   calcExpr: '',
+  calcDate: todayISO(),
   newCatType: 'expense',
   selectedEmoji: EMOJIS[0],
   editCatId: null,
@@ -1329,10 +1330,54 @@ function openDatePicker(target = 'stats', initialStart, initialEnd) {
   state.pickMonth = start.getMonth();
   state.tempStart = new Date(start);
   state.tempEnd = new Date(end);
-  document.getElementById('datePickerTitle').textContent =
-    target === 'history' ? 'Период истории' : 'Выберите период';
+  const isTransaction = target === 'transaction';
+  document.getElementById('datePickerTitle').textContent = isTransaction
+    ? 'Дата операции'
+    : target === 'history' ? 'Период истории' : 'Выберите период';
+  document.getElementById('pickRangeSummary').style.display = isTransaction ? 'none' : 'flex';
+  document.getElementById('pickDateSummary').hidden = !isTransaction;
+  document.body.classList.toggle('transaction-date-open', isTransaction);
+  if (isTransaction) {
+    document.getElementById('calcSheet').inert = true;
+  }
   renderDatePicker();
   openModal('datePickerModal');
+  if (isTransaction) {
+    document.querySelector('#calDaysGrid [aria-pressed="true"]')?.focus();
+  }
+}
+
+function openCalcDatePicker() {
+  const date = parseISODate(state.calcDate);
+  openDatePicker('transaction', date, date);
+}
+
+function updateCalcDateLabel() {
+  const date = parseISODate(state.calcDate);
+  const label = `${fmtDateShort(date)} ${date.getFullYear()}`;
+  document.getElementById('calcDateLabel').textContent = state.calcDate === todayISO()
+    ? `Сегодня, ${label}`
+    : label;
+}
+
+function closeDatePicker() {
+  if (state.datePickerTarget !== 'transaction') {
+    closeAllModals();
+    return;
+  }
+
+  document.getElementById('datePickerModal').classList.remove('open');
+  document.body.classList.remove('transaction-date-open');
+  document.getElementById('calcSheet').inert = false;
+  document.getElementById('calcDateButton').focus();
+}
+
+function dismissModal() {
+  if (document.getElementById('datePickerModal').classList.contains('open')) {
+    closeDatePicker();
+  } else {
+    closeAllModals();
+  }
 }
 
 function changePickMonth(delta) {
@@ -1352,6 +1397,8 @@ function renderDatePicker() {
   document.getElementById('pickMonthLbl').textContent = `${MONTH_NAMES[state.pickMonth]} ${state.pickYear}`;
   document.getElementById('pickStartLbl').textContent = fmtDateShort(state.tempStart);
   document.getElementById('pickEndLbl').textContent = fmtDateShort(state.tempEnd);
+  document.getElementById('pickDateSummary').textContent =
+    `${fmtDateShort(state.tempStart)} ${state.tempStart.getFullYear()}`;
 
   const grid = document.getElementById('calDaysGrid');
   const firstDay = new Date(state.pickYear, state.pickMonth, 1);
@@ -1390,13 +1437,20 @@ function renderDatePicker() {
 
     grid.insertAdjacentHTML(
       'beforeend',
-      `<div class="${classes.join(' ')}" data-cal-day="${day}">${day}</div>`
+      `<button type="button" class="${classes.join(' ')}" data-cal-day="${day}" aria-label="${fmtDateShort(date)} ${date.getFullYear()}" aria-pressed="${classes.includes('range-start') || classes.includes('range-end')}">${day}</button>`
     );
   }
 }
 
 function selectCalDay(day) {
   const clickedDate = new Date(state.pickYear, state.pickMonth, day);
+
+  if (state.datePickerTarget === 'transaction') {
+    state.tempStart = clickedDate;
+    state.tempEnd = new Date(clickedDate);
+    renderDatePicker();
+    return;
+  }
 
   if (state.tempStart && state.tempEnd) {
     state.tempStart = clickedDate;
@@ -1423,6 +1477,13 @@ function applyCustomRange() {
 
   const start = startOfDay(state.tempStart);
   const end = startOfDay(state.tempEnd || state.tempStart);
+
+  if (state.datePickerTarget === 'transaction') {
+    state.calcDate = isoDate(state.tempStart);
+    updateCalcDateLabel();
+    closeDatePicker();
+    return;
+  }
 
   if (state.datePickerTarget === 'history') {
     state.historyMode = 'range';
@@ -1822,11 +1883,13 @@ async function saveTxEdit() {
 
 function openCalc() {
   state.calcExpr = '';
+  state.calcDate = todayISO();
   state.calcType = 'expense';
   const categories = getCategoriesByType('expense');
   state.calcCatId = categories[0]?.id ?? null;
 
   document.getElementById('calcNote').value = '';
+  updateCalcDateLabel();
 
   updateCalcTypeUI();
   renderCalcCats();
@@ -2023,7 +2086,7 @@ async function submitTx() {
       type: state.calcType,
       amount,
       category: category.name,
-      date: todayISO(),
+      date: state.calcDate,
       note
     });
 
@@ -2047,6 +2110,8 @@ function openModal(id) {
 }
 
 function closeAllModals() {
+  document.body.classList.remove('transaction-date-open');
+  document.getElementById('calcSheet').inert = false;
   document.getElementById('backdrop').classList.remove('open');
   [
     'calcSheet',
@@ -2154,9 +2219,14 @@ function handleDelegatedClick(event) {
 
 function handleKeydown(event) {
   if (event.key === 'Escape') {
-    closeAllModals();
+    dismissModal();
     closeCatActionSheet();
     closeTxActionSheet();
+    return;
+  }
+
+  if (document.getElementById('datePickerModal').classList.contains('open')) {
+    return;
   }
 
   if (document.getElementById('balanceModal').classList.contains('open') && event.key === 'Enter') {
@@ -2167,7 +2237,8 @@ function handleKeydown(event) {
     saveNewCategory();
   }
 
-  if (document.getElementById('calcSheet').classList.contains('open')) {
+  const isTextInput = event.target instanceof Element && event.target.matches('input, textarea, [contenteditable="true"]');
+  if (document.getElementById('calcSheet').classList.contains('open') && !isTextInput) {
     if (/^\d$/.test(event.key)) {
       press(event.key);
       event.preventDefault();
@@ -2180,7 +2251,7 @@ function handleKeydown(event) {
     } else if (event.key === 'Backspace') {
       press('back');
       event.preventDefault();
-    } else if (event.key === 'Enter') {
+    } else if (event.key === 'Enter' && !(event.target instanceof Element && event.target.matches('button'))) {
       submitTx();
       event.preventDefault();
     }

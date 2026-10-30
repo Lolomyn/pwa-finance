@@ -415,6 +415,17 @@ body::before{
 }
 .calc-cat.active { background: var(--coral-soft); border-color: var(--coral); color: var(--coral); }
 .calc-cats-empty{font-size:13px;color:var(--muted);padding:8px 0;white-space:nowrap}
+.calc-date{
+  display:flex;align-items:center;gap:8px;width:100%;margin-bottom:12px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:12px;
+  background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px;cursor:pointer;
+}
+.calc-date svg{width:18px;height:18px;flex-shrink:0;color:var(--muted)}
+.calc-date strong{margin-left:auto;font-size:12px;text-align:right}
+.calc-date:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+body.transaction-date-open #backdrop{z-index:101}
+body.transaction-date-open #datePickerModal{z-index:102}
+.pick-date-summary{text-align:center;color:var(--ink);font-size:14px;font-weight:700;margin-bottom:16px}
 .calc-note{
   width:100%;border:2px solid var(--line);background:#F5F1EA;
   border-radius:14px;padding:10px 14px;margin-bottom:12px;
@@ -550,6 +561,7 @@ body::before{
   gap: 2px;
 }
 .cal-day {
+  border:0;background:transparent;font-family:inherit;padding:0;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
