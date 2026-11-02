@@ -4267,7 +4267,8 @@ button.set:active {
   text-align: left;
   cursor: pointer;
 }
-.hub-export-option:hover { border-color: var(--accent); }
+.hub-export-option:hover { background: var(--soft-strong); border-color: var(--accent); }
+.hub-export-option:active { background: var(--soft-strong); color: var(--ink); }
 .hub-export-option:disabled { opacity: 0.55; cursor: wait; }
 .hub-export-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .hub-export-format {
@@ -4329,14 +4330,23 @@ button.set:active {
   width: 100%;
   min-height: 46px;
   border: 0;
-  background: var(--ink);
+  background: #282521;
   color: #ffffff;
   font-size: 13px;
 }
 
-.security-action-button:hover,
-.settings-action-button:hover {
-  background: #000000;
+.security-action-button:hover:not(:disabled),
+.security-action-button:active:not(:disabled),
+.settings-action-button:hover:not(:disabled),
+.settings-action-button:active:not(:disabled) {
+  background: #45403a;
+  color: #ffffff;
+}
+
+.security-action-button:disabled,
+.settings-action-button:disabled {
+  background: #282521;
+  color: #ffffff;
 }
 
 .security-actions {
@@ -5280,11 +5290,13 @@ button.set:active {
 }
 
 .hub-setting-item--action:hover {
-  opacity: 0.72;
+  background: var(--soft);
+  opacity: 1;
 }
 
 .hub-setting-item--action:active {
-  opacity: 0.55;
+  background: var(--soft-strong);
+  opacity: 1;
 }
 
 .hub-setting-item--action:focus-visible {
