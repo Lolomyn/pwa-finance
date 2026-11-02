@@ -4601,7 +4601,11 @@ function renderHubScreen() {
   }
 
   if (hubWidgetCount) {
-    hubWidgetCount.textContent = `${workingDays} ${workingDaysNoun}`;
+    const unit = document.createElement('span');
+    unit.className = 'hub-widget-unit';
+    unit.textContent = ` ${workingDaysNoun}`;
+    hubWidgetCount.replaceChildren(document.createTextNode(String(workingDays)), unit);
+    hubWidgetCount.setAttribute('aria-label', `${workingDays} ${workingDaysNoun}`);
   }
 
   if (hubWidgetCalendar) {

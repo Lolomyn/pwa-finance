@@ -319,7 +319,7 @@ p {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 400px;
+  max-width: 440px;
   margin: 0 auto;
   padding: 24px 0 12px;
 }
@@ -336,24 +336,36 @@ p {
 .hub-bento > .hub-widget.is-compact { grid-column: span 2; padding: 16px; }
 .hub-widget.is-compact .hub-widget-head { flex-direction: column; align-items: flex-start; gap: 3px; margin-bottom: 12px; }
 .hub-widget.is-compact .hub-widget-body { flex-direction: column; align-items: stretch; gap: 12px; }
-.hub-widget.is-compact .hub-widget-num { font-size: 36px; }
+.hub-widget.is-compact .hub-widget-num { font-size: 36px; line-height: 0.9; }
+.hub-widget.is-compact .hub-widget-unit { display: none; }
+.hub-widget.is-compact .hub-widget-month { font-size: 14px; font-weight: 600; opacity: 0.95; text-transform: none; }
+.hub-widget.is-compact .hub-widget-lbl { font-weight: 700; opacity: 0.8; }
 .hub-widget.is-compact .hub-cal-grid { width: 100%; gap: 2px; }
+.hub-widget.is-compact { border-radius: 22px; background: linear-gradient(140deg, #7C3AED 0%, #A78BFA 100%); box-shadow: 0 10px 30px rgba(124, 58, 237, 0.32); }
 .hub-bento > .hub-app.is-compact {
   grid-column: span 1;
   align-self: start;
   aspect-ratio: 1;
   min-height: 0;
-  padding: 4px;
+  padding: 8px 4px;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 8px;
   border-radius: 20px;
   text-align: center;
 }
-.hub-app.is-compact .hub-app-icon { width: 44px; height: 44px; }
-.hub-app.is-compact .hub-app-icon svg { width: 24px; height: 24px; }
-.hub-app.is-compact .hub-app-name { font-size: 10px; margin: 0; letter-spacing: -0.03em; }
+.hub-app.is-compact .hub-app-icon { width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; }
+.hub-app.is-compact .hub-app-icon svg { width: 20px; height: 20px; }
+.hub-app.is-compact .hub-app-info { margin-top: 0; }
+.hub-app.is-compact .hub-app-name { font-size: 10px; line-height: 1.2; margin: 0; letter-spacing: -0.02em; }
+.hub-app.is-compact::before { top: -40px; right: -40px; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.12); }
+.hub-app-finance.is-compact { --hub-grad: linear-gradient(135deg, #FF6B4A 0%, #FF9472 100%); --hub-shadow: 0 10px 28px rgba(255, 107, 74, 0.3); }
+.hub-app-notes.is-compact { --hub-grad: linear-gradient(135deg, #0EA5A0 0%, #22D3EE 100%); --hub-shadow: 0 10px 28px rgba(14, 165, 160, 0.3); }
 .hub-app.is-compact .hub-app-stat { display: none; }
+@media (max-width: 380px) {
+  .hub-bento > .hub-app.is-compact { padding: 4px; gap: 4px; }
+  .hub-app.is-compact .hub-app-icon { width: 32px; height: 32px; }
+}
 .hub-bento > [data-card-id] { transition: transform 0.2s ease, padding 0.25s ease, border-radius 0.25s ease; }
 @media (prefers-reduced-motion: reduce) {
   .hub-bento > [data-card-id] { transition: none; }
