@@ -324,6 +324,39 @@ p {
   padding: 24px 0 12px;
 }
 
+/* Общая сетка позволяет компактным карточкам стоять в одном ряду. */
+.hub-bento {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+.hub-bento > .hub-widget { grid-column: span 4; min-width: 0; }
+.hub-bento > .hub-app { grid-column: span 2; min-width: 0; }
+.hub-bento > .hub-widget.is-compact { grid-column: span 2; padding: 16px; }
+.hub-widget.is-compact .hub-widget-head { flex-direction: column; align-items: flex-start; gap: 3px; margin-bottom: 12px; }
+.hub-widget.is-compact .hub-widget-body { flex-direction: column; align-items: stretch; gap: 12px; }
+.hub-widget.is-compact .hub-widget-num { font-size: 36px; }
+.hub-widget.is-compact .hub-cal-grid { width: 100%; gap: 2px; }
+.hub-bento > .hub-app.is-compact {
+  grid-column: span 1;
+  min-height: 0;
+  padding: 16px 4px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 20px;
+  text-align: center;
+}
+.hub-app.is-compact .hub-app-icon { width: 44px; height: 44px; }
+.hub-app.is-compact .hub-app-icon svg { width: 24px; height: 24px; }
+.hub-app.is-compact .hub-app-name { font-size: 10px; margin: 0; letter-spacing: -0.03em; }
+.hub-app.is-compact .hub-app-stat { display: none; }
+.hub-bento > [data-card-id] { transition: transform 0.2s ease, padding 0.25s ease, border-radius 0.25s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .hub-bento > [data-card-id] { transition: none; }
+}
+
 /* ═══ Виджет рабочих дней ═══ */
 .hub-widget {
   position: relative;
@@ -455,16 +488,6 @@ p {
 }
 
 /* ═══ Карточки приложений ═══ */
-.hub-apps {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.hub-apps:has(.hub-app.card-hidden) {
-  grid-template-columns: 1fr;
-}
-
 .hub-app {
   appearance: none;
   border: 0;
@@ -5413,6 +5436,29 @@ button.set:active {
 .hub-card-action-sheet .hub-settings-title {
   font-size: 18px;
 }
+
+.hub-card-size-options {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.hub-card-size-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 8px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--soft);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.hub-card-size-btn:hover,
+.hub-card-size-btn:active { background: var(--soft-strong); color: var(--ink); }
+.hub-card-size-btn[aria-pressed="true"] { background: var(--coral); color: #fff; border-color: var(--coral); }
+.hub-card-size-btn[aria-pressed="true"]:hover { background: var(--coral); color: #fff; }
+.hub-card-size-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .hub-card-action-btn {
   display: flex;

@@ -4890,7 +4890,41 @@ const HUB_CARD_NAMES = {
 };
 const HUB_CARD_IDS = Object.keys(HUB_CARD_NAMES);
 
+const HUB_CARD_SIZES_KEY = 'expense-tracker-hub-card-sizes';
+const RESIZABLE_HUB_CARD_IDS = ['widget-days', 'app-finance', 'app-notes'];
+const compactHubCards = new Set();
 const hiddenHubCards = new Set();
+
+function loadHubCardSizes() {
+  compactHubCards.clear();
+  try {
+    const sizes = JSON.parse(localStorage.getItem(HUB_CARD_SIZES_KEY) || '{}');
+    RESIZABLE_HUB_CARD_IDS.forEach((id) => {
+      if (sizes && sizes[id] === 'compact') compactHubCards.add(id);
+    });
+  } catch (error) {}
+  applyHubCardSizes();
+}
+
+function applyHubCardSizes() {
+  document.querySelectorAll('[data-card-id]').forEach((card) => {
+    card.classList.toggle('is-compact', compactHubCards.has(card.dataset.cardId));
+  });
+}
+
+function setHubCardSize(cardId, size) {
+  if (!RESIZABLE_HUB_CARD_IDS.includes(cardId) || !['normal', 'compact'].includes(size)) return;
+  if (size === 'compact') compactHubCards.add(cardId);
+  else compactHubCards.delete(cardId);
+  try {
+    const sizes = {};
+    compactHubCards.forEach((id) => { sizes[id] = 'compact'; });
+    localStorage.setItem(HUB_CARD_SIZES_KEY, JSON.stringify(sizes));
+  } catch (error) {}
+  applyHubCardSizes();
+  closeHubCardAction();
+  hapticFeedback(12);
+}
 
 let currentHubCardToHide = null;
 let hubCardPressTimer = null;
@@ -4998,6 +5032,9 @@ function openHubCardAction(card) {
   if (title) {
     title.textContent = card.dataset.cardName || HUB_CARD_NAMES[id] || 'Карточка';
   }
+  document.getElementById('hubCardSizeOptions').hidden = !RESIZABLE_HUB_CARD_IDS.includes(id);
+  document.getElementById('hubCardSizeNormal').setAttribute('aria-pressed', String(!compactHubCards.has(id)));
+  document.getElementById('hubCardSizeCompact').setAttribute('aria-pressed', String(compactHubCards.has(id)));
 
   if (hubCardActionHideTimer) {
     window.clearTimeout(hubCardActionHideTimer);
@@ -5028,8 +5065,13 @@ function closeHubCardAction() {
 
   backdrop.classList.remove('open');
   sheet.classList.remove('open');
+  const card = currentHubCardToHide
+    ? document.querySelector(`[data-card-id="${currentHubCardToHide}"]`)
+    : null;
   currentHubCardToHide = null;
   syncHubOverlayLock();
+  if (card && !card.classList.contains('card-hidden')) card.focus({ preventScroll: true });
+  else document.getElementById('hubSettingsBtn')?.focus({ preventScroll: true });
 
   hubCardActionHideTimer = window.setTimeout(() => {
     backdrop.hidden = true;
@@ -5107,13 +5149,22 @@ function initHubCardHiding() {
   const list = document.getElementById('hiddenCardsList');
 
   loadHiddenHubCards();
+  loadHubCardSizes();
   renderHiddenHubCardsList();
+  document.getElementById('hubCardSizeNormal').addEventListener('click', () => setHubCardSize(currentHubCardToHide, 'normal'));
+  document.getElementById('hubCardSizeCompact').addEventListener('click', () => setHubCardSize(currentHubCardToHide, 'compact'));
 
   if (!backdrop || !sheet) {
     return;
   }
 
   document.querySelectorAll('[data-card-id]').forEach((card) => {
+    card.addEventListener('keydown', (event) => {
+      if (event.target === card && (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) {
+        event.preventDefault();
+        openHubCardAction(card);
+      }
+    });
     card.addEventListener('pointerdown', (event) => {
       if (event.pointerType === 'mouse' && event.button !== 0) {
         return;
