@@ -426,6 +426,8 @@ body::before{
 body.transaction-date-open #backdrop{z-index:101}
 body.transaction-date-open #datePickerModal{z-index:102}
 .pick-date-summary{text-align:center;color:var(--ink);font-size:14px;font-weight:700;margin-bottom:16px}
+.pick-date-details{text-align:center;color:var(--muted);font-size:11px;font-weight:700;line-height:1.35;margin-top:-10px;margin-bottom:14px}
+.pick-date-details.is-shortened{color:#B7791F}
 .calc-note{
   width:100%;border:2px solid var(--line);background:#F5F1EA;
   border-radius:14px;padding:10px 14px;margin-bottom:12px;
@@ -562,6 +564,7 @@ body.transaction-date-open #datePickerModal{z-index:102}
 }
 .cal-day {
   border:0;background:transparent;font-family:inherit;padding:0;
+  position:relative;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -573,6 +576,65 @@ body.transaction-date-open #datePickerModal{z-index:102}
 }
 .cal-day:hover {
   background: #F5F1EA;
+}
+.cal-day-weekend {
+  color: var(--muted);
+}
+.cal-day-holiday {
+  background: #FFF0EC;
+  color: #B83A24;
+}
+.cal-day-holiday:hover {
+  background: #FFE3DB;
+}
+.cal-day-shortened::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #D99A00;
+}
+.cal-day-working-weekend {
+  box-shadow: inset 0 0 0 1.5px var(--green);
+}
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+.cal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cal-legend span[hidden] {
+  display: none;
+}
+.cal-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.cal-dot-off { background: #FF6B4A; }
+.cal-dot-short { background: #D99A00; }
+.cal-dot-working { background: var(--green); }
+.cal-year-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
 }
 .cal-day.empty {
   cursor: default;
@@ -606,6 +668,10 @@ body.transaction-date-open #datePickerModal{z-index:102}
 .cal-day.range-start.today,
 .cal-day.range-end.today {
   color: #fff;
+}
+.cal-day.range-start.cal-day-shortened::after,
+.cal-day.range-end.cal-day-shortened::after {
+  background: #fff;
 }
 
 /* Список операций в модалке категории и периода */
@@ -654,6 +720,11 @@ html[data-theme="dark"] .action-btn:active{background:#322E29}
 html[data-theme="dark"] .action-btn.danger{background:var(--coral-soft)}
 html[data-theme="dark"] .action-btn.danger:active{background:rgba(255,107,74,.26)}
 html[data-theme="dark"] .cal-day:hover{background:#26231F}
+html[data-theme="dark"] .cal-day-weekend{color:var(--faint)}
+html[data-theme="dark"] .cal-day-holiday{background:rgba(255,107,74,.14);color:#FFB4A2}
+html[data-theme="dark"] .cal-day-holiday:hover{background:rgba(255,107,74,.24)}
+html[data-theme="dark"] .cal-day-shortened::after{background:#F5C451}
+html[data-theme="dark"] .pick-date-details.is-shortened{color:#F5C451}
 html[data-theme="dark"] .cal-day.in-range{background:rgba(255,107,74,.16)}
 html[data-theme="dark"] .cat-stats-list::-webkit-scrollbar-thumb{background:#3A352F}
 html[data-theme="dark"] .backdrop,

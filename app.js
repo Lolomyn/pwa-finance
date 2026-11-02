@@ -4547,9 +4547,20 @@ function updateHeaderDate() {
   headerDate.textContent = monthLabel;
 }
 
+function getProductionDayInfo(date) {
+  const calendar = typeof window !== 'undefined' ? window.RuWorkCalendar : null;
+  return calendar && typeof calendar.getDayInfo === 'function' ? calendar.getDayInfo(date) : null;
+}
+
 function getWorkingDaysInMonth(date) {
   const year = date.getFullYear();
   const month = date.getMonth();
+  const calendar = typeof window !== 'undefined' ? window.RuWorkCalendar : null;
+
+  if (calendar && typeof calendar.getMonthStats === 'function') {
+    return calendar.getMonthStats(year, month).workingDays;
+  }
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   let workingDays = 0;
 
@@ -4647,15 +4658,32 @@ function renderHubCalendar(container, now) {
   }
 
   for (let day = 1; day <= daysInMonth; day += 1) {
-    const weekday = new Date(year, month, day).getDay();
-    const isWeekend = weekday === 0 || weekday === 6;
+    const date = new Date(year, month, day);
+    const weekday = date.getDay();
+    const info = getProductionDayInfo(date);
+    const isWeekend = info ? info.isWeekend : weekday === 0 || weekday === 6;
+    const isWorkingWeekend = Boolean(info && info.isWorkingWeekend);
     const cell = document.createElement('div');
     let className = 'hub-cal-cell';
 
-    if (isWeekend) {
+    if (isWeekend && !isWorkingWeekend) {
       className += ' hub-cal-weekend';
-    } else {
+    } else if (!info || info.isWorking) {
       className += ' hub-cal-active';
+    } else {
+      className += ' hub-cal-holiday';
+    }
+
+    if (isWeekend && info && (info.isHoliday || info.isTransfer)) {
+      className += ' hub-cal-holiday';
+    }
+
+    if (info && info.isShortened) {
+      className += ' hub-cal-shortened';
+    }
+
+    if (isWorkingWeekend) {
+      className += ' hub-cal-working-weekend';
     }
 
     if (day === today) {
@@ -4664,6 +4692,11 @@ function renderHubCalendar(container, now) {
 
     cell.className = className;
     cell.dataset.day = String(day);
+
+    if (info && info.label) {
+      cell.title = info.label;
+    }
+
     fragment.append(cell);
   }
 

@@ -36,6 +36,7 @@
   <link rel="stylesheet" href="cashback.css">
   <link rel="stylesheet" href="calendar.css">
   <link rel="stylesheet" href="update-banner.css">
+  <script src="ru-work-calendar.js" defer></script>
   <script src="app.js" defer></script>
   <script src="notes.js" defer></script>
   <script src="cashback.js" defer></script>
@@ -178,7 +179,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.17.0</div>
+        <div class="hub-version" id="hub-version">v1.18.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" data-card-id="app-finance" data-card-name="Приложение «Финансы»" aria-label="Открыть приложение Финансы">
@@ -1807,6 +1808,13 @@
       <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
     </div>
     <div class="hub-calendar-grid" id="hubCalendarGrid" role="group" aria-label="Дни месяца"></div>
+    <div class="hub-calendar-legend" aria-label="Обозначения календаря">
+      <span><i class="hub-calendar-dot is-holiday" aria-hidden="true"></i>Нерабочий</span>
+      <span><i class="hub-calendar-dot is-shortened" aria-hidden="true"></i>Сокращённый</span>
+      <span id="hubCalendarWorkingLegend"><i class="hub-calendar-dot is-working" aria-hidden="true"></i>Рабочая суббота</span>
+      <span><i class="hub-calendar-dot is-event" aria-hidden="true"></i>Событие</span>
+    </div>
+    <p class="hub-calendar-note" id="hubCalendarNote" hidden></p>
   </div>
 
   <div class="hub-settings-backdrop hub-day-backdrop" id="hubDayBackdrop" hidden></div>

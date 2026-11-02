@@ -8,6 +8,7 @@ const vm = require('node:vm');
 
 const source = readFileSync(path.join(__dirname, '..', 'finance.js'), 'utf8')
   .replace(/\ninit\(\);\s*$/, '\n');
+const workCalendar = require('../ru-work-calendar.js');
 
 function setup() {
   class Element {
@@ -24,7 +25,9 @@ function setup() {
       this.textContent = '';
       this.innerHTML = '';
       this.inert = false;
+      this.attributes = {};
     }
+    setAttribute(name, value) { this.attributes[name] = String(value); }
     insertAdjacentHTML(position, html) { this.innerHTML += html; }
     focus() { this.focused = true; }
     matches() { return false; }
@@ -36,6 +39,7 @@ function setup() {
   };
   const context = vm.createContext({
     console, Date, Element, setTimeout,
+    window: { RuWorkCalendar: workCalendar },
     document: {
       body: new Element(),
       getElementById: get,
@@ -130,4 +134,43 @@ test('history and statistics retain two-day range selection after the operation 
   assert.equal(get('pickDateSummary').hidden, true);
   assert.equal(run('isoDate(state.tempStart)'), '2024-02-15');
   assert.equal(run('isoDate(state.tempEnd)'), '2024-02-17');
+});
+
+test('date picker marks holidays and shortened days from the production calendar', () => {
+  const { run, get } = setup();
+  run("openCalc(); state.calcDate = '2026-11-04'; openCalcDatePicker()");
+
+  const html = get('calDaysGrid').innerHTML;
+  const day3 = html.match(/<button[^>]*data-cal-day="3"[^>]*>/)[0];
+  const day4 = html.match(/<button[^>]*data-cal-day="4"[^>]*>/)[0];
+
+  assert.match(day3, /cal-day-shortened/);
+  assert.match(day4, /cal-day-holiday/);
+  assert.match(get('pickDateDetails').textContent, /День народного единства/);
+
+  run('selectCalDay(3)');
+  assert.match(get('pickDateDetails').textContent, /Сокращённый день/);
+  assert.equal(run('state.calcDate'), '2026-11-04');
+});
+
+test('date picker marks a working Saturday and the following transferred day off', () => {
+  const { run, get } = setup();
+  run("openCalc(); state.calcDate = '2027-02-20'; openCalcDatePicker()");
+
+  const html = get('calDaysGrid').innerHTML;
+  const day20 = html.match(/<button[^>]*data-cal-day="20"[^>]*>/)[0];
+  const day22 = html.match(/<button[^>]*data-cal-day="22"[^>]*>/)[0];
+
+  assert.match(day20, /cal-day-working-weekend/);
+  assert.match(day20, /cal-day-shortened/);
+  assert.match(day22, /cal-day-holiday/);
+});
+
+test('date picker explains that a future year is not approved yet', () => {
+  const { run, get } = setup();
+  run("openCalc(); state.calcDate = '2028-01-01'; openCalcDatePicker()");
+
+  assert.equal(get('calYearNote').hidden, false);
+  assert.match(get('calYearNote').textContent, /2028/);
+  assert.match(get('calYearNote').textContent, /не утверждён/);
 });

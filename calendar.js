@@ -89,6 +89,92 @@
     return state.events.filter((event) => matchesDate(event, date));
   }
 
+  function productionInfo(date) {
+    return window.RuWorkCalendar && typeof window.RuWorkCalendar.getDayInfo === 'function'
+      ? window.RuWorkCalendar.getDayInfo(date)
+      : null;
+  }
+
+  function productionAria(info) {
+    if (!info) {
+      return '';
+    }
+
+    if (info.isWorkingWeekend) {
+      return info.isShortened
+        ? 'Рабочая суббота, сокращённый рабочий день'
+        : 'Рабочая суббота';
+    }
+
+    if (info.isHoliday) {
+      return `${info.holidayName || 'Праздник'}, нерабочий день`;
+    }
+
+    if (info.isTransfer) {
+      return `${info.transferName || 'Перенесённый выходной'}, нерабочий день`;
+    }
+
+    if (info.isShortened) {
+      return info.shortenedName || 'Сокращённый рабочий день';
+    }
+
+    return info.isWeekend ? 'Выходной' : '';
+  }
+
+  function productionRowsForDate(date) {
+    const info = productionInfo(date);
+
+    if (!info) {
+      return [];
+    }
+
+    const rows = [];
+
+    if (info.isWorkingWeekend) {
+      rows.push({
+        title: info.workingWeekendName || 'Рабочая суббота',
+        type: info.isShortened ? 'Сокращённый рабочий день' : 'Рабочий день',
+        tone: info.isShortened ? 'shortened' : 'working'
+      });
+    } else if (info.isHoliday) {
+      rows.push({
+        title: info.holidayName || 'Праздник',
+        type: 'Нерабочий праздничный день',
+        tone: 'holiday'
+      });
+    } else if (info.isTransfer) {
+      rows.push({
+        title: info.transferName || 'Перенесённый выходной',
+        type: 'Нерабочий день',
+        tone: 'holiday'
+      });
+    } else if (info.isWeekend) {
+      rows.push({
+        title: 'Выходной',
+        type: 'Производственный календарь',
+        tone: 'weekend'
+      });
+    }
+
+    if (info.isShortened && !info.isWorkingWeekend) {
+      rows.push({
+        title: info.shortenedName || 'Сокращённый рабочий день',
+        type: 'Минус один час',
+        tone: 'shortened'
+      });
+    }
+
+    if (info.isEstimated) {
+      rows.push({
+        title: `Календарь на ${info.year} год не утверждён`,
+        type: 'Предварительные данные',
+        tone: 'estimated'
+      });
+    }
+
+    return rows;
+  }
+
   function persist() {
     if (typeof setSettings !== 'function') {
       return Promise.resolve(false);
@@ -245,6 +331,8 @@
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
       const iso = toISO(date);
       const dayEvents = eventsForDate(date);
+      const info = productionInfo(date);
+      const status = productionAria(info);
       const button = document.createElement('button');
       let className = 'hub-calendar-day';
 
@@ -254,6 +342,22 @@
 
       if (iso === todayKey) {
         className += ' is-today';
+      }
+
+      if (info && info.isWeekend && !info.isWorkingWeekend) {
+        className += ' is-weekend';
+      }
+
+      if (info && (info.isHoliday || info.isTransfer)) {
+        className += ' is-holiday';
+      }
+
+      if (info && info.isShortened) {
+        className += ' is-shortened';
+      }
+
+      if (info && info.isWorkingWeekend) {
+        className += ' is-working-weekend';
       }
 
       if (dayEvents.length > 0) {
@@ -271,9 +375,13 @@
       button.setAttribute(
         'aria-label',
         `${date.getDate()} ${MONTH_NAMES_GENITIVE[date.getMonth()]} ${date.getFullYear()}${
-          dayEvents.length > 0 ? `, событий: ${dayEvents.length}` : ''
-        }`
+          status ? `, ${status}` : ''
+        }${dayEvents.length > 0 ? `, событий: ${dayEvents.length}` : ''}`
       );
+
+      if (status) {
+        button.title = status;
+      }
 
       if (iso === todayKey) {
         button.setAttribute('aria-current', 'date');
@@ -283,6 +391,23 @@
     }
 
     grid.replaceChildren(fragment);
+
+    const yearNote = byId('hubCalendarNote');
+    const workingLegend = byId('hubCalendarWorkingLegend');
+    const yearData = window.RuWorkCalendar && typeof window.RuWorkCalendar.getYearData === 'function'
+      ? window.RuWorkCalendar.getYearData(state.viewYear)
+      : null;
+
+    if (workingLegend) {
+      workingLegend.hidden = !yearData || Object.keys(yearData.workingWeekends || {}).length === 0;
+    }
+
+    if (yearNote) {
+      yearNote.hidden = Boolean(yearData);
+      yearNote.textContent = yearData
+        ? ''
+        : `Производственный календарь на ${state.viewYear} год ещё не утверждён: показаны выходные и федеральные праздники.`;
+    }
   }
 
   function shiftMonth(delta) {
@@ -345,9 +470,30 @@
 
     const date = parseISO(state.selectedDate);
     const dayEvents = eventsForDate(date);
+    const productionRows = productionRowsForDate(date);
     const fragment = document.createDocumentFragment();
 
-    if (dayEvents.length === 0) {
+    productionRows.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = `hub-day-event is-production is-${entry.tone}`;
+
+      const info = document.createElement('div');
+      info.className = 'hub-day-event-info';
+
+      const name = document.createElement('div');
+      name.className = 'hub-day-event-name';
+      name.textContent = entry.title;
+
+      const type = document.createElement('div');
+      type.className = 'hub-day-event-type is-production';
+      type.textContent = entry.type;
+
+      info.append(name, type);
+      row.append(info);
+      fragment.append(row);
+    });
+
+    if (productionRows.length === 0 && dayEvents.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'hub-day-empty';
       empty.textContent = 'Нет событий на этот день';

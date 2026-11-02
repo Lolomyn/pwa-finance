@@ -28,6 +28,7 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="finance.css">
 <link rel="stylesheet" href="update-banner.css">
+<script src="ru-work-calendar.js" defer></script>
 <script src="finance.js" defer></script>
 <script src="update-banner.js" defer></script>
 </head>
@@ -340,6 +341,7 @@
   <div class="cat-modal-title" id="datePickerTitle">Выберите период</div>
 
   <div id="pickDateSummary" class="pick-date-summary" hidden></div>
+  <div id="pickDateDetails" class="pick-date-details" aria-live="polite" hidden></div>
   <div id="pickRangeSummary" style="display:flex; gap:10px; margin-bottom:16px;">
     <div style="flex:1; background:#F5F1EA; padding:10px; border-radius:12px; text-align:center;">
       <div style="font-size:10px; color:var(--muted); font-weight:700;">С</div>
@@ -367,6 +369,13 @@
     <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
   </div>
   <div class="cal-grid-days" id="calDaysGrid"></div>
+
+  <div class="cal-legend" id="calLegend" aria-label="Обозначения производственного календаря">
+    <span><i class="cal-dot cal-dot-off" aria-hidden="true"></i>Нерабочий</span>
+    <span><i class="cal-dot cal-dot-short" aria-hidden="true"></i>Сокращённый</span>
+    <span id="calWorkingWeekendLegend" hidden><i class="cal-dot cal-dot-working" aria-hidden="true"></i>Рабочая суббота</span>
+  </div>
+  <p class="cal-year-note" id="calYearNote" hidden></p>
 
   <div class="modal-actions" style="margin-top:20px;">
     <button class="btn-cancel" type="button" onclick="closeDatePicker()">Отмена</button>

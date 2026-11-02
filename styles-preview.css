@@ -411,9 +411,31 @@ p {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.hub-cal-cell.hub-cal-holiday {
+  background: rgba(255, 209, 102, 0.95);
+}
+
+.hub-cal-cell.hub-cal-shortened {
+  box-shadow: inset 0 0 0 1.5px #ffd166;
+}
+
+.hub-cal-cell.hub-cal-working-weekend {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 0 0 1.5px #ffd166;
+}
+
 .hub-cal-cell.hub-cal-today {
   background: transparent;
   box-shadow: inset 0 0 0 1.5px #ffffff;
+}
+
+.hub-cal-cell.hub-cal-today.hub-cal-holiday {
+  background: rgba(255, 209, 102, 0.95);
+}
+
+.hub-cal-cell.hub-cal-today.hub-cal-working-weekend {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 0 0 1.5px #ffd166;
 }
 
 .hub-cal-cell.hub-cal-empty {

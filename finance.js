@@ -189,6 +189,70 @@ function fmtDateShort(date) {
   return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
 }
 
+function getProductionDay(date) {
+  const calendar = typeof window !== 'undefined' ? window.RuWorkCalendar : null;
+
+  if (calendar && typeof calendar.getDayInfo === 'function') {
+    return calendar.getDayInfo(date);
+  }
+
+  const weekend = date.getDay() === 0 || date.getDay() === 6;
+
+  return {
+    iso: isoDate(date),
+    year: date.getFullYear(),
+    weekday: date.getDay(),
+    isWeekend: weekend,
+    isWorking: !weekend,
+    isNonWorking: weekend,
+    isNonWorkingWeekday: false,
+    isHoliday: false,
+    holidayName: null,
+    isTransfer: false,
+    transferName: null,
+    isWorkingWeekend: false,
+    workingWeekendName: null,
+    isShortened: false,
+    shortenedName: null,
+    label: weekend ? 'Выходной' : 'Рабочий день',
+    isEstimated: true
+  };
+}
+
+function getProductionYearData(year) {
+  const calendar = typeof window !== 'undefined' ? window.RuWorkCalendar : null;
+  return calendar && typeof calendar.getYearData === 'function' ? calendar.getYearData(year) : null;
+}
+
+function getProductionStatusText(info) {
+  if (!info) {
+    return '';
+  }
+
+  let text = '';
+
+  if (info.isWorkingWeekend) {
+    text = info.workingWeekendName || 'Рабочая суббота';
+    if (info.isShortened) {
+      text += ` · ${info.shortenedName || 'сокращённый день'}`;
+    }
+  } else if (info.isHoliday) {
+    text = `${info.holidayName || 'Праздник'} · нерабочий день`;
+  } else if (info.isTransfer) {
+    text = `${info.transferName || 'Перенесённый выходной'} · нерабочий день`;
+  } else if (info.isShortened) {
+    text = `${info.shortenedName || 'Сокращённый день'} · рабочий день короче на час`;
+  } else if (info.isWeekend) {
+    text = 'Выходной';
+  }
+
+  if (text && info.isEstimated) {
+    text += ' · предварительно';
+  }
+
+  return text;
+}
+
 function fmtDayMonth(date) {
   return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
 }
@@ -1355,9 +1419,17 @@ function openCalcDatePicker() {
 function updateCalcDateLabel() {
   const date = parseISODate(state.calcDate);
   const label = `${fmtDateShort(date)} ${date.getFullYear()}`;
-  document.getElementById('calcDateLabel').textContent = state.calcDate === todayISO()
-    ? `Сегодня, ${label}`
-    : label;
+  const text = state.calcDate === todayISO() ? `Сегодня, ${label}` : label;
+  const status = getProductionStatusText(getProductionDay(date));
+  const button = document.getElementById('calcDateButton');
+
+  document.getElementById('calcDateLabel').textContent = text;
+
+  if (button) {
+    const title = status ? `Дата операции: ${text}. ${status}` : `Дата операции: ${text}`;
+    button.title = title;
+    button.setAttribute('aria-label', title);
+  }
 }
 
 function closeDatePicker() {
@@ -1400,6 +1472,31 @@ function renderDatePicker() {
   document.getElementById('pickDateSummary').textContent =
     `${fmtDateShort(state.tempStart)} ${state.tempStart.getFullYear()}`;
 
+  const startInfo = getProductionDay(state.tempStart);
+  const details = document.getElementById('pickDateDetails');
+  const detailsText = state.datePickerTarget === 'transaction'
+    ? getProductionStatusText(startInfo)
+    : '';
+
+  details.textContent = detailsText;
+  details.hidden = !detailsText;
+  details.classList.toggle('is-shortened', Boolean(startInfo.isShortened));
+
+  const yearData = getProductionYearData(state.pickYear);
+  const workingLegend = document.getElementById('calWorkingWeekendLegend');
+  const yearNote = document.getElementById('calYearNote');
+
+  if (workingLegend) {
+    workingLegend.hidden = !yearData || Object.keys(yearData.workingWeekends || {}).length === 0;
+  }
+
+  if (yearNote) {
+    yearNote.hidden = Boolean(yearData);
+    yearNote.textContent = yearData
+      ? ''
+      : `Производственный календарь на ${state.pickYear} год ещё не утверждён: показаны выходные и федеральные праздники.`;
+  }
+
   const grid = document.getElementById('calDaysGrid');
   const firstDay = new Date(state.pickYear, state.pickMonth, 1);
   const jsDay = firstDay.getDay();
@@ -1416,9 +1513,28 @@ function renderDatePicker() {
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = new Date(state.pickYear, state.pickMonth, day);
     const classes = ['cal-day'];
+    const info = getProductionDay(date);
+    const status = getProductionStatusText(info);
+    const accessibleDate = `${fmtDateShort(date)} ${date.getFullYear()}${status ? `, ${status}` : ''}`;
 
     if (isoDate(date) === todayKey) {
       classes.push('today');
+    }
+
+    if (info.isWeekend && !info.isWorkingWeekend) {
+      classes.push('cal-day-weekend');
+    }
+
+    if (info.isHoliday || info.isTransfer) {
+      classes.push('cal-day-holiday');
+    }
+
+    if (info.isShortened) {
+      classes.push('cal-day-shortened');
+    }
+
+    if (info.isWorkingWeekend) {
+      classes.push('cal-day-working-weekend');
     }
 
     if (state.tempStart && state.tempEnd) {
@@ -1437,7 +1553,7 @@ function renderDatePicker() {
 
     grid.insertAdjacentHTML(
       'beforeend',
-      `<button type="button" class="${classes.join(' ')}" data-cal-day="${day}" aria-label="${fmtDateShort(date)} ${date.getFullYear()}" aria-pressed="${classes.includes('range-start') || classes.includes('range-end')}">${day}</button>`
+      `<button type="button" class="${classes.join(' ')}" data-cal-day="${day}" title="${accessibleDate}" aria-label="${accessibleDate}" aria-pressed="${classes.includes('range-start') || classes.includes('range-end')}">${day}</button>`
     );
   }
 }
