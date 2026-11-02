@@ -5040,8 +5040,9 @@ function openHubCardAction(card) {
     title.textContent = card.dataset.cardName || HUB_CARD_NAMES[id] || 'Карточка';
   }
   document.getElementById('hubCardSizeOptions').hidden = !RESIZABLE_HUB_CARD_IDS.includes(id);
-  document.getElementById('hubCardSizeNormal').setAttribute('aria-pressed', String(!compactHubCards.has(id)));
-  document.getElementById('hubCardSizeCompact').setAttribute('aria-pressed', String(compactHubCards.has(id)));
+  document.getElementById('hubCardSizeToggle').textContent = compactHubCards.has(id)
+    ? 'Вернуть обычный размер'
+    : 'Сделать компактным';
 
   if (hubCardActionHideTimer) {
     window.clearTimeout(hubCardActionHideTimer);
@@ -5158,8 +5159,9 @@ function initHubCardHiding() {
   loadHiddenHubCards();
   loadHubCardSizes();
   renderHiddenHubCardsList();
-  document.getElementById('hubCardSizeNormal').addEventListener('click', () => setHubCardSize(currentHubCardToHide, 'normal'));
-  document.getElementById('hubCardSizeCompact').addEventListener('click', () => setHubCardSize(currentHubCardToHide, 'compact'));
+  document.getElementById('hubCardSizeToggle').addEventListener('click', () => {
+    setHubCardSize(currentHubCardToHide, compactHubCards.has(currentHubCardToHide) ? 'normal' : 'compact');
+  });
 
   if (!backdrop || !sheet) {
     return;

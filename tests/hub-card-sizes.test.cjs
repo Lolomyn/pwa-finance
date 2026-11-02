@@ -94,8 +94,7 @@ function setup({ storedSizes, storage = new Map() } = {}) {
   let now = 10_000;
   const elements = new Map();
   for (const id of ['hubCardActionSheet', 'hubCardActionBackdrop', 'hubCardActionHide',
-    'hubCardActionClose', 'hubCardActionTitle', 'hubCardSizeOptions', 'hubCardSizeNormal',
-    'hubCardSizeCompact', 'hiddenCardsWrap', 'hiddenCardsList', 'hubSettingsSheet',
+    'hubCardActionClose', 'hubCardActionTitle', 'hubCardSizeOptions', 'hubCardSizeToggle', 'hiddenCardsWrap', 'hiddenCardsList', 'hubSettingsSheet',
     'hubCalendarSheet', 'hubDaySheet']) {
     elements.set(id, new Element({ id }));
   }
@@ -270,19 +269,16 @@ test('long press opens size controls and buttons switch compact back to normal',
   app.advance(1);
   assert.equal(app.sheet.hidden, false);
   assert.equal(app.elements.get('hubCardSizeOptions').hidden, false);
-  const normal = app.elements.get('hubCardSizeNormal');
-  const compact = app.elements.get('hubCardSizeCompact');
-  assert.equal(normal.getAttribute('aria-pressed'), 'true');
-  assert.equal(compact.getAttribute('aria-pressed'), 'false');
-  compact.emit('click');
+  const toggle = app.elements.get('hubCardSizeToggle');
+  assert.equal(toggle.textContent, 'Сделать компактным');
+  toggle.emit('click');
   assert.equal(card.classList.contains('is-compact'), true);
   assert.equal(app.sheet.classList.contains('open'), false);
   app.advance(350);
   beginPress(app, card);
   app.advance(450);
-  assert.equal(normal.getAttribute('aria-pressed'), 'false');
-  assert.equal(compact.getAttribute('aria-pressed'), 'true');
-  normal.emit('click');
+  assert.equal(toggle.textContent, 'Вернуть обычный размер');
+  toggle.emit('click');
   assert.equal(card.classList.contains('is-compact'), false);
   assert.deepEqual(app.stored(), {});
 });
