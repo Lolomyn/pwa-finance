@@ -12,6 +12,22 @@ const end = source.indexOf('async function render(items)', start);
 assert.ok(start >= 0 && end > start, 'the hub hiding block must exist in app.js');
 const hubSource = source.slice(start, end);
 
+test('weather supports the shared card size and hide registry', () => {
+  assert.match(hubSource, /'widget-weather': 'Виджет «Погода»'/);
+  assert.match(hubSource, /RESIZABLE_HUB_CARD_IDS = \['widget-weather'/);
+});
+
+test('widgets and applications have separate layout containers', () => {
+  const html = readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const widgets = html.indexOf('class="hub-bento hub-widgets"');
+  const apps = html.indexOf('class="hub-bento hub-apps"');
+  assert.ok(widgets >= 0 && apps > widgets);
+  assert.ok(html.indexOf('id="hub-weather"') > widgets && html.indexOf('id="hub-weather"') < apps);
+  assert.ok(html.indexOf('id="hub-widget"') < apps);
+  assert.ok(html.indexOf('id="hub-finance"') > apps);
+  assert.ok(html.indexOf('id="hub-notes"') > apps);
+});
+
 class Events {
   constructor() { this.listeners = new Map(); }
   addEventListener(type, listener) {

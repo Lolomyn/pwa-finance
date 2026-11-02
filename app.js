@@ -4706,6 +4706,8 @@ function renderHubCalendar(container, now) {
     fragment.append(cell);
   }
 
+  const rows = Math.ceil(fragment.childElementCount / 7);
+  container.style.setProperty('--hub-calendar-width', `${7 * ((64 - (rows - 1) * 2) / rows) + 12}px`);
   container.replaceChildren(fragment);
   window.HubCalendar?.decorateMini?.();
 }
@@ -4887,6 +4889,7 @@ const HIDDEN_HUB_CARDS_KEY = 'expense-tracker-hidden-hub-cards';
 // data-card-id + data-card-name в разметке, чтобы её можно было скрыть
 // долгим нажатием и вернуть из настроек.
 const HUB_CARD_NAMES = {
+  'widget-weather': 'Виджет «Погода»',
   'widget-days': 'Виджет «Рабочих дней»',
   'app-finance': 'Приложение «Финансы»',
   'app-notes': 'Приложение «Заметки»',
@@ -4895,7 +4898,7 @@ const HUB_CARD_NAMES = {
 const HUB_CARD_IDS = Object.keys(HUB_CARD_NAMES);
 
 const HUB_CARD_SIZES_KEY = 'expense-tracker-hub-card-sizes';
-const RESIZABLE_HUB_CARD_IDS = ['widget-days', 'app-finance', 'app-notes'];
+const RESIZABLE_HUB_CARD_IDS = ['widget-weather', 'widget-days', 'app-finance', 'app-notes'];
 const compactHubCards = new Set();
 const hiddenHubCards = new Set();
 
@@ -10945,6 +10948,7 @@ async function init() {
   initThemeSettings();
   initHubExportUi();
   initHubCardHiding();
+  window.HubWeather?.init();
   showTab(getTabFromHash(), { push: false });
   showTab('hub', { push: true });
   initHub();

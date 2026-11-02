@@ -324,24 +324,14 @@ p {
   padding: 24px 0 12px;
 }
 
-/* Общая сетка позволяет компактным карточкам стоять в одном ряду. */
+/* Виджеты и приложения используют отдельные четырёхколоночные сетки. */
 .hub-bento {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   align-items: stretch;
 }
-.hub-bento > .hub-widget { grid-column: span 4; min-width: 0; }
 .hub-bento > .hub-app { grid-column: span 2; min-width: 0; }
-.hub-bento > .hub-widget.is-compact { grid-column: span 2; padding: 16px; }
-.hub-widget.is-compact .hub-widget-head { flex-direction: column; align-items: flex-start; gap: 3px; margin-bottom: 12px; }
-.hub-widget.is-compact .hub-widget-body { flex-direction: column; align-items: stretch; gap: 12px; }
-.hub-widget.is-compact .hub-widget-num { font-size: 36px; line-height: 0.9; }
-.hub-widget.is-compact .hub-widget-unit { display: none; }
-.hub-widget.is-compact .hub-widget-month { font-size: 14px; font-weight: 600; opacity: 0.95; text-transform: none; }
-.hub-widget.is-compact .hub-widget-lbl { font-weight: 700; opacity: 0.8; }
-.hub-widget.is-compact .hub-cal-grid { width: 100%; gap: 2px; }
-.hub-widget.is-compact { border-radius: 22px; background: linear-gradient(140deg, #7C3AED 0%, #A78BFA 100%); box-shadow: 0 10px 30px rgba(124, 58, 237, 0.32); }
 .hub-bento > .hub-app.is-compact {
   grid-column: span 1;
   align-self: start;

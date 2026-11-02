@@ -34,11 +34,13 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="styles-modern.css">
   <link rel="stylesheet" href="styles-preview.css">
+  <link rel="stylesheet" href="weather.css">
   <link rel="stylesheet" href="notes.css">
   <link rel="stylesheet" href="cashback.css">
   <link rel="stylesheet" href="calendar.css">
   <link rel="stylesheet" href="update-banner.css">
   <script src="ru-work-calendar.js" defer></script>
+  <script src="weather.js" defer></script>
   <script src="app.js" defer></script>
   <script src="notes.js" defer></script>
   <script src="cashback.js" defer></script>
@@ -159,7 +161,19 @@
           </button>
         </div>
 
-        <div class="hub-bento">
+        <div class="hub-bento hub-widgets" aria-label="Виджеты">
+          <div id="hub-weather" class="hub-weather" data-card-id="widget-weather" data-card-name="Виджет «Погода»" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Погода. Выбрать местоположение">
+            <div class="weather-heading">
+              <svg class="weather-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span id="weather-city">Выбрать город</span>
+            </div>
+            <div id="weather-date" class="weather-date"></div>
+            <div class="weather-bottom">
+              <div class="weather-reading"><div id="weather-temp" class="weather-temp">—°</div><div id="weather-condition" class="weather-condition">Настроить погоду</div></div>
+              <div id="weather-icon" class="weather-icon" aria-hidden="true"></div>
+            </div>
+            <span id="weather-status" class="weather-status" role="status"></span>
+          </div>
         <div
           class="hub-widget"
           id="hub-widget"
@@ -182,7 +196,9 @@
           </div>
         </div>
 
+        </div>
 
+        <div class="hub-bento hub-apps" aria-label="Приложения">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" data-card-id="app-finance" data-card-name="Приложение «Финансы»" aria-label="Открыть приложение Финансы">
             <div class="hub-app-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -213,7 +229,7 @@
           </button>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.21.2</div>
+        <div class="hub-version" id="hub-version">v1.22.0</div>
 
         <section class="cashback-widget" id="cashbackWidget" data-card-id="widget-cashback" data-card-name="Виджет «Кэшбэк»" aria-labelledby="cashbackTitle">
           <div class="cb-head">
@@ -1779,6 +1795,25 @@
         </span>
         <span class="hub-setting-chev" aria-hidden="true">›</span>
       </button>
+    </div>
+  </div>
+
+  <div id="weather-modal" class="modal-overlay" hidden>
+    <div class="modal-card weather-settings-card" role="dialog" aria-modal="true" aria-labelledby="weather-settings-title">
+      <div class="modal-header">
+        <h2 id="weather-settings-title">Погода</h2>
+        <button id="weather-close" class="icon-button icon-button--soft modal-close-button" type="button" aria-label="Закрыть погоду">×</button>
+      </div>
+      <p class="weather-help">Выберите город или определите местоположение. Координаты передаются Open-Meteo для получения погоды; поиск города также выполняется онлайн. Разрешение геолокации запрашивается только по кнопке ниже.</p>
+      <button id="weather-location" class="secondary-button" type="button">Определить местоположение</button>
+      <form id="weather-search-form" class="weather-search-form">
+        <label for="weather-search-input">Город</label>
+        <div class="weather-search-row"><input id="weather-search-input" type="search" placeholder="Например, Москва" minlength="2" maxlength="100" required autocomplete="off"><button class="secondary-button" type="submit">Найти</button></div>
+      </form>
+      <div id="weather-search-results" class="weather-search-results" aria-label="Найденные города"></div>
+      <p id="weather-settings-status" class="weather-help" role="status" aria-live="polite"></p>
+      <button id="weather-refresh" class="secondary-button" type="button">Обновить погоду</button>
+      <p class="weather-help">Температура в °C. Время — по часам устройства. Без интернета показываются последние сохранённые данные с отметкой обновления. Источник: Open-Meteo.</p>
     </div>
   </div>
 
