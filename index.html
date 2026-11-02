@@ -2,6 +2,8 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="app-access.css">
+  <script src="app-access.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#F6F3EE">
   <script>
@@ -179,7 +181,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.18.0</div>
+        <div class="hub-version" id="hub-version">v1.19.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" data-card-id="app-finance" data-card-name="Приложение «Финансы»" aria-label="Открыть приложение Финансы">
@@ -1291,7 +1293,7 @@
 
       <div class="security-status">
         <p>PIN: <span id="security-pin-status">не включён</span></p>
-        <p>Биометрия: <span id="security-biometric-status">не настроена</span></p>
+        <p>Face ID / биометрия: <span id="security-biometric-status">не настроена</span></p>
       </div>
 
       <section
@@ -1302,8 +1304,8 @@
         <h3 id="security-enable-pin-title">Включить PIN</h3>
         <p class="security-hint">
           PIN должен состоять из 4–6 цифр. Он будет запрашиваться при входе.
-          Перед включением PIN обязательно сделайте экспорт JSON: при забытом
-          PIN без биометрии восстановить данные невозможно.
+          Это блокировка интерфейса, а не шифрование данных. Перед включением
+          сделайте резервную копию: при забытом PIN без биометрии потребуется сброс.
         </p>
 
         <form id="security-pin-form" novalidate>
@@ -1380,7 +1382,7 @@
       >
         <h3 id="security-change-pin-title">Сменить PIN</h3>
         <p class="security-hint">
-          Введите текущий PIN и дважды новый. Биометрия продолжит работать
+          Введите текущий PIN и дважды новый. Face ID продолжит работать
           после смены PIN.
         </p>
 
@@ -1444,7 +1446,7 @@
         class="security-section"
         aria-labelledby="security-biometric-title"
       >
-        <h3 id="security-biometric-title">Биометрия</h3>
+        <h3 id="security-biometric-title">Face ID и биометрия</h3>
         <p id="security-biometric-hint" class="security-hint">Сначала включите PIN.</p>
 
         <div class="security-actions">
@@ -1453,13 +1455,13 @@
             class="secondary-button security-action-button"
             type="button"
             disabled
-          >Включить биометрию</button>
+          >Включить Face ID / биометрию</button>
           <button
             id="security-disable-biometric"
             class="secondary-button security-action-button"
             type="button"
             hidden
-          >Отключить биометрию</button>
+          >Отключить Face ID / биометрию</button>
         </div>
       </section>
 
@@ -1542,7 +1544,7 @@
         hidden
       >
         <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-fingerprint"></use></svg>
-        <span>Биометрия</span>
+        <span>Face ID / биометрия</span>
       </button>
 
       <p id="lock-message" class="lock-message" role="alert" hidden></p>
@@ -1571,15 +1573,15 @@
 
         <div id="pin-recovery-options">
           <p class="security-hint">
-            Если вы забыли PIN, войдите по биометрии или полностью сбросьте
-            приложение. Сохранить данные без PIN невозможно.
+            Если вы забыли PIN, войдите по Face ID или биометрии либо полностью
+            сбросьте приложение. Сохранить данные без PIN невозможно.
           </p>
           <button
             id="pin-recovery-biometric"
             class="secondary-button security-action-button pin-recovery-biometric-button"
             type="button"
             hidden
-          >Войти по биометрии</button>
+          >Войти по Face ID / биометрии</button>
           <button
             id="pin-recovery-reset"
             class="danger-button pin-recovery-reset-button"
@@ -1589,8 +1591,8 @@
 
         <div id="pin-recovery-warning" hidden>
           <p class="pin-recovery-warning-text">
-            Все операции, категории, шаблоны и настройки будут безвозвратно
-            удалены. Продолжить?
+            Все операции, категории, заметки, шаблоны и настройки будут
+            безвозвратно удалены. Продолжить?
           </p>
           <div class="pin-recovery-actions">
             <button
@@ -1722,18 +1724,13 @@
         </button>
       </div>
 
-      <div class="hub-setting-item">
-        <div class="hub-setting-info">
-          <div class="hub-setting-name">Безопасность</div>
-          <div class="hub-setting-desc">PIN-код и Face ID</div>
-        </div>
-        <div class="hub-setting-placeholder" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-        </div>
-      </div>
+      <button class="hub-setting-item hub-setting-item--action" id="hubSecuritySetting" type="button">
+        <span class="hub-setting-info">
+          <span class="hub-setting-name">Безопасность</span>
+          <span class="hub-setting-desc" id="hubSecurityStatus">PIN-код и Face ID</span>
+        </span>
+        <span class="hub-setting-chev" aria-hidden="true">›</span>
+      </button>
 
       <div class="hidden-cards-wrap" id="hiddenCardsWrap" hidden>
         <span class="hidden-cards-title">Скрытые карточки</span>

@@ -715,7 +715,7 @@
 
   function bindEvents() {
     els.backBtn.addEventListener('click', () => {
-      window.location.href = './index.html#hub';
+      window.AppAccess.navigate('./index.html#hub');
     });
 
     els.searchInput.addEventListener('input', () => {
@@ -883,6 +883,10 @@
   }
 
   async function init() {
+    if (!await window.AppAccess.ready) {
+      return;
+    }
+
     cacheElements();
     bindEvents();
 
@@ -893,6 +897,7 @@
     }
 
     await refresh();
+    window.AppAccess.reveal();
   }
 
   init();

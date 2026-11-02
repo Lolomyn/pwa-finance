@@ -457,11 +457,13 @@ let securityState = {
   biometricEnabled: false,
   credentialId: ''
 };
+let platformAuthenticatorAvailable = null;
 let pinFailedAttempts = 0;
 let pinLockedUntil = 0;
 let pinLockCountdownTimer = null;
 let appHiddenAt = 0;
 let isAppLocked = false;
+let securityReturnFocus = null;
 let pinRecoveryReturnFocus = null;
 let reconcileDraft = null;
 let reconcileCloseTimer = null;
@@ -4711,7 +4713,7 @@ function initHub() {
 
   hubFinanceButton.addEventListener('click', () => {
     hapticFeedback(8);
-    window.location.href = './finance.html';
+    window.AppAccess.navigate('./finance.html');
   });
 
   const financeExitButton = document.getElementById('finance-exit');
@@ -4734,14 +4736,14 @@ function initHub() {
   if (hubNotesButton) {
     hubNotesButton.addEventListener('click', () => {
       hapticFeedback(8);
-      window.location.href = './notes.html';
+      window.AppAccess.navigate('./notes.html');
     });
   }
 
   if (hubNotesWidget) {
     hubNotesWidget.addEventListener('click', () => {
       hapticFeedback(8);
-      window.location.href = './notes.html';
+      window.AppAccess.navigate('./notes.html');
     });
   }
 
@@ -4792,6 +4794,7 @@ function initThemeSettings() {
   const sheet = document.getElementById('hubSettingsSheet');
   const closeButton = document.getElementById('hubSettingsClose');
   const switchElement = document.getElementById('themeSwitch');
+  const securitySetting = document.getElementById('hubSecuritySetting');
 
   if (!backdrop || !sheet) {
     return;
@@ -4808,6 +4811,7 @@ function initThemeSettings() {
     }
 
     renderHiddenHubCardsList();
+    updateHubSecurityStatus();
     backdrop.hidden = false;
     sheet.hidden = false;
 
@@ -4845,6 +4849,11 @@ function initThemeSettings() {
   button?.addEventListener('click', openSettings);
   closeButton?.addEventListener('click', closeSettings);
   backdrop.addEventListener('click', closeSettings);
+
+  securitySetting?.addEventListener('click', () => {
+    closeSettings();
+    openSecurityModal(button);
+  });
 
   switchElement?.addEventListener('click', () => {
     const next = isDarkTheme() ? 'light' : 'dark';
@@ -5224,7 +5233,7 @@ function onTabShow(tabName) {
 
 function showTab(tabName, { push = true } = {}) {
   if (tabName === 'notes') {
-    window.location.href = './notes.html';
+    window.AppAccess.navigate('./notes.html');
     return;
   }
 
@@ -9088,8 +9097,33 @@ function isBiometricSupported() {
     && typeof navigator.credentials.get === 'function';
 }
 
+async function detectPlatformAuthenticator() {
+  if (!isBiometricSupported()) {
+    platformAuthenticatorAvailable = false;
+    return false;
+  }
+
+  if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== 'function') {
+    platformAuthenticatorAvailable = null;
+    return null;
+  }
+
+  try {
+    platformAuthenticatorAvailable = await window.PublicKeyCredential
+      .isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch (error) {
+    platformAuthenticatorAvailable = false;
+  }
+
+  return platformAuthenticatorAvailable;
+}
+
+function isPlatformBiometricAvailable() {
+  return isBiometricSupported() && platformAuthenticatorAvailable !== false;
+}
+
 function hasBiometricLogin() {
-  return isBiometricSupported()
+  return isPlatformBiometricAvailable()
     && securityState.pinEnabled
     && securityState.biometricEnabled
     && Boolean(securityState.credentialId);
@@ -9114,7 +9148,8 @@ async function authenticateBiometric() {
     }
   });
 
-  if (!credential) {
+  if (!credential || !credential.rawId
+    || !secureCompare(bytesToBase64(new Uint8Array(credential.rawId)), securityState.credentialId)) {
     throw new Error('Биометрия не подтвердила вход.');
   }
 
@@ -9153,6 +9188,7 @@ async function changePin(oldPin, newPin) {
     pinHash,
     pinSalt: salt
   };
+  await window.AppAccess?.settingsChanged();
 
   return true;
 }
@@ -9174,7 +9210,7 @@ async function resetAllData() {
 
     try {
       transaction = db.transaction(
-        [STORE_NAME, SETTINGS_STORE, CATEGORIES_STORE],
+        [STORE_NAME, SETTINGS_STORE, CATEGORIES_STORE, NOTES_STORE],
         'readwrite'
       );
     } catch (error) {
@@ -9197,6 +9233,7 @@ async function resetAllData() {
       transaction.objectStore(STORE_NAME).clear();
       transaction.objectStore(SETTINGS_STORE).clear();
       transaction.objectStore(CATEGORIES_STORE).clear();
+      transaction.objectStore(NOTES_STORE).clear();
     } catch (error) {
       try {
         transaction.abort();
@@ -9235,9 +9272,33 @@ function setSecurityModalError(message) {
   securityModalError.hidden = !message;
 }
 
+function updateHubSecurityStatus() {
+  const status = document.getElementById('hubSecurityStatus');
+
+  if (!status) {
+    return;
+  }
+
+  const biometricSupported = isPlatformBiometricAvailable();
+  const biometricEnabled = securityState.pinEnabled
+    && biometricSupported
+    && securityState.biometricEnabled
+    && Boolean(securityState.credentialId);
+
+  if (!securityState.pinEnabled) {
+    status.textContent = 'PIN-код и Face ID';
+  } else if (!biometricSupported) {
+    status.textContent = 'PIN включён · Face ID недоступен';
+  } else if (biometricEnabled) {
+    status.textContent = 'PIN и биометрия включены';
+  } else {
+    status.textContent = 'PIN включён · Face ID не настроен';
+  }
+}
+
 function refreshSecurityModalUi() {
   const pinEnabled = securityState.pinEnabled;
-  const biometricSupported = isBiometricSupported();
+  const biometricSupported = isPlatformBiometricAvailable();
   const biometricEnabled = pinEnabled
     && biometricSupported
     && securityState.biometricEnabled
@@ -9255,20 +9316,26 @@ function refreshSecurityModalUi() {
   securityDisableBiometricButton.hidden = !biometricSupported || !biometricEnabled;
 
   if (!biometricSupported) {
-    securityBiometricHint.textContent = 'Биометрия недоступна на этом устройстве.';
+    securityBiometricHint.textContent = 'Face ID и биометрия недоступны на этом устройстве.';
   } else if (!pinEnabled) {
     securityBiometricHint.textContent = 'Сначала включите PIN.';
   } else if (biometricEnabled) {
-    securityBiometricHint.textContent = 'Биометрия включена. PIN остаётся резервным способом входа.';
+    securityBiometricHint.textContent = 'Биометрический вход включён. PIN остаётся резервным способом входа.';
   } else {
-    securityBiometricHint.textContent = 'Используйте отпечаток или Face ID для быстрого входа.';
+    securityBiometricHint.textContent = 'Используйте Face ID, Touch ID, отпечаток или Windows Hello для быстрого входа.';
   }
+
+  updateHubSecurityStatus();
 }
 
-function openSecurityModal() {
+function openSecurityModal(returnFocus = null) {
   if (isAppLocked) {
     return;
   }
+
+  securityReturnFocus = returnFocus instanceof HTMLElement
+    ? returnFocus
+    : (document.activeElement instanceof HTMLElement ? document.activeElement : manageSecurityButton);
 
   setSecurityModalError('');
   securityPinInput.value = '';
@@ -9282,6 +9349,11 @@ function openSecurityModal() {
   refreshSecurityModalUi();
   securityModal.hidden = false;
   document.body.classList.add('modal-open');
+  detectPlatformAuthenticator().then(() => {
+    if (!securityModal.hidden) {
+      refreshSecurityModalUi();
+    }
+  });
 
   const focusTarget = securityState.pinEnabled
     ? securityCurrentPinInput
@@ -9301,7 +9373,15 @@ function closeSecurityModal() {
   document.body.classList.remove('modal-open');
   setSecurityModalError('');
   securityChangePinStatus.hidden = true;
-  manageSecurityButton.focus();
+
+  const returnFocus = securityReturnFocus;
+  securityReturnFocus = null;
+
+  if (returnFocus instanceof HTMLElement && returnFocus.isConnected) {
+    returnFocus.focus();
+  } else {
+    manageSecurityButton.focus();
+  }
 }
 
 async function handleSecurityPinSubmit(event) {
@@ -9344,6 +9424,7 @@ async function handleSecurityPinSubmit(event) {
       biometricEnabled: false,
       credentialId: ''
     };
+    await window.AppAccess?.settingsChanged();
     resetPinLockoutState();
     securityPinInput.value = '';
     securityPinConfirmInput.value = '';
@@ -9401,6 +9482,7 @@ async function handleSecurityCurrentPinSubmit(event) {
       biometricEnabled: false,
       credentialId: ''
     };
+    await window.AppAccess?.settingsChanged();
     resetPinLockoutState();
     securityCurrentPinInput.value = '';
     refreshSecurityModalUi();
@@ -9483,8 +9565,11 @@ async function handleEnableBiometric() {
     return;
   }
 
-  if (!isBiometricSupported()) {
-    setSecurityModalError('Биометрия недоступна на этом устройстве.');
+  const platformAvailable = await detectPlatformAuthenticator();
+
+  if (platformAvailable === false) {
+    refreshSecurityModalUi();
+    setSecurityModalError('Face ID и биометрия недоступны на этом устройстве.');
     return;
   }
 
@@ -9528,9 +9613,10 @@ async function handleEnableBiometric() {
 
     securityState.biometricEnabled = true;
     securityState.credentialId = credentialId;
+    await window.AppAccess?.settingsChanged();
     refreshSecurityModalUi();
   } catch (error) {
-    setSecurityModalError('Не удалось включить биометрию. Убедитесь, что она настроена на устройстве.');
+    setSecurityModalError('Не удалось включить Face ID. Убедитесь, что биометрия настроена на устройстве.');
   } finally {
     securityEnableBiometricButton.disabled = false;
   }
@@ -9548,9 +9634,10 @@ async function handleDisableBiometric() {
 
     securityState.biometricEnabled = false;
     securityState.credentialId = '';
+    await window.AppAccess?.settingsChanged();
     refreshSecurityModalUi();
   } catch (error) {
-    setSecurityModalError('Не удалось отключить биометрию. Попробуйте ещё раз.');
+    setSecurityModalError('Не удалось отключить Face ID. Попробуйте ещё раз.');
   } finally {
     securityDisableBiometricButton.disabled = false;
   }
@@ -9651,6 +9738,7 @@ function unlockApp() {
   setLockMessage('');
   resetPinLockoutState();
   appHiddenAt = 0;
+  window.AppAccess?.unlocked();
 }
 
 async function handleLockSubmit(event) {
@@ -9718,7 +9806,7 @@ async function handleBiometricUnlock() {
     await authenticateBiometric();
     unlockApp();
   } catch (error) {
-    setLockMessage('Биометрия недоступна, введите PIN');
+    setLockMessage('Face ID недоступен, введите PIN');
 
     if (!lockPinInput.disabled) {
       lockPinInput.focus();
@@ -9758,7 +9846,7 @@ function openPinRecoveryModal() {
     ? document.activeElement
     : lockForgotPinButton;
   resetPinRecoveryFlow();
-  pinRecoveryBiometricButton.hidden = securityState.biometricEnabled !== true;
+  pinRecoveryBiometricButton.hidden = !hasBiometricLogin();
   pinRecoveryModal.hidden = false;
   document.body.classList.add('modal-open');
 
@@ -9821,8 +9909,8 @@ function handlePinRecoveryInput() {
 }
 
 async function handlePinRecoveryBiometric() {
-  if (!securityState.biometricEnabled) {
-    setPinRecoveryError('Биометрия недоступна.');
+  if (!hasBiometricLogin()) {
+    setPinRecoveryError('Face ID и биометрия недоступны.');
     return;
   }
 
@@ -9834,7 +9922,7 @@ async function handlePinRecoveryBiometric() {
     unlockApp();
   } catch (error) {
     closePinRecoveryModal({ restoreFocus: false });
-    setLockMessage('Биометрия недоступна');
+    setLockMessage('Face ID недоступен');
 
     if (!lockPinInput.disabled) {
       lockPinInput.focus();
@@ -9897,7 +9985,7 @@ function handleVisibilityChange() {
 }
 
 function initSecurityUi() {
-  manageSecurityButton.addEventListener('click', openSecurityModal);
+  manageSecurityButton.addEventListener('click', () => openSecurityModal(manageSecurityButton));
   securityModalClose.addEventListener('click', closeSecurityModal);
   securityModal.addEventListener('click', (event) => {
     if (event.target === securityModal) {
@@ -9941,7 +10029,22 @@ function initSecurityUi() {
   pinRecoveryBack.addEventListener('click', handlePinRecoveryBack);
   pinRecoveryConfirmInput.addEventListener('input', handlePinRecoveryInput);
   pinRecoveryConfirmDelete.addEventListener('click', handlePinRecoveryDelete);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('app-access-lock', async () => {
+    try {
+      await loadStoredPreferences();
+      if (isPinConfigured()) {
+        showLockScreen();
+      } else {
+        unlockApp();
+        window.AppAccess.unlocked();
+      }
+      window.AppAccess.reveal();
+    } catch (error) {
+      // При ошибке хранилища не раскрываем содержимое приложения.
+      console.error('Не удалось проверить настройки защиты:', error);
+      window.AppAccess.showStorageError();
+    }
+  });
 }
 
 function parseBalanceInput(raw) {
@@ -10610,6 +10713,10 @@ async function handleExpenseListClick(event) {
 }
 
 async function init() {
+  if (!await window.AppAccess.ready) {
+    return;
+  }
+
   if ('launchQueue' in window && typeof window.launchQueue.setConsumer === 'function') {
     window.launchQueue.setConsumer(async () => {
       // focus-existing переиспользует уже открытое окно; данные запуска не нужны.
@@ -10682,9 +10789,20 @@ async function init() {
 
     await loadStoredPreferences();
 
-    if (isPinConfigured()) {
+    if (isPinConfigured() && !window.AppAccess.isAuthorized()) {
       showLockScreen();
+      window.AppAccess.reveal();
+    } else {
+      window.AppAccess.reveal();
+      window.AppAccess.unlocked();
     }
+
+    detectPlatformAuthenticator().then(() => {
+      refreshSecurityModalUi();
+      if (isAppLocked) {
+        lockBiometricButton.hidden = !hasBiometricLogin();
+      }
+    });
 
     const [loadedExpenses, balance] = await Promise.all([
       getAllExpenses(),
@@ -10720,6 +10838,7 @@ async function init() {
     renderHubScreen();
   } catch (error) {
     showError('Не удалось загрузить операции. Проверьте настройки браузера и перезагрузите страницу.');
+    window.AppAccess.reveal();
   }
 }
 

@@ -1,0 +1,48 @@
+/* Скрываем данные до проверки PIN, в том числе при восстановлении из bfcache. */
+html[data-access-pending] body {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+html[data-access-pending]::after {
+  content: 'Проверка защиты…';
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #faf6ef;
+  color: #55514b;
+  font: 600 15px system-ui, sans-serif;
+  z-index: 2147483647;
+}
+html[data-theme="dark"][data-access-pending]::after {
+  background: #141311;
+  color: #e7e2da;
+}
+html[data-access-error]::after { display: none; }
+html[data-access-error] body { visibility: visible !important; pointer-events: auto !important; }
+html[data-access-error] body > :not(#access-error) { visibility: hidden !important; }
+#access-error {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: #faf6ef;
+  color: #55514b;
+  font: 600 16px system-ui, sans-serif;
+  text-align: center;
+  z-index: 2147483647;
+}
+#access-error button {
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 12px;
+  background: #ff6b4a;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+html[data-theme="dark"] #access-error { background: #141311; color: #e7e2da; }

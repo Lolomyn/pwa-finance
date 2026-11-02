@@ -954,7 +954,7 @@ function switchView(view) {
 }
 
 function goHub() {
-  window.location.href = './index.html';
+  window.AppAccess.navigate('./index.html');
 }
 
 /* ------------------------------------------------------------------ */
@@ -2379,6 +2379,10 @@ function handleKeydown(event) {
 /* ------------------------------------------------------------------ */
 
 async function init() {
+  if (window.AppAccess && !await window.AppAccess.ready) {
+    return;
+  }
+
   document.addEventListener('click', handleDelegatedClick);
   document.addEventListener('keydown', handleKeydown);
 
@@ -2387,12 +2391,14 @@ async function init() {
     renderHome();
     renderCategories();
     switchView('home');
+    window.AppAccess?.reveal();
   } catch (error) {
     console.error(error);
     const homeList = document.getElementById('homeTxList');
     if (homeList) {
       homeList.innerHTML = '<div class="tx-empty">Не удалось загрузить данные. Проверьте доступ к хранилищу и перезагрузите страницу.</div>';
     }
+    window.AppAccess?.reveal();
   }
 }
 
