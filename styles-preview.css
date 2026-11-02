@@ -4234,9 +4234,53 @@ button.set:active {
 
 /* security and reconciliation */
 
-#security-modal {
+#security-modal,
+#hubExportModal {
   z-index: 120;
 }
+
+.hub-export-card { max-width: 440px; }
+.hub-export-hint,
+.hub-export-backup,
+.hub-export-status {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.hub-export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0;
+}
+.hub-export-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--soft);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hub-export-option:hover { border-color: var(--accent); }
+.hub-export-option:disabled { opacity: 0.55; cursor: wait; }
+.hub-export-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.hub-export-format {
+  flex-shrink: 0;
+  padding: 8px 6px;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+.hub-export-option .hub-setting-chev { margin-left: auto; }
+.hub-export-status { color: var(--ink); font-weight: 600; }
 
 .security-status {
   display: flex;

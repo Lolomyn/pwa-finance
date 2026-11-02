@@ -4795,6 +4795,7 @@ function initThemeSettings() {
   const closeButton = document.getElementById('hubSettingsClose');
   const switchElement = document.getElementById('themeSwitch');
   const securitySetting = document.getElementById('hubSecuritySetting');
+  const exportSetting = document.getElementById('hubExportSetting');
 
   if (!backdrop || !sheet) {
     return;
@@ -4855,6 +4856,11 @@ function initThemeSettings() {
     openSecurityModal(button);
   });
 
+  exportSetting?.addEventListener('click', () => {
+    closeSettings();
+    openHubExportModal();
+  });
+
   switchElement?.addEventListener('click', () => {
     const next = isDarkTheme() ? 'light' : 'dark';
     applyTheme(next);
@@ -4899,7 +4905,8 @@ function syncHubOverlayLock() {
     return element && !element.hidden && element.classList.contains('open');
   });
 
-  document.body.classList.toggle('modal-open', hasOpenSheet);
+  const hasOpenModal = Boolean(document.querySelector('.modal-overlay:not([hidden])'));
+  document.body.classList.toggle('modal-open', hasOpenSheet || hasOpenModal);
 }
 
 function loadHiddenHubCards() {
@@ -6072,6 +6079,10 @@ async function handleNudgeHide() {
 }
 
 async function exportJSON() {
+  if (isAppLocked) {
+    throw new Error('Сначала разблокируйте приложение.');
+  }
+
   const exportedAt = new Date().toISOString();
   const [items, balance, categories, templates] = await Promise.all([
     getAllExpenses(),
@@ -6109,6 +6120,10 @@ async function exportJSON() {
     })
   }, null, 2);
 
+  if (isAppLocked) {
+    throw new Error('Сначала разблокируйте приложение.');
+  }
+
   downloadFile(
     content,
     `expenses-backup-${getTodayISO()}.json`,
@@ -6138,23 +6153,139 @@ async function handleExportJson() {
   }
 }
 
+async function exportCSV() {
+  if (isAppLocked) {
+    throw new Error('Сначала разблокируйте приложение.');
+  }
+
+  const items = await getAllExpenses();
+
+  if (isAppLocked) {
+    throw new Error('Сначала разблокируйте приложение.');
+  }
+
+  downloadFile(buildCsv(items), `expenses-${getTodayISO()}.csv`, 'text/csv;charset=utf-8');
+}
+
 async function handleExportCsv() {
   clearError();
   exportCsvButton.disabled = true;
 
   try {
-    const items = await getAllExpenses();
-
-    downloadFile(
-      buildCsv(items),
-      `expenses-${getTodayISO()}.csv`,
-      'text/csv;charset=utf-8'
-    );
+    await exportCSV();
   } catch (error) {
     showError('Не удалось экспортировать данные. Проверьте доступ к хранилищу и попробуйте ещё раз.');
   } finally {
     exportCsvButton.disabled = false;
   }
+}
+
+let hubExportBusy = false;
+
+function updateHubExportLastBackup() {
+  const label = document.getElementById('hubExportLastBackup');
+  const date = lastBackupAt ? new Date(lastBackupAt) : null;
+  label.textContent = date && !Number.isNaN(date.getTime())
+    ? `Последняя JSON-копия: ${date.toLocaleString('ru-RU')}`
+    : 'JSON-копия ещё не создавалась';
+}
+
+function openHubExportModal() {
+  if (isAppLocked) {
+    return;
+  }
+
+  const modal = document.getElementById('hubExportModal');
+  if (!hubExportBusy) {
+    document.getElementById('hubExportStatus').hidden = true;
+    document.getElementById('hubExportError').hidden = true;
+  }
+  updateHubExportLastBackup();
+  modal.hidden = false;
+  document.body.classList.add('modal-open');
+  document.getElementById('hubExportClose').focus({ preventScroll: true });
+}
+
+function closeHubExportModal() {
+  const modal = document.getElementById('hubExportModal');
+  if (modal.hidden) {
+    return;
+  }
+
+  modal.hidden = true;
+  syncHubOverlayLock();
+  document.getElementById('hubSettingsBtn')?.focus({ preventScroll: true });
+}
+
+async function handleHubExport(format) {
+  if (hubExportBusy || isAppLocked || !['json', 'csv'].includes(format)) {
+    return;
+  }
+
+  const jsonButton = document.getElementById('hubExportJson');
+  const csvButton = document.getElementById('hubExportCsv');
+  const status = document.getElementById('hubExportStatus');
+  const error = document.getElementById('hubExportError');
+  const modal = document.getElementById('hubExportModal');
+  hubExportBusy = true;
+  jsonButton.disabled = true;
+  csvButton.disabled = true;
+  modal.setAttribute('aria-busy', 'true');
+  error.hidden = true;
+  status.textContent = 'Подготовка файла…';
+  status.hidden = false;
+
+  try {
+    // Повторно читаем IndexedDB: другая вкладка могла обновить финансы.
+    if (format === 'json') {
+      await exportJSON();
+      updateHubExportLastBackup();
+    } else {
+      await exportCSV();
+    }
+    status.textContent = `${format.toUpperCase()}: файл передан браузеру для сохранения. Проверьте загрузки или меню «Поделиться».`;
+  } catch (exportError) {
+    status.hidden = true;
+    error.textContent = 'Не удалось экспортировать данные. Проверьте доступ к хранилищу и повторите попытку.';
+    error.hidden = false;
+  } finally {
+    hubExportBusy = false;
+    jsonButton.disabled = false;
+    csvButton.disabled = false;
+    modal.removeAttribute('aria-busy');
+  }
+}
+
+function initHubExportUi() {
+  const modal = document.getElementById('hubExportModal');
+  document.getElementById('hubExportClose').addEventListener('click', closeHubExportModal);
+  document.getElementById('hubExportJson').addEventListener('click', () => handleHubExport('json'));
+  document.getElementById('hubExportCsv').addEventListener('click', () => handleHubExport('csv'));
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      closeHubExportModal();
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (modal.hidden) {
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeHubExportModal();
+    } else if (event.key === 'Tab') {
+      const buttons = [...modal.querySelectorAll('button:not(:disabled)')];
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  });
 }
 
 function getReportPeriodLabel(period) {
@@ -10757,6 +10888,7 @@ async function init() {
   initTabNavigation();
   initSwipeGestures();
   initThemeSettings();
+  initHubExportUi();
   initHubCardHiding();
   showTab(getTabFromHash(), { push: false });
   showTab('hub', { push: true });

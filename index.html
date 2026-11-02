@@ -181,7 +181,7 @@
           </div>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.19.0</div>
+        <div class="hub-version" id="hub-version">v1.20.0</div>
 
         <div class="hub-apps">
           <button id="hub-finance" class="hub-app hub-app-finance" type="button" data-card-id="app-finance" data-card-name="Приложение «Финансы»" aria-label="Открыть приложение Финансы">
@@ -1703,6 +1703,40 @@
   </div>
 
 
+  <div class="modal-overlay" id="hubExportModal" hidden>
+    <div class="modal-card hub-export-card" role="dialog" aria-modal="true" aria-labelledby="hubExportTitle" aria-describedby="hubExportHint">
+      <div class="modal-header">
+        <h2 id="hubExportTitle">Экспорт данных</h2>
+        <button class="icon-button icon-button--soft modal-close-button" id="hubExportClose" type="button" aria-label="Закрыть экспорт">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <p class="hub-export-hint" id="hubExportHint">Выгрузка финансов за всё время, независимо от выбранного периода. Файлы сохраняются на устройство и никуда не отправляются.</p>
+      <div class="hub-export-options">
+        <button class="hub-export-option" id="hubExportJson" type="button">
+          <span class="hub-export-format" aria-hidden="true">JSON</span>
+          <span class="hub-setting-info">
+            <span class="hub-setting-name">Резервная копия финансов</span>
+            <span class="hub-setting-desc">Операции, категории, начальный баланс и быстрые шаблоны. Подходит для восстановления через «Импорт JSON».</span>
+          </span>
+          <span class="hub-setting-chev" aria-hidden="true">↓</span>
+        </button>
+        <button class="hub-export-option" id="hubExportCsv" type="button">
+          <span class="hub-export-format" aria-hidden="true">CSV</span>
+          <span class="hub-setting-info">
+            <span class="hub-setting-name">Операции для таблиц</span>
+            <span class="hub-setting-desc">Доходы и расходы для Excel и других таблиц. Не предназначен для восстановления приложения.</span>
+          </span>
+          <span class="hub-setting-chev" aria-hidden="true">↓</span>
+        </button>
+      </div>
+      <p class="hub-export-hint">Заметки, кэшбэк, события календаря и настройки PIN / Face ID в эти файлы не входят. Файлы не зашифрованы — храните их в надёжном месте.</p>
+      <p class="hub-export-backup" id="hubExportLastBackup"></p>
+      <p class="hub-export-status" id="hubExportStatus" role="status" aria-live="polite" hidden></p>
+      <p class="security-modal-error" id="hubExportError" role="alert" hidden></p>
+    </div>
+  </div>
+
   <div class="hub-settings-backdrop" id="hubSettingsBackdrop" hidden></div>
   <div class="hub-settings-sheet" id="hubSettingsSheet" role="dialog" aria-modal="true" aria-labelledby="hubSettingsTitle" hidden>
     <div class="hub-settings-handle" aria-hidden="true"></div>
@@ -1737,19 +1771,13 @@
         <div id="hiddenCardsList"></div>
       </div>
 
-      <div class="hub-setting-item">
-        <div class="hub-setting-info">
-          <div class="hub-setting-name">Экспорт данных</div>
-          <div class="hub-setting-desc">JSON · CSV</div>
-        </div>
-        <div class="hub-setting-placeholder" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-        </div>
-      </div>
+      <button class="hub-setting-item hub-setting-item--action" id="hubExportSetting" type="button">
+        <span class="hub-setting-info">
+          <span class="hub-setting-name">Экспорт данных</span>
+          <span class="hub-setting-desc">Финансы · JSON и CSV</span>
+        </span>
+        <span class="hub-setting-chev" aria-hidden="true">›</span>
+      </button>
     </div>
   </div>
 
