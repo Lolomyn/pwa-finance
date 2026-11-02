@@ -120,6 +120,7 @@
     drawIcon(data ? CONDITIONS[data.code][1] : 'partly');
     const parts = [];
     if (data) parts.push(`Обновлено ${new Date(data.updatedAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`);
+    if (data?.source === 'wttr.in') parts.push('wttr.in');
     if (!online()) parts.push('Нет сети' + (data ? ' · сохранённые данные' : ''));
     else if (loading) parts.push('Обновление…');
     else if (failure) parts.push(failure);
@@ -134,11 +135,46 @@
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
       const response = await fetch(url, { signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer' });
-      if (!response.ok) throw new Error('http');
+      if (!response.ok) throw new Error(`HTTP ${response.status || 'error'}`);
       const result = await response.json();
       if (!result || typeof result !== 'object' || Array.isArray(result) || result.error) throw new Error('response');
       return result;
     } finally { clearTimeout(timeout); }
+  }
+
+  // wttr.in uses WorldWeatherOnline codes, not WMO codes.
+  const WTTR_CODES = {
+    113: 0, 116: 2, 119: 3, 122: 3, 143: 45, 248: 45, 260: 48,
+    176: 61, 179: 71, 182: 66, 185: 56, 200: 95, 227: 75, 230: 75,
+    263: 51, 266: 53, 281: 56, 284: 57, 293: 61, 296: 61, 299: 63,
+    302: 63, 305: 65, 308: 65, 311: 66, 314: 67, 317: 66, 320: 67,
+    323: 71, 326: 71, 329: 73, 332: 73, 335: 75, 338: 75, 350: 77,
+    353: 80, 356: 81, 359: 82, 362: 66, 365: 67, 368: 85, 371: 86,
+    374: 77, 377: 77, 386: 95, 389: 95, 392: 95, 395: 95
+  };
+
+  function readWttr(result, place) {
+    const current = result.current_condition?.[0];
+    if (!current || !/^-?\d+(\.\d+)?$/.test(String(current.temp_C)) ||
+      !Object.prototype.hasOwnProperty.call(WTTR_CODES, current.weatherCode)) throw new Error('response');
+    // Prefer the observation's local clock. Some responses omit it; use the
+    // location's solar hour instead of the device's unrelated time zone.
+    const localHour = /[ T](\d{1,2}):\d{2}(?:\s*(AM|PM))?/i.exec(current.localObsDateTime || '');
+    let hour = localHour ? Number(localHour[1]) : (new Date().getUTCHours() + place.longitude / 15 + 24) % 24;
+    if (localHour?.[2]) hour = hour % 12 + (localHour[2].toUpperCase() === 'PM' ? 12 : 0);
+    const next = { latitude: place.latitude, longitude: place.longitude,
+      temperature: Number(current.temp_C), code: WTTR_CODES[current.weatherCode],
+      isDay: hour >= 6 && hour < 18 ? 1 : 0, updatedAt: Date.now(), source: 'wttr.in' };
+    if (!validData(next, place)) throw new Error('response');
+    return next;
+  }
+
+  function describeFailure(error) {
+    if (!online()) return 'Нет сети';
+    if (error?.name === 'AbortError') return 'Сервис не ответил вовремя';
+    if (error?.message === 'response' || error instanceof SyntaxError) return 'Некорректный ответ сервиса';
+    if (/^HTTP /.test(error?.message || '')) return `Ошибка сервиса (${error.message})`;
+    return 'Не удалось подключиться к сервису погоды';
   }
 
   async function update(force) {
@@ -156,19 +192,29 @@
     if (modalOpen) settingsStatus('Обновление погоды…');
     try {
       const params = new URLSearchParams({ latitude: String(place.latitude), longitude: String(place.longitude), current: 'temperature_2m,weather_code,is_day', temperature_unit: 'celsius', timezone: 'auto' });
-      const result = await requestJSON(`https://api.open-meteo.com/v1/forecast?${params}`, controller);
-      const current = result.current;
-      const next = current && { latitude: place.latitude, longitude: place.longitude,
-        temperature: current.temperature_2m, code: current.weather_code,
-        isDay: current.is_day, updatedAt: Date.now() };
-      if (!validData(next, place) || !result.current_units || result.current_units.temperature_2m !== '°C') throw new Error('response');
+      let next;
+      try {
+        const result = await requestJSON(`https://api.open-meteo.com/v1/forecast?${params}`, controller);
+        const current = result.current;
+        next = current && { latitude: place.latitude, longitude: place.longitude,
+          temperature: current.temperature_2m, code: current.weather_code,
+          isDay: current.is_day, updatedAt: Date.now(), source: 'Open-Meteo' };
+        if (!validData(next, place) || !result.current_units || result.current_units.temperature_2m !== '°C') throw new Error('response');
+      } catch (primaryError) {
+        if (version !== forecastVersion || !available() || !online()) throw primaryError;
+        if (modalOpen) settingsStatus('Open-Meteo недоступен. Запрос резервного источника wttr.in…');
+        const fallbackController = new AbortController();
+        forecastController = fallbackController;
+        const result = await requestJSON(`https://wttr.in/${place.latitude},${place.longitude}?format=j1`, fallbackController);
+        next = readWttr(result, place);
+      }
       if (version !== forecastVersion || !available()) return;
       data = next;
       save();
-      if (modalOpen) settingsStatus('Погода обновлена.');
-    } catch (_) {
+      if (modalOpen) settingsStatus(`Погода обновлена · ${data.source}.`);
+    } catch (error) {
       if (version !== forecastVersion || !available()) return;
-      failure = 'Не удалось обновить' + (data ? ' · сохранённые данные' : ' · попробуйте позже');
+      failure = `Не удалось обновить: ${describeFailure(error)}` + (data ? ' · сохранённые данные' : ' · попробуйте другую сеть');
       if (modalOpen) settingsStatus(failure);
     } finally {
       if (version === forecastVersion) {

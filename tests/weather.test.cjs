@@ -65,7 +65,7 @@ function forecast(temperature = 10, code = 0, isDay = 1) {
   return { current: { temperature_2m: temperature, weather_code: code, is_day: isDay }, current_units: { temperature_2m: '°C' } };
 }
 function response(value, ok = true) { return { ok, json: async () => value }; }
-async function flush() { for (let i = 0; i < 12; i++) await Promise.resolve(); }
+async function flush() { for (let i = 0; i < 32; i++) await Promise.resolve(); }
 
 function setup({ stored, offline = false, locked = false, pending = false, missing = [], storageFails = false, fetcher } = {}) {
   const document = new Events();
@@ -229,7 +229,7 @@ test('HTTP, network, malformed and invalid forecasts keep old data, retry is thr
     assert.match(env.nodes['weather-status'].textContent, /Не удалось обновить.*сохранённые данные/);
     assert.equal(env.writes.length, 0);
     env.intervals[0].callback();
-    assert.equal(env.requests.length, 1);
+    assert.equal(env.requests.length, 2);
     assert.equal(env.timeouts.size, 0);
   }
 });
@@ -244,8 +244,26 @@ test('forecast timeout aborts request and preserves cached data', async () => {
   timer.callback();
   await flush();
   assert.equal(env.requests[0].options.signal.aborted, true);
+  assert.equal(env.requests.length, 2);
+  [...env.timeouts.values()][0].callback();
+  await flush();
   assert.match(env.nodes['weather-status'].textContent, /Не удалось обновить/);
   assert.equal(env.nodes['weather-temp'].textContent, '+4°C');
+});
+
+test('network failure uses wttr.in fallback, maps codes and persists source', async () => {
+  const env = setup({ stored: cached(31 * 60000), fetcher: (url) => {
+    if (url.includes('api.open-meteo.com')) throw new TypeError('Failed to fetch');
+    return response({ current_condition: [{ temp_C: '-3', weatherCode: '116', localObsDateTime: '2026-11-02 02:00 PM' }] });
+  } });
+  env.api.init();
+  await flush();
+  assert.equal(env.requests.length, 2);
+  assert.match(env.requests[1].url, /^https:\/\/wttr.in\/55.75,37.62\?format=j1$/);
+  assert.equal(env.nodes['weather-temp'].textContent, '−3°C');
+  assert.equal(env.nodes['weather-icon'].attrs.get('data-weather-icon'), 'partly');
+  assert.equal(JSON.parse(env.values.get(KEY)).data.source, 'wttr.in');
+  assert.match(env.nodes['weather-status'].textContent, /wttr.in/);
 });
 
 test('city search is safe, selection alone persists, no reverse geocoding', async () => {
