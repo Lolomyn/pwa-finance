@@ -340,11 +340,13 @@ p {
 .hub-widget.is-compact .hub-cal-grid { width: 100%; gap: 2px; }
 .hub-bento > .hub-app.is-compact {
   grid-column: span 1;
+  align-self: start;
+  aspect-ratio: 1;
   min-height: 0;
-  padding: 16px 4px;
+  padding: 4px;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 4px;
   border-radius: 20px;
   text-align: center;
 }
