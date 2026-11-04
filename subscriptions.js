@@ -1205,6 +1205,18 @@
     renderData();
     renderCashback();
 
+    // Снять блокировку «Проверка защиты…» после того, как шлюз доступа
+    // подтвердил авторизацию (редирект на хаб уже произошёл внутри check(true),
+    // если не autorizован).
+    try {
+      await window.AppAccess.ready;
+      if (window.AppAccess.isAuthorized()) {
+        window.AppAccess.reveal();
+      }
+    } catch (error) {
+      console.error('Шлюз доступа не сработал:', error);
+    }
+
     try {
       await loadData();
     } catch (error) {
