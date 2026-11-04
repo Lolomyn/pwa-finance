@@ -229,7 +229,7 @@
 </div>
 
 <!-- FAB -->
-<button class="fab" id="fab" type="button" onclick="openCalc()" aria-label="Добавить операцию">
+<button class="fab" id="fab" type="button" onclick="openEntrySheet()" aria-label="Добавить операцию">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
 </button>
 
@@ -277,6 +277,34 @@
     <button class="key operator" type="button" onclick="press('+')">+</button>
     <button class="key submit" type="button" id="btnSubmit" onclick="submitTx()">Сохранить</button>
   </div>
+</div>
+
+<!-- НОВАЯ ОПЕРАЦИЯ (компактный вид с расчётом в поле суммы) -->
+<div class="compose-sheet" id="quickSheet" role="dialog" aria-modal="true" aria-labelledby="quickSheetTitle">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <div class="sheet-head">
+    <div class="sheet-title" id="quickSheetTitle">Новая операция</div>
+  </div>
+
+  <div class="seg-toggle" role="group" aria-label="Тип операции">
+    <button class="seg-btn active" type="button" id="quickBtnExpense" onclick="switchQuickType('expense')">Расход</button>
+    <button class="seg-btn" type="button" id="quickBtnIncome" onclick="switchQuickType('income')">Доход</button>
+  </div>
+
+  <label class="field-label" for="quickAmount">Сумма</label>
+  <div class="amount-field" id="quickAmountField">
+    <input type="text" class="amount-input" id="quickAmount" placeholder="0" autocomplete="off" inputmode="text" aria-describedby="quickMathResult">
+    <span class="amount-cur">₽</span>
+  </div>
+  <div class="math-result" id="quickMathResult" aria-live="polite"></div>
+
+  <span class="field-label">Категория</span>
+  <div class="cat-scroll" id="quickCats"></div>
+
+  <label class="field-label" for="quickNote">Комментарий</label>
+  <input type="text" class="comment-input" id="quickNote" placeholder="Например, обед с коллегами" maxlength="120" autocomplete="off" enterkeyhint="done">
+
+  <button class="save-btn" id="quickSaveBtn" type="button" onclick="submitQuick()">Сохранить</button>
 </div>
 
 <!-- МОДАЛКА КАТЕГОРИЙ -->

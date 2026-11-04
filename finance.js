@@ -2217,6 +2217,202 @@ async function submitTx() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Вид формы новой операции                                           */
+/* ------------------------------------------------------------------ */
+
+const ENTRY_MODE_STORAGE_KEY = 'expense-tracker-entry-mode';
+
+function getEntryMode() {
+  try {
+    return localStorage.getItem(ENTRY_MODE_STORAGE_KEY) === 'calc' ? 'calc' : 'quick';
+  } catch (error) {
+    return 'quick';
+  }
+}
+
+function openEntrySheet() {
+  if (getEntryMode() === 'calc') {
+    openCalc();
+  } else {
+    openQuick();
+  }
+}
+
+function openQuick() {
+  state.calcExpr = '';
+  state.calcDate = todayISO();
+  state.calcType = 'expense';
+  const categories = getCategoriesByType('expense');
+  state.calcCatId = categories[0]?.id ?? null;
+
+  const amount = document.getElementById('quickAmount');
+  const note = document.getElementById('quickNote');
+  const field = document.getElementById('quickAmountField');
+
+  if (amount) {
+    amount.value = '';
+  }
+  if (note) {
+    note.value = '';
+  }
+  field?.classList.remove('invalid');
+
+  updateQuickTypeUI();
+  renderQuickCats();
+  updateQuickMath();
+
+  document.getElementById('backdrop').classList.add('open');
+  document.getElementById('quickSheet').classList.add('open');
+  setTimeout(() => amount?.focus({ preventScroll: true }), 320);
+}
+
+function switchQuickType(type) {
+  state.calcType = type === 'income' ? 'income' : 'expense';
+  const categories = getCategoriesByType(state.calcType);
+  state.calcCatId = categories[0]?.id ?? null;
+  updateQuickTypeUI();
+  renderQuickCats();
+}
+
+function updateQuickTypeUI() {
+  const expenseButton = document.getElementById('quickBtnExpense');
+  const incomeButton = document.getElementById('quickBtnIncome');
+  const isExpense = state.calcType === 'expense';
+
+  expenseButton?.classList.toggle('active', isExpense);
+  incomeButton?.classList.toggle('active', !isExpense);
+  expenseButton?.setAttribute('aria-pressed', String(isExpense));
+  incomeButton?.setAttribute('aria-pressed', String(!isExpense));
+}
+
+function renderQuickCats() {
+  const container = document.getElementById('quickCats');
+  if (!container) {
+    return;
+  }
+
+  const categories = getCategoriesByType(state.calcType);
+
+  if (categories.length === 0) {
+    state.calcCatId = null;
+    container.innerHTML = '<div class="calc-cats-empty">Сначала добавьте категорию</div>';
+    return;
+  }
+
+  if (state.calcCatId === null || !getCatById(state.calcCatId)) {
+    state.calcCatId = categories[0].id;
+  }
+
+  container.innerHTML = categories.map((category) => {
+    const isActive = String(category.id) === String(state.calcCatId);
+    return `
+      <button class="cat-chip ${isActive ? 'active' : ''}" type="button" data-quick-cat-id="${escapeHtml(category.id)}" aria-pressed="${isActive}">
+        ${escapeHtml(category.emoji)} ${escapeHtml(category.name)}
+      </button>
+    `;
+  }).join('');
+}
+
+function selectQuickCat(id) {
+  state.calcCatId = id;
+  renderQuickCats();
+}
+
+function quickExpressionValue(rawValue) {
+  const expression = String(rawValue || '')
+    .trim()
+    .replace(/,/g, '.')
+    .replace(/[^0-9+\-*/.]/g, '');
+
+  if (!expression || !/[0-9]/.test(expression)) {
+    return NaN;
+  }
+
+  // Незаконченное выражение (например, «1000+») не считаем.
+  if (/[+\-*/.]$/.test(expression)) {
+    return NaN;
+  }
+
+  if (!/[+\-*/]/.test(expression)) {
+    const value = Number.parseFloat(expression);
+    return Number.isFinite(value) ? value : NaN;
+  }
+
+  const value = evaluateExpression(expression);
+  return Number.isFinite(value) ? value : NaN;
+}
+
+function updateQuickMath() {
+  const input = document.getElementById('quickAmount');
+  const result = document.getElementById('quickMathResult');
+  if (!input || !result) {
+    return;
+  }
+
+  const raw = input.value.trim();
+
+  if (!/[+\-*/]/.test(raw)) {
+    result.textContent = '';
+    result.classList.remove('visible');
+    return;
+  }
+
+  const value = quickExpressionValue(raw);
+
+  if (Number.isFinite(value) && value >= 0) {
+    result.textContent = `= ${fmt(value)} ₽`;
+    result.classList.add('visible');
+  } else {
+    result.textContent = '';
+    result.classList.remove('visible');
+  }
+}
+
+async function submitQuick() {
+  const input = document.getElementById('quickAmount');
+  const field = document.getElementById('quickAmountField');
+  const button = document.getElementById('quickSaveBtn');
+  const amount = quickExpressionValue(input?.value || '');
+  const category = getCatById(state.calcCatId);
+  const note = (document.getElementById('quickNote')?.value || '').trim();
+
+  if (!Number.isFinite(amount) || amount <= 0 || !category) {
+    if (field) {
+      field.classList.remove('invalid');
+      void field.offsetWidth;
+      field.classList.add('invalid');
+      setTimeout(() => field.classList.remove('invalid'), 600);
+    }
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+  }
+
+  try {
+    const created = await addTransactionRecord({
+      type: state.calcType,
+      amount,
+      category: category.name,
+      date: state.calcDate || todayISO(),
+      note
+    });
+
+    state.transactions.push(normalizeTransaction(created));
+    closeAllModals();
+    renderCurrentView();
+  } catch (error) {
+    console.error(error);
+    field?.classList.add('invalid');
+  } finally {
+    if (button) {
+      button.disabled = false;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Модалки и баланс                                                   */
 /* ------------------------------------------------------------------ */
 
@@ -2231,6 +2427,7 @@ function closeAllModals() {
   document.getElementById('backdrop').classList.remove('open');
   [
     'calcSheet',
+    'quickSheet',
     'catModal',
     'balanceModal',
     'txEditModal',
@@ -2327,6 +2524,12 @@ function handleDelegatedClick(event) {
     return;
   }
 
+  const quickCategory = target.closest('[data-quick-cat-id]');
+  if (quickCategory) {
+    selectQuickCat(quickCategory.dataset.quickCatId);
+    return;
+  }
+
   const editCategoryButton = target.closest('[data-edit-cat-id]');
   if (editCategoryButton) {
     selectEditTxCat(editCategoryButton.dataset.editCatId);
@@ -2343,6 +2546,14 @@ function handleKeydown(event) {
 
   if (document.getElementById('datePickerModal').classList.contains('open')) {
     return;
+  }
+
+  if (document.getElementById('quickSheet').classList.contains('open') && event.key === 'Enter') {
+    if (event.target instanceof Element && event.target.matches('#quickAmount, #quickNote')) {
+      submitQuick();
+      event.preventDefault();
+      return;
+    }
   }
 
   if (document.getElementById('balanceModal').classList.contains('open') && event.key === 'Enter') {
@@ -2385,6 +2596,7 @@ async function init() {
 
   document.addEventListener('click', handleDelegatedClick);
   document.addEventListener('keydown', handleKeydown);
+  document.getElementById('quickAmount')?.addEventListener('input', updateQuickMath);
 
   try {
     await loadState();

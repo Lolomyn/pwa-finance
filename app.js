@@ -4762,6 +4762,29 @@ function initHub() {
 /* ------------------------------------------------------------------ */
 
 const THEME_STORAGE_KEY = 'expense-tracker-theme';
+const ENTRY_MODE_STORAGE_KEY = 'expense-tracker-entry-mode';
+
+function getEntryMode() {
+  try {
+    return localStorage.getItem(ENTRY_MODE_STORAGE_KEY) === 'calc' ? 'calc' : 'quick';
+  } catch (error) {
+    return 'quick';
+  }
+}
+
+function applyEntryMode(mode, persist = true) {
+  const next = mode === 'calc' ? 'calc' : 'quick';
+
+  document.querySelectorAll('[data-entry-mode]').forEach((button) => {
+    button.setAttribute('aria-checked', String(button.dataset.entryMode === next));
+  });
+
+  if (persist) {
+    try {
+      localStorage.setItem(ENTRY_MODE_STORAGE_KEY, next);
+    } catch (error) {}
+  }
+}
 
 function isDarkTheme() {
   return document.documentElement.getAttribute('data-theme') === 'dark';
@@ -4802,12 +4825,14 @@ function initThemeSettings() {
   const switchElement = document.getElementById('themeSwitch');
   const securitySetting = document.getElementById('hubSecuritySetting');
   const exportSetting = document.getElementById('hubExportSetting');
+  const entryModeButtons = Array.from(document.querySelectorAll('[data-entry-mode]'));
 
   if (!backdrop || !sheet) {
     return;
   }
 
   applyTheme(isDarkTheme() ? 'dark' : 'light', false);
+  applyEntryMode(getEntryMode(), false);
 
   let hideTimer = null;
 
@@ -4819,6 +4844,7 @@ function initThemeSettings() {
 
     renderHiddenHubCardsList();
     updateHubSecurityStatus();
+    applyEntryMode(getEntryMode(), false);
     backdrop.hidden = false;
     sheet.hidden = false;
 
@@ -4871,6 +4897,13 @@ function initThemeSettings() {
     const next = isDarkTheme() ? 'light' : 'dark';
     applyTheme(next);
     hapticFeedback(6);
+  });
+
+  entryModeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      applyEntryMode(button.dataset.entryMode);
+      hapticFeedback(6);
+    });
   });
 
   document.addEventListener('keydown', (event) => {
