@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'expense-tracker-v95';
+const CACHE_NAME = 'expense-tracker-v96';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -13,18 +13,19 @@ const PRECACHE_URLS = [
   './notes.html',
   './notes-page.css',
   './notes-page.js',
+  './subscriptions.html',
+  './subscriptions.css',
+  './subscriptions.js',
   './styles.css',
   './styles-modern.css',
   './styles-preview.css',
   './notes.css',
-  './cashback.css',
   './calendar.css',
   './update-banner.css',
   './app.js',
   './weather.js',
   './weather.css',
   './notes.js',
-  './cashback.js',
   './calendar.js',
   './update-banner.js',
   './manifest.json',

@@ -191,7 +191,7 @@ test('resuming and going online check for updates, including offline failures', 
 
 test('all entry pages include the banner and its files are precached', () => {
   const root = path.join(__dirname, '..');
-  for (const page of ['index.html', 'finance.html', 'notes.html']) {
+  for (const page of ['index.html', 'finance.html', 'notes.html', 'subscriptions.html']) {
     const html = readFileSync(path.join(root, page), 'utf8');
     assert.match(html, /href="update-banner\.css"/);
     assert.match(html, /src="update-banner\.js" defer/);

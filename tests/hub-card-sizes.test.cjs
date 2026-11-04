@@ -101,7 +101,7 @@ function setup({ storedSizes, storage = new Map() } = {}) {
   const sheet = elements.get('hubCardActionSheet');
   sheet.hidden = true;
   for (const id of ['hubSettingsSheet', 'hubCalendarSheet', 'hubDaySheet']) elements.get(id).hidden = true;
-  const cards = ['widget-days', 'app-finance', 'app-notes', 'widget-cashback'].map((cardId) => new Element({ cardId }));
+  const cards = ['widget-days', 'app-finance', 'app-notes', 'app-subscriptions'].map((cardId) => new Element({ cardId }));
   Object.assign(document, {
     body: new Element(),
     getElementById: (id) => elements.get(id) || null,
@@ -171,7 +171,7 @@ test('missing size preferences default every card to normal', () => {
 test('loading valid preferences applies compact only to resizable cards', () => {
   const app = setup({ storedSizes: JSON.stringify({
     'widget-days': 'compact', 'app-finance': 'normal', 'app-notes': 'compact',
-    'widget-cashback': 'compact', unknown: 'compact'
+    'app-subscriptions': 'compact', unknown: 'compact'
   }) });
   app.hub.loadHubCardSizes();
   assert.deepEqual(compactIds(app), ['widget-days', 'app-notes']);
@@ -210,13 +210,13 @@ test('switching to normal removes only that preference from storage', () => {
   assert.deepEqual(compactIds(app), []);
 });
 
-test('cashback and unknown card IDs cannot be resized or persisted', () => {
+test('subscriptions and unknown card IDs cannot be resized or persisted', () => {
   const app = setup();
-  app.hub.setHubCardSize('widget-cashback', 'compact');
+  app.hub.setHubCardSize('app-subscriptions', 'compact');
   app.hub.setHubCardSize('unknown', 'compact');
   assert.deepEqual(compactIds(app), []);
   assert.equal(app.storage.has(app.hub.HUB_CARD_SIZES_KEY), false);
-  app.hub.openHubCardAction(app.card('widget-cashback'));
+  app.hub.openHubCardAction(app.card('app-subscriptions'));
   assert.equal(app.elements.get('hubCardSizeOptions').hidden, true);
 });
 
@@ -307,10 +307,10 @@ for (const cancelEvent of ['pointerup', 'pointercancel']) {
   });
 }
 
-test('inner cashback controls keep their click and context-menu behavior', () => {
+test('inner subscription controls keep their click and context-menu behavior', () => {
   const app = setup();
   app.hub.initHubCardHiding();
-  const cashback = app.card('widget-cashback');
+  const cashback = app.card('app-subscriptions');
   const button = new Element({ parent: cashback, interactive: true });
   const icon = new Element({ parent: button });
   let clicks = 0;

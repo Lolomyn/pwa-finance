@@ -219,7 +219,7 @@ async function financeFromHub(options = {}) {
 }
 
 test('without PIN, every screen is ready and authorized', async () => {
-  for (const page of ['index.html', 'finance.html', 'notes.html']) {
+  for (const page of ['index.html', 'finance.html', 'notes.html', 'subscriptions.html']) {
     const app = setup({ page, settings: { pinEnabled: false } });
     assert.equal(await app.access.ready, true);
     assert.equal(app.access.isAuthorized(), true);

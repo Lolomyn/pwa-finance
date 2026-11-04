@@ -5,7 +5,7 @@
 (function () {
   const TICKET_KEY = 'expense-tracker-access-navigation';
   const LOCK_TIMEOUT = 60 * 1000;
-  const ALLOWED_PAGES = new Set(['index.html', 'finance.html', 'notes.html']);
+  const ALLOWED_PAGES = new Set(['index.html', 'finance.html', 'notes.html', 'subscriptions.html']);
   const root = document.documentElement;
   const page = location.pathname.split('/').pop() || 'index.html';
   const isHub = page === 'index.html';

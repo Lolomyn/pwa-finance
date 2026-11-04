@@ -178,6 +178,8 @@ const hubWidgetCalendar = document.getElementById('hub-widget-calendar');
 const hubFinanceExpense = document.getElementById('hub-finance-expense');
 const hubFinanceIncome = document.getElementById('hub-finance-income');
 const hubNotesStat = document.getElementById('hub-notes-stat');
+const hubSubscriptionsBadge = document.getElementById('hub-sub-count');
+const hubSubscriptionsList = document.getElementById('hub-sub-list');
 const bottomNavButtons = [...document.querySelectorAll('[data-tab-target]')];
 const homeLastOperations = document.getElementById('home-last-operations');
 const homeLastList = document.getElementById('home-last-list');
@@ -4642,6 +4644,7 @@ function renderHubScreen() {
     hubFinanceIncome.textContent = `Доход ${amountFormatter.format(roundCurrency(incomeTotal))} ₽ за месяц`;
   }
 
+  renderHubSubscriptions();
   window.Notes?.renderHub?.();
 }
 
@@ -4750,6 +4753,15 @@ function initHub() {
     hubNotesWidget.addEventListener('click', () => {
       hapticFeedback(8);
       window.AppAccess.navigate('./notes.html');
+    });
+  }
+
+  const hubSubscriptionsButton = document.getElementById('hub-subscriptions');
+
+  if (hubSubscriptionsButton) {
+    hubSubscriptionsButton.addEventListener('click', () => {
+      hapticFeedback(8);
+      window.AppAccess.navigate('./subscriptions.html');
     });
   }
 
@@ -4926,9 +4938,212 @@ const HUB_CARD_NAMES = {
   'widget-days': 'Виджет «Рабочих дней»',
   'app-finance': 'Приложение «Финансы»',
   'app-notes': 'Приложение «Заметки»',
-  'widget-cashback': 'Виджет «Кэшбэк»'
+  'app-subscriptions': 'Приложение «Подписки и платежи»'
 };
 const HUB_CARD_IDS = Object.keys(HUB_CARD_NAMES);
+
+const HUB_SUB_FREQ_LABELS = {
+  'мес': 'ежемесячно',
+  '2 нед': 'раз в 2 недели',
+  'нед': 'еженедельно',
+  'год': 'ежегодно'
+};
+const HUB_SUB_MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+let hubSubscriptionsData = [];
+
+function normalizeHubSubscriptions(raw) {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const seen = new Set();
+
+  return raw.reduce((list, entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return list;
+    }
+
+    const name = typeof entry.name === 'string' ? entry.name.trim().slice(0, 80) : '';
+    if (!name) {
+      return list;
+    }
+
+    let id = entry.id === undefined || entry.id === null ? '' : String(entry.id);
+    if (!id || seen.has(id)) {
+      id = `hub-sub-${list.length}-${Date.now()}`;
+    }
+    seen.add(id);
+
+    const amount = entry.amount === null || entry.amount === undefined || entry.amount === ''
+      ? null
+      : Number(entry.amount);
+
+    list.push({
+      id,
+      type: entry.type === 'pay' ? 'pay' : 'sub',
+      name,
+      amount: Number.isFinite(amount) && amount >= 0 ? amount : null,
+      freq: Object.prototype.hasOwnProperty.call(HUB_SUB_FREQ_LABELS, entry.freq) ? entry.freq : null,
+      date: typeof entry.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.date) ? entry.date : null
+    });
+
+    return list;
+  }, []);
+}
+
+function hubParseDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+  if (!match) {
+    return null;
+  }
+
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (
+    date.getFullYear() !== Number(match[1]) ||
+    date.getMonth() !== Number(match[2]) - 1 ||
+    date.getDate() !== Number(match[3])
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function hubStartOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function hubAddMonthsClamped(base, months) {
+  const day = base.getDate();
+  const result = new Date(base.getFullYear(), base.getMonth() + months, 1);
+  const daysInMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+  result.setDate(Math.min(day, daysInMonth));
+  return result;
+}
+
+function hubNextOccurrence(item) {
+  const stored = hubParseDate(item.date);
+  if (!stored) {
+    return null;
+  }
+
+  const today = hubStartOfDay(new Date());
+  if (stored >= today) {
+    return stored;
+  }
+
+  if (item.freq === 'нед' || item.freq === '2 нед') {
+    const step = item.freq === 'нед' ? 7 : 14;
+    const diff = Math.round((today - stored) / 86400000);
+    const steps = Math.ceil(diff / step);
+    return new Date(stored.getFullYear(), stored.getMonth(), stored.getDate() + steps * step);
+  }
+
+  if (item.freq === 'мес' || item.freq === 'год') {
+    const step = item.freq === 'год' ? 12 : 1;
+    let months = (today.getFullYear() - stored.getFullYear()) * 12 + (today.getMonth() - stored.getMonth());
+    if (months < 0) {
+      months = 0;
+    }
+    let next = hubAddMonthsClamped(stored, months);
+    let guard = 0;
+    while (next < today && guard < 600) {
+      months += step;
+      next = hubAddMonthsClamped(stored, months);
+      guard += 1;
+    }
+    return next;
+  }
+
+  return stored;
+}
+
+function hubRecordsNoun(value) {
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 === 1 && mod100 !== 11) {
+    return 'запись';
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return 'записи';
+  }
+  return 'записей';
+}
+
+function createHubSubscriptionRow(item) {
+  const next = hubNextOccurrence(item);
+  const today = hubStartOfDay(new Date());
+  const days = next ? Math.round((next - today) / 86400000) : null;
+  const urgent = days !== null && days >= 0 && days <= 7;
+
+  const row = document.createElement('div');
+  row.className = 'hub-sub-item';
+
+  const info = document.createElement('div');
+  info.className = 'hub-sub-info';
+
+  const name = document.createElement('div');
+  name.className = 'hub-sub-name';
+  name.textContent = item.name;
+
+  const date = document.createElement('div');
+  date.className = `hub-sub-date${urgent ? ' is-urgent' : ''}`;
+  if (next) {
+    const freq = item.freq ? ` · ${HUB_SUB_FREQ_LABELS[item.freq]}` : '';
+    date.textContent = `${urgent ? '⚠️ ' : ''}${next.getDate()} ${HUB_SUB_MONTHS[next.getMonth()]}${freq}`;
+  } else {
+    date.textContent = 'Без даты';
+  }
+
+  info.append(name, date);
+  row.append(info);
+
+  if (typeof item.amount === 'number') {
+    const amount = document.createElement('div');
+    amount.className = 'hub-sub-amt';
+    amount.textContent = `${amountFormatter.format(roundCurrency(item.amount))} ₽`;
+    row.append(amount);
+  }
+
+  return row;
+}
+
+function renderHubSubscriptions() {
+  if (!hubSubscriptionsBadge || !hubSubscriptionsList) {
+    return;
+  }
+
+  const count = hubSubscriptionsData.length;
+  hubSubscriptionsBadge.textContent = `${count} ${hubRecordsNoun(count)}`;
+  hubSubscriptionsList.textContent = '';
+
+  if (count === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'hub-sub-empty';
+    empty.textContent = 'Добавьте подписку или платёж';
+    hubSubscriptionsList.append(empty);
+    return;
+  }
+
+  const sorted = hubSubscriptionsData
+    .map((item) => ({ item, next: hubNextOccurrence(item) }))
+    .sort((a, b) => {
+      if (!a.next && !b.next) {
+        return 0;
+      }
+      if (!a.next) {
+        return 1;
+      }
+      if (!b.next) {
+        return -1;
+      }
+      return a.next - b.next;
+    })
+    .slice(0, 2);
+
+  sorted.forEach(({ item }) => {
+    hubSubscriptionsList.append(createHubSubscriptionRow(item));
+  });
+}
 
 const HUB_CARD_SIZES_KEY = 'expense-tracker-hub-card-sizes';
 const RESIZABLE_HUB_CARD_IDS = ['widget-weather', 'widget-days', 'app-finance', 'app-notes'];
@@ -11007,11 +11222,13 @@ async function init() {
 
   try {
     db = await openDB();
-    const financeState = await getSettings([FINANCE_CATEGORIES_KEY, 'cashbackData', 'calendarEvents']);
+    const financeState = await getSettings([FINANCE_CATEGORIES_KEY, 'subscriptionsData', 'calendarEvents']);
 
     if (financeState[FINANCE_CATEGORIES_KEY] !== true) {
       await seedDefaultsIfEmpty();
     }
+
+    hubSubscriptionsData = normalizeHubSubscriptions(financeState.subscriptionsData);
 
     await loadStoredPreferences();
 
@@ -11045,12 +11262,6 @@ async function init() {
       await window.Notes?.init?.();
     } catch (notesError) {
       console.warn('Не удалось инициализировать заметки:', notesError);
-    }
-
-    try {
-      window.Cashback?.init?.(financeState.cashbackData);
-    } catch (cashbackError) {
-      console.warn('Не удалось инициализировать кэшбэк:', cashbackError);
     }
 
     try {

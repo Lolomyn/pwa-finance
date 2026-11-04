@@ -36,14 +36,12 @@
   <link rel="stylesheet" href="styles-preview.css">
   <link rel="stylesheet" href="weather.css">
   <link rel="stylesheet" href="notes.css">
-  <link rel="stylesheet" href="cashback.css">
   <link rel="stylesheet" href="calendar.css">
   <link rel="stylesheet" href="update-banner.css">
   <script src="ru-work-calendar.js" defer></script>
   <script src="weather.js" defer></script>
   <script src="app.js" defer></script>
   <script src="notes.js" defer></script>
-  <script src="cashback.js" defer></script>
   <script src="calendar.js" defer></script>
   <script src="update-banner.js" defer></script>
 </head>
@@ -227,30 +225,19 @@
               <div class="hub-app-stat" id="hub-notes-stat">0 заметок</div>
             </div>
           </button>
+
+          <button id="hub-subscriptions" class="hub-subscriptions" type="button" data-card-id="app-subscriptions" data-card-name="Приложение «Подписки и платежи»" aria-label="Открыть приложение Подписки и платежи">
+            <div class="hub-sub-head">
+              <div class="hub-sub-title">Подписки и платежи</div>
+              <div class="hub-sub-badge" id="hub-sub-count">0 записей</div>
+            </div>
+            <div class="hub-sub-list" id="hub-sub-list">
+              <div class="hub-sub-empty">Добавьте подписку или платёж</div>
+            </div>
+          </button>
         </div>
 
-        <div class="hub-version" id="hub-version">v1.23.0</div>
-
-        <section class="cashback-widget" id="cashbackWidget" data-card-id="widget-cashback" data-card-name="Виджет «Кэшбэк»" aria-labelledby="cashbackTitle">
-          <div class="cb-head">
-            <div class="cb-head-left">
-              <h2 class="cb-lbl" id="cashbackTitle">Кэшбэк</h2>
-              <div class="cb-month-nav">
-                <button class="cb-month-btn" type="button" id="cbPrevMonth" aria-label="Предыдущий месяц">
-                  <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-                </button>
-                <div class="cb-month" id="cbMonthLabel" aria-live="polite">Октябрь 2026</div>
-                <button class="cb-month-btn" type="button" id="cbNextMonth" aria-label="Следующий месяц">
-                  <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-                </button>
-              </div>
-            </div>
-            <button class="cb-add-btn" type="button" id="cbAddBank" aria-label="Добавить банк" title="Добавить банк">
-              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-          </div>
-          <div class="cb-list" id="cbList"></div>
-        </section>
+        <div class="hub-version" id="hub-version">v1.24.0</div>
       </div>
     </section>
 
@@ -1660,65 +1647,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Кэшбэк: шторка добавления и редактирования банка -->
-  <div class="cb-backdrop" id="cbBackdrop"></div>
-  <div class="cb-modal" id="cbModal" role="dialog" aria-modal="true" aria-labelledby="cbModalTitle">
-    <div class="cb-handle"></div>
-    <div class="cb-modal-head">
-      <div class="cb-modal-title" id="cbModalTitle">Добавить банк</div>
-      <button class="cb-modal-close" type="button" id="cbClose" aria-label="Закрыть" title="Закрыть">
-        <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>
-      </button>
-    </div>
-
-    <div id="cbBankSelectorWrap">
-      <div class="cb-field-label" id="cbBankLabel">Выберите банк</div>
-      <div class="cb-bank-grid" id="cbBankGrid" role="group" aria-labelledby="cbBankLabel"></div>
-    </div>
-
-    <div class="cb-edit-head" id="cbEditHead" hidden>
-      <div class="cb-edit-info">
-        <div class="cb-logo" id="cbEditLogo"></div>
-        <div class="cb-edit-name" id="cbEditName"></div>
-      </div>
-      <button class="cb-delete-btn" type="button" id="cbDeleteBank" aria-label="Удалить банк" title="Удалить банк">
-        <svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-      </button>
-    </div>
-
-    <label class="cb-field-label" for="cbCatInput">Категории кэшбэка</label>
-    <div class="cb-cat-editor" id="cbCatEditor"></div>
-
-    <div class="cb-cat-input-row">
-      <input
-        type="text"
-        id="cbCatInput"
-        placeholder="Напр. Супермаркеты 5%"
-        maxlength="40"
-        autocomplete="off"
-        enterkeyhint="done"
-      >
-      <button type="button" id="cbAddCat" aria-label="Добавить категорию" title="Добавить категорию">
-        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-    </div>
-
-    <p class="cb-error" id="cbError" role="alert" hidden></p>
-
-    <button class="cb-save-btn" type="button" id="cbSave">Сохранить</button>
-  </div>
-
-  <div class="cb-confirm-backdrop" id="cbConfirmBackdrop"></div>
-  <div class="cb-confirm" id="cbConfirm" role="dialog" aria-modal="true" aria-labelledby="cbConfirmTitle">
-    <div class="cb-confirm-title" id="cbConfirmTitle">Удалить банк?</div>
-    <p class="cb-confirm-text" id="cbConfirmText"></p>
-    <div class="cb-confirm-actions">
-      <button class="cb-confirm-cancel" type="button" id="cbConfirmCancel">Отмена</button>
-      <button class="cb-confirm-delete" type="button" id="cbConfirmDelete">Удалить</button>
-    </div>
-  </div>
-
 
   <div class="modal-overlay" id="hubExportModal" hidden>
     <div class="modal-card hub-export-card" role="dialog" aria-modal="true" aria-labelledby="hubExportTitle" aria-describedby="hubExportHint">
