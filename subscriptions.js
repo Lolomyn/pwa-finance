@@ -1207,11 +1207,13 @@
 
     // Снять блокировку «Проверка защиты…» после того, как шлюз доступа
     // подтвердил авторизацию (редирект на хаб уже произошёл внутри check(true),
-    // если не autorizован).
+    // если не авторизован). Вызываем напрямую, а не через AppAccess.reveal(),
+    // чтобы не зависеть от флага document.hidden при первом рендере вкладки.
     try {
       await window.AppAccess.ready;
       if (window.AppAccess.isAuthorized()) {
-        window.AppAccess.reveal();
+        document.documentElement.removeAttribute('data-access-pending');
+        if (document.body) document.body.inert = false;
       }
     } catch (error) {
       console.error('Шлюз доступа не сработал:', error);
