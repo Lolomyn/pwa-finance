@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'expense-tracker-v98';
+const CACHE_NAME = 'expense-tracker-v99';
 const PRECACHE_URLS = [
   './',
   './index.html',

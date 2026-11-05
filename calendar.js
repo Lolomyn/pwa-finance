@@ -93,6 +93,11 @@
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   }
 
+  // Ежегодное событие показываем только когда до следующего повторения
+  // остаётся не больше трёх месяцев. Иначе прошедшая дата (например, 29 октября
+  // при сегодняшнем 5 ноября) выглядела бы как предстоящее событие.
+  const ANNUAL_LOOKAHEAD_DAYS = 90;
+
   function eventOccurrence(event, today) {
     const source = parseISO(event.date);
 
@@ -103,7 +108,8 @@
         candidate = new Date(today.getFullYear() + 1, source.getMonth(), source.getDate());
       }
 
-      return candidate;
+      const daysUntil = Math.round((candidate - today) / 86400000);
+      return daysUntil <= ANNUAL_LOOKAHEAD_DAYS ? candidate : null;
     }
 
     const date = startOfDay(source);

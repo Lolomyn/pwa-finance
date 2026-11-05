@@ -5169,7 +5169,11 @@ function renderHubCalendarEvents() {
     return;
   }
 
-  const upcoming = window.HubCalendar?.getUpcoming?.(1000) || [];
+  const today = new Date();
+  const upcoming = (window.HubCalendar?.getUpcoming?.(1000) || []).filter((item) => {
+    // Страховка: виджет не должен показывать даты из прошлого.
+    return hubEventDayDiff(item.date, today) >= 0;
+  });
   const count = upcoming.length;
 
   hubEventsBadge.textContent = count ? `${count} ${hubEventsNoun(count)}` : '';
@@ -5179,12 +5183,10 @@ function renderHubCalendarEvents() {
   if (!count) {
     const empty = document.createElement('div');
     empty.className = 'hub-events-empty';
-    empty.textContent = 'Пока нет событий — нажмите, чтобы открыть календарь';
+    empty.textContent = 'Нет ближайших событий — нажмите, чтобы открыть календарь';
     hubEventsList.append(empty);
     return;
   }
-
-  const today = new Date();
 
   upcoming.slice(0, HUB_EVENT_LIMIT).forEach((item) => {
     const date = parseHubEventDate(item.date);
