@@ -668,20 +668,11 @@
 
     state.bound = true;
 
-    const widget = byId('hub-widget');
     const calendarBackdrop = byId('hubCalendarBackdrop');
     const dayBackdrop = byId('hubDayBackdrop');
     const grid = byId('hubCalendarGrid');
     const dayList = byId('hubDayList');
     const input = byId('hubDayInput');
-
-    widget?.addEventListener('click', openCalendar);
-    widget?.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openCalendar();
-      }
-    });
 
     const eventsWidget = byId('hub-events-widget');
     eventsWidget?.addEventListener('click', openCalendar);

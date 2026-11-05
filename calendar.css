@@ -15,16 +15,6 @@ html[data-theme="dark"] {
   --calendar-working: #68d391;
 }
 
-/* ═══ Виджет рабочих дней ═══ */
-#hub-widget {
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.hub-widget:active:not(.is-card-pressing) {
-  transform: scale(0.99);
-}
-
 /* ═══ Виджет ближайших событий ═══ */
 .hub-bento > .hub-events {
   grid-column: span 4;
