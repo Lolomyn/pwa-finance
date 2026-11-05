@@ -12,9 +12,10 @@ const end = source.indexOf('async function render(items)', start);
 assert.ok(start >= 0 && end > start, 'the hub hiding block must exist in app.js');
 const hubSource = source.slice(start, end);
 
-test('weather supports the shared card size and hide registry', () => {
-  assert.match(hubSource, /'widget-weather': 'Виджет «Погода»'/);
-  assert.match(hubSource, /RESIZABLE_HUB_CARD_IDS = \['widget-weather'/);
+test('workdays widget supports the shared hide registry without a weather card', () => {
+  assert.match(hubSource, /'widget-days': 'Виджет «Рабочих дней»'/);
+  assert.doesNotMatch(hubSource, /widget-weather/);
+  assert.doesNotMatch(hubSource, /RESIZABLE_HUB_CARD_IDS = \[[^\]]*'widget-days'/);
 });
 
 test('upcoming events widget supports the shared hide registry', () => {
@@ -26,8 +27,9 @@ test('widgets and applications have separate layout containers', () => {
   const widgets = html.indexOf('class="hub-bento hub-widgets"');
   const apps = html.indexOf('class="hub-bento hub-apps"');
   assert.ok(widgets >= 0 && apps > widgets);
-  assert.ok(html.indexOf('id="hub-weather"') > widgets && html.indexOf('id="hub-weather"') < apps);
-  assert.ok(html.indexOf('id="hub-widget"') < apps);
+  assert.ok(html.indexOf('id="hub-widget"') > widgets && html.indexOf('id="hub-widget"') < apps);
+  assert.equal(html.includes('id="hub-weather"'), false);
+  assert.equal(html.includes('weather-modal'), false);
   assert.ok(html.indexOf('id="hub-finance"') > apps);
   assert.ok(html.indexOf('id="hub-notes"') > apps);
 });
@@ -178,13 +180,13 @@ test('loading valid preferences applies compact only to resizable cards', () => 
     'app-subscriptions': 'compact', unknown: 'compact'
   }) });
   app.hub.loadHubCardSizes();
-  assert.deepEqual(compactIds(app), ['widget-days', 'app-notes']);
+  assert.deepEqual(compactIds(app), ['app-notes']);
 });
 
 for (const raw of ['{broken', 'null', '[]', '42', '"compact"', '{"app-finance":true,"app-notes":"small","widget-days":{}}']) {
   test(`malformed or unsupported stored sizes are ignored: ${raw}`, () => {
     const app = setup();
-    app.hub.setHubCardSize('widget-days', 'compact');
+    app.hub.setHubCardSize('app-finance', 'compact');
     app.storage.set(app.hub.HUB_CARD_SIZES_KEY, raw);
     assert.doesNotThrow(() => app.hub.loadHubCardSizes());
     assert.deepEqual(compactIds(app), []);
@@ -204,9 +206,9 @@ test('setting compact persists all selected sizes and survives reloading', () =>
 
 test('switching to normal removes only that preference from storage', () => {
   const app = setup();
-  app.hub.setHubCardSize('widget-days', 'compact');
+  app.hub.setHubCardSize('app-notes', 'compact');
   app.hub.setHubCardSize('app-finance', 'compact');
-  app.hub.setHubCardSize('widget-days', 'normal');
+  app.hub.setHubCardSize('app-notes', 'normal');
   assert.deepEqual(app.stored(), { 'app-finance': 'compact' });
   assert.deepEqual(compactIds(app), ['app-finance']);
   app.hub.setHubCardSize('app-finance', 'normal');
@@ -259,19 +261,19 @@ test('upcoming events widget can be hidden and restored', () => {
 
 test('hiding and restoring a compact card preserves its size, including after reload', () => {
   const app = setup();
-  app.hub.setHubCardSize('widget-days', 'compact');
-  app.hub.openHubCardAction(app.card('widget-days'));
+  app.hub.setHubCardSize('app-notes', 'compact');
+  app.hub.openHubCardAction(app.card('app-notes'));
   app.hub.hideCurrentHubCard();
-  assert.equal(app.card('widget-days').classList.contains('card-hidden'), true);
-  assert.equal(app.card('widget-days').classList.contains('is-compact'), true);
+  assert.equal(app.card('app-notes').classList.contains('card-hidden'), true);
+  assert.equal(app.card('app-notes').classList.contains('is-compact'), true);
   const reloaded = setup({ storage: app.storage });
   reloaded.hub.loadHubCardSizes();
   reloaded.hub.loadHiddenHubCards();
-  assert.equal(reloaded.card('widget-days').classList.contains('card-hidden'), true);
-  reloaded.hub.restoreHubCard('widget-days');
-  assert.equal(reloaded.card('widget-days').classList.contains('card-hidden'), false);
-  assert.equal(reloaded.card('widget-days').classList.contains('is-compact'), true);
-  assert.deepEqual(reloaded.stored(), { 'widget-days': 'compact' });
+  assert.equal(reloaded.card('app-notes').classList.contains('card-hidden'), true);
+  reloaded.hub.restoreHubCard('app-notes');
+  assert.equal(reloaded.card('app-notes').classList.contains('card-hidden'), false);
+  assert.equal(reloaded.card('app-notes').classList.contains('is-compact'), true);
+  assert.deepEqual(reloaded.stored(), { 'app-notes': 'compact' });
   assert.deepEqual(JSON.parse(reloaded.storage.get(reloaded.hub.HIDDEN_HUB_CARDS_KEY)), []);
 });
 

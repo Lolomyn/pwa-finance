@@ -174,7 +174,6 @@ const tabPanels = [...document.querySelectorAll('.tab-panel[data-tab]')];
 const hubFinanceButton = document.getElementById('hub-finance');
 const hubWidgetMonth = document.getElementById('hub-widget-month');
 const hubWidgetCount = document.getElementById('hub-widget-count');
-const hubWidgetCalendar = document.getElementById('hub-widget-calendar');
 const hubEventsBadge = document.getElementById('hub-events-count');
 const hubEventsList = document.getElementById('hub-events-list');
 const hubFinanceExpense = document.getElementById('hub-finance-expense');
@@ -4605,15 +4604,8 @@ function renderHubScreen() {
   }
 
   if (hubWidgetCount) {
-    const unit = document.createElement('span');
-    unit.className = 'hub-widget-unit';
-    unit.textContent = ` ${workingDaysNoun}`;
-    hubWidgetCount.replaceChildren(document.createTextNode(String(workingDays)), unit);
+    hubWidgetCount.textContent = String(workingDays);
     hubWidgetCount.setAttribute('aria-label', `${workingDays} ${workingDaysNoun}`);
-  }
-
-  if (hubWidgetCalendar) {
-    renderHubCalendar(hubWidgetCalendar, now);
   }
 
   const monthPrefix = getTodayISO().slice(0, 7);
@@ -4649,73 +4641,6 @@ function renderHubScreen() {
   renderHubSubscriptions();
   renderHubCalendarEvents();
   window.Notes?.renderHub?.();
-}
-
-function renderHubCalendar(container, now) {
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = now.getDate();
-  const firstWeekday = new Date(year, month, 1).getDay();
-  const offset = (firstWeekday + 6) % 7;
-  const fragment = document.createDocumentFragment();
-
-  container.dataset.year = String(year);
-  container.dataset.month = String(month + 1);
-
-  for (let i = 0; i < offset; i += 1) {
-    const cell = document.createElement('div');
-    cell.className = 'hub-cal-cell hub-cal-empty';
-    fragment.append(cell);
-  }
-
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    const date = new Date(year, month, day);
-    const weekday = date.getDay();
-    const info = getProductionDayInfo(date);
-    const isWeekend = info ? info.isWeekend : weekday === 0 || weekday === 6;
-    const isWorkingWeekend = Boolean(info && info.isWorkingWeekend);
-    const cell = document.createElement('div');
-    let className = 'hub-cal-cell';
-
-    if (isWeekend && !isWorkingWeekend) {
-      className += ' hub-cal-weekend';
-    } else if (!info || info.isWorking) {
-      className += ' hub-cal-active';
-    } else {
-      className += ' hub-cal-holiday';
-    }
-
-    if (isWeekend && info && (info.isHoliday || info.isTransfer)) {
-      className += ' hub-cal-holiday';
-    }
-
-    if (info && info.isShortened) {
-      className += ' hub-cal-shortened';
-    }
-
-    if (isWorkingWeekend) {
-      className += ' hub-cal-working-weekend';
-    }
-
-    if (day === today) {
-      className += ' hub-cal-today';
-    }
-
-    cell.className = className;
-    cell.dataset.day = String(day);
-
-    if (info && info.label) {
-      cell.title = info.label;
-    }
-
-    fragment.append(cell);
-  }
-
-  const rows = Math.ceil(fragment.childElementCount / 7);
-  container.style.setProperty('--hub-calendar-width', `${7 * ((64 - (rows - 1) * 2) / rows) + 12}px`);
-  container.replaceChildren(fragment);
-  window.HubCalendar?.decorateMini?.();
 }
 
 function initHub() {
@@ -4910,6 +4835,12 @@ function initThemeSettings() {
     openHubExportModal();
   });
 
+  const importSetting = document.getElementById('hubImportSetting');
+  importSetting?.addEventListener('click', () => {
+    closeSettings();
+    openHubImportModal();
+  });
+
   switchElement?.addEventListener('click', () => {
     const next = isDarkTheme() ? 'light' : 'dark';
     applyTheme(next);
@@ -4939,7 +4870,6 @@ const HIDDEN_HUB_CARDS_KEY = 'expense-tracker-hidden-hub-cards';
 // data-card-id + data-card-name в разметке, чтобы её можно было скрыть
 // долгим нажатием и вернуть из настроек.
 const HUB_CARD_NAMES = {
-  'widget-weather': 'Виджет «Погода»',
   'widget-days': 'Виджет «Рабочих дней»',
   'widget-events': 'Виджет «Ближайшие события»',
   'app-finance': 'Приложение «Финансы»',
@@ -5279,7 +5209,7 @@ function renderHubSubscriptions() {
 }
 
 const HUB_CARD_SIZES_KEY = 'expense-tracker-hub-card-sizes';
-const RESIZABLE_HUB_CARD_IDS = ['widget-weather', 'widget-days', 'app-finance', 'app-notes'];
+const RESIZABLE_HUB_CARD_IDS = ['app-finance', 'app-notes'];
 const compactHubCards = new Set();
 const hiddenHubCards = new Set();
 
@@ -6622,6 +6552,7 @@ async function handleExportCsv() {
 }
 
 let hubExportBusy = false;
+let hubImportBusy = false;
 
 function updateHubExportLastBackup() {
   const label = document.getElementById('hubExportLastBackup');
@@ -6697,6 +6628,116 @@ async function handleHubExport(format) {
   }
 }
 
+function openHubImportModal() {
+  if (isAppLocked) {
+    return;
+  }
+
+  const modal = document.getElementById('hubImportModal');
+  if (!hubImportBusy) {
+    document.getElementById('hubImportStatus').hidden = true;
+    document.getElementById('hubImportError').hidden = true;
+  }
+
+  modal.hidden = false;
+  document.body.classList.add('modal-open');
+  document.getElementById('hubImportClose')?.focus({ preventScroll: true });
+}
+
+function closeHubImportModal() {
+  const modal = document.getElementById('hubImportModal');
+  if (modal.hidden) {
+    return;
+  }
+
+  modal.hidden = true;
+  syncHubOverlayLock();
+  document.getElementById('hubSettingsBtn')?.focus({ preventScroll: true });
+}
+
+async function handleHubImportFile(file) {
+  if (hubImportBusy || isAppLocked) {
+    return;
+  }
+
+  const modal = document.getElementById('hubImportModal');
+  const status = document.getElementById('hubImportStatus');
+  const error = document.getElementById('hubImportError');
+  hubImportBusy = true;
+  modal.setAttribute('aria-busy', 'true');
+  error.hidden = true;
+  status.hidden = true;
+
+  try {
+    let text;
+
+    try {
+      text = await file.text();
+    } catch {
+      throw new Error('Не удалось прочитать файл.');
+    }
+
+    const importedData = parseImportJson(text.replace(/^\uFEFF/, ''));
+
+    if (!confirm('Импорт заменит все текущие данные. Продолжить?')) {
+      hubImportBusy = false;
+      modal.removeAttribute('aria-busy');
+      return;
+    }
+
+    if (pendingUndoCommit) {
+      await pendingUndoCommit;
+    }
+
+    discardPendingUndo();
+    renderExpenseList(expenses);
+
+    const prepared = buildImportCategories(
+      importedData.categories,
+      importedData.items,
+      importedData.format !== 'v2'
+    );
+    const importedQuickTemplates = importedData.quickTemplates === undefined
+      ? undefined
+      : validateImportQuickTemplates(importedData.quickTemplates, prepared.categories);
+
+    await replaceAllData({
+      items: prepared.items,
+      balance: importedData.balance,
+      categories: prepared.categories,
+      quickTemplates: importedQuickTemplates
+    });
+
+    initialBalance = importedData.balance;
+    initialBalanceExists = true;
+    lastNudgeHiddenUntil = null;
+    currentFilter = '';
+    closeHubImportModal();
+    expenses = await getAllExpenses();
+
+    if (editingExpenseId !== null) {
+      await resetFormToAdd();
+    }
+
+    await refreshCategoryUi();
+    await refreshQuickTemplatesUi();
+    await render(expenses);
+    updateBackupBanner();
+    renderHubScreen();
+
+    status.textContent = 'Импорт завершён.';
+    status.hidden = false;
+  } catch (importError) {
+    status.hidden = true;
+    error.textContent = importError.message || 'Не удалось импортировать данные. Проверьте файл и попробуйте ещё раз.';
+    error.hidden = false;
+  } finally {
+    hubImportBusy = false;
+    modal.removeAttribute('aria-busy');
+    document.getElementById('hubImportFile').value = '';
+  }
+}
+
 function initHubExportUi() {
   const modal = document.getElementById('hubExportModal');
   document.getElementById('hubExportClose').addEventListener('click', closeHubExportModal);
@@ -6707,24 +6748,39 @@ function initHubExportUi() {
       closeHubExportModal();
     }
   });
+}
+
+function initHubImportUi() {
+  const modal = document.getElementById('hubImportModal');
+  const input = document.getElementById('hubImportFile');
+
+  document.getElementById('hubImportClose').addEventListener('click', closeHubImportModal);
+
+  document.getElementById('hubImportChoose').addEventListener('click', () => {
+    input.value = '';
+    input.click();
+  });
+
+  input.addEventListener('change', (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (file) {
+      handleHubImportFile(file);
+    }
+  });
+
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      closeHubImportModal();
+    }
+  });
+
   document.addEventListener('keydown', (event) => {
     if (modal.hidden) {
       return;
     }
     if (event.key === 'Escape') {
       event.preventDefault();
-      closeHubExportModal();
-    } else if (event.key === 'Tab') {
-      const buttons = [...modal.querySelectorAll('button:not(:disabled)')];
-      const first = buttons[0];
-      const last = buttons[buttons.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      closeHubImportModal();
     }
   });
 }
@@ -11330,8 +11386,8 @@ async function init() {
   initSwipeGestures();
   initThemeSettings();
   initHubExportUi();
+  initHubImportUi();
   initHubCardHiding();
-  window.HubWeather?.init();
   showTab(getTabFromHash(), { push: false });
   showTab('hub', { push: true });
   initHub();

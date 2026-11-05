@@ -363,22 +363,27 @@ p {
 
 /* ═══ Виджет рабочих дней ═══ */
 .hub-widget {
+  grid-column: span 4;
   position: relative;
   overflow: hidden;
   border-radius: 24px;
-  padding: 22px;
+  padding: 16px 22px;
   color: #ffffff;
-  background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
-  box-shadow: 0 12px 32px rgba(124, 58, 237, 0.25);
+  background: linear-gradient(140deg, #7C3AED 0%, #A78BFA 100%);
+  box-shadow: 0 10px 26px rgba(124, 58, 237, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
 }
 
 .hub-widget::before {
   content: '';
   position: absolute;
   top: -50px;
-  right: -50px;
-  width: 160px;
-  height: 160px;
+  right: -40px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.2), transparent 70%);
   pointer-events: none;
@@ -389,94 +394,40 @@ p {
   z-index: 1;
 }
 
-.hub-widget-head {
+.hub-widget-info {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .hub-widget-lbl {
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .hub-widget-month {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  opacity: 0.8;
+  opacity: 0.95;
   text-transform: capitalize;
 }
 
-.hub-widget-body {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
 .hub-widget-num {
-  font-size: 56px;
+  flex-shrink: 0;
+  font-size: 46px;
   font-weight: 800;
-  letter-spacing: -0.06em;
-  line-height: 0.85;
+  letter-spacing: -0.05em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.hub-cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  width: 108px;
-  flex-shrink: 0;
-}
-
-.hub-cal-cell {
-  aspect-ratio: 1;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.hub-cal-cell.hub-cal-active {
-  background: rgba(255, 255, 255, 0.85);
-}
-
-.hub-cal-cell.hub-cal-weekend {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.hub-cal-cell.hub-cal-holiday {
-  background: rgba(255, 209, 102, 0.95);
-}
-
-.hub-cal-cell.hub-cal-shortened {
-  box-shadow: inset 0 0 0 1.5px #ffd166;
-}
-
-.hub-cal-cell.hub-cal-working-weekend {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: inset 0 0 0 1.5px #ffd166;
-}
-
-.hub-cal-cell.hub-cal-today {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px #ffffff;
-}
-
-.hub-cal-cell.hub-cal-today.hub-cal-holiday {
-  background: rgba(255, 209, 102, 0.95);
-}
-
-.hub-cal-cell.hub-cal-today.hub-cal-working-weekend {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: inset 0 0 0 1.5px #ffd166;
-}
-
-.hub-cal-cell.hub-cal-empty {
-  background: transparent;
+@media (max-width: 380px) {
+  .hub-widget { padding: 14px 18px; }
+  .hub-widget-num { font-size: 40px; }
 }
 
 /* ═══ Версия проекта ═══ */

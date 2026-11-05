@@ -609,7 +609,6 @@
     removeError();
     renderDayEvents();
     renderCalendar();
-    decorateMiniCalendar();
     notifyChange();
     haptic(10);
 
@@ -620,7 +619,6 @@
       state.events = state.events.filter((item) => item.id !== event.id);
       renderDayEvents();
       renderCalendar();
-      decorateMiniCalendar();
       notifyChange();
       showError('Не удалось сохранить событие');
     }
@@ -638,7 +636,6 @@
     const removed = state.events.splice(index, 1)[0];
     renderDayEvents();
     renderCalendar();
-    decorateMiniCalendar();
     notifyChange();
     haptic(8);
 
@@ -649,7 +646,6 @@
       state.events.splice(index, 0, removed);
       renderDayEvents();
       renderCalendar();
-      decorateMiniCalendar();
       notifyChange();
       showError('Не удалось удалить событие');
     }
@@ -661,30 +657,6 @@
     state.yearly = !state.yearly;
     yearlySwitch?.setAttribute('aria-checked', String(state.yearly));
     haptic(4);
-  }
-
-  /* ────────────────────── Мини-календарь виджета ────────────────────── */
-
-  function decorateMiniCalendar() {
-    const grid = byId('hub-widget-calendar');
-
-    if (!grid) {
-      return;
-    }
-
-    const year = Number(grid.dataset.year);
-    const month = Number(grid.dataset.month);
-
-    if (!year || !month) {
-      return;
-    }
-
-    grid.querySelectorAll('[data-day]').forEach((cell) => {
-      const day = Number(cell.dataset.day);
-      const date = new Date(year, month - 1, day);
-
-      cell.classList.toggle('hub-cal-has-event', eventsForDate(date).length > 0);
-    });
   }
 
   /* ─────────────────────────── События UI ───────────────────────────── */
@@ -787,14 +759,12 @@
     state.events = normalizeEvents(storedEvents);
     state.ready = true;
     bindEvents();
-    decorateMiniCalendar();
     notifyChange();
   }
 
   window.HubCalendar = {
     init,
     open: openCalendar,
-    decorateMini: decorateMiniCalendar,
     getUpcoming
   };
 })();
