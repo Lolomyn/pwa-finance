@@ -41,6 +41,216 @@ html[data-theme="dark"] {
   background: var(--accent);
 }
 
+/* ═══ Виджет ближайших событий ═══ */
+.hub-bento > .hub-events {
+  grid-column: span 4;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  color: #ffffff;
+  background: linear-gradient(140deg, #0F766E 0%, #14B8A6 58%, #5EEAD4 100%);
+  box-shadow: 0 12px 30px rgba(13, 148, 136, 0.28);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hub-events::before {
+  content: '';
+  position: absolute;
+  top: -46px;
+  right: -46px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22), transparent 70%);
+  pointer-events: none;
+}
+
+.hub-events > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hub-events:active:not(.is-card-pressing) {
+  transform: scale(0.99);
+  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.24);
+}
+
+.hub-events:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, 0.5);
+  outline-offset: 3px;
+}
+
+.hub-events-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hub-events-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.hub-events-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.hub-events-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.hub-events-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+.hub-events-badge {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.hub-events-badge[hidden] {
+  display: none;
+}
+
+.hub-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hub-event {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.hub-event-date {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.hub-event-day {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hub-event-month {
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.hub-event-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hub-event-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.hub-event-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 600;
+  opacity: 0.78;
+}
+
+.hub-event.is-today .hub-event-date {
+  color: #0F766E;
+  background: #ffffff;
+}
+
+.hub-event.is-today .hub-event-meta {
+  opacity: 1;
+  font-weight: 700;
+}
+
+.hub-events-empty {
+  padding: 4px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+html[data-theme="dark"] .hub-events {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
+}
+
+@media (max-width: 380px) {
+  .hub-events {
+    padding: 14px 16px;
+    border-radius: 20px;
+  }
+
+  .hub-events-title {
+    font-size: 10px;
+  }
+
+  .hub-event {
+    gap: 10px;
+    padding: 7px 10px;
+  }
+
+  .hub-event-date {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 /* ═══ Большой календарь ═══ */
 .hub-calendar-sheet {
   max-height: 88dvh;

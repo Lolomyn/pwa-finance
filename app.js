@@ -175,6 +175,8 @@ const hubFinanceButton = document.getElementById('hub-finance');
 const hubWidgetMonth = document.getElementById('hub-widget-month');
 const hubWidgetCount = document.getElementById('hub-widget-count');
 const hubWidgetCalendar = document.getElementById('hub-widget-calendar');
+const hubEventsBadge = document.getElementById('hub-events-count');
+const hubEventsList = document.getElementById('hub-events-list');
 const hubFinanceExpense = document.getElementById('hub-finance-expense');
 const hubFinanceIncome = document.getElementById('hub-finance-income');
 const hubNotesStat = document.getElementById('hub-notes-stat');
@@ -4645,6 +4647,7 @@ function renderHubScreen() {
   }
 
   renderHubSubscriptions();
+  renderHubCalendarEvents();
   window.Notes?.renderHub?.();
 }
 
@@ -4764,6 +4767,8 @@ function initHub() {
       window.AppAccess.navigate('./subscriptions.html');
     });
   }
+
+  document.addEventListener('hub-calendar-change', renderHubCalendarEvents);
 
   document.getElementById('hub-close')?.addEventListener('click', () => showTab('home'));
   renderHubScreen();
@@ -4936,6 +4941,7 @@ const HIDDEN_HUB_CARDS_KEY = 'expense-tracker-hidden-hub-cards';
 const HUB_CARD_NAMES = {
   'widget-weather': 'Виджет «Погода»',
   'widget-days': 'Виджет «Рабочих дней»',
+  'widget-events': 'Виджет «Ближайшие события»',
   'app-finance': 'Приложение «Финансы»',
   'app-notes': 'Приложение «Заметки»',
   'app-subscriptions': 'Приложение «Подписки и платежи»'
@@ -5105,6 +5111,131 @@ function createHubSubscriptionRow(item) {
   }
 
   return row;
+}
+
+const HUB_EVENT_LIMIT = 3;
+const HUB_EVENT_MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+
+function hubEventsNoun(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return 'событие';
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return 'события';
+  }
+
+  return 'событий';
+}
+
+function parseHubEventDate(value) {
+  const [year, month, day] = String(value).split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+function hubEventDayDiff(value, today) {
+  const date = parseHubEventDate(value);
+  const eventTime = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayTime = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+  return Math.round((eventTime - todayTime) / 86400000);
+}
+
+function hubEventRelativeLabel(diff) {
+  if (diff === 0) {
+    return 'Сегодня';
+  }
+
+  if (diff === 1) {
+    return 'Завтра';
+  }
+
+  if (diff === 2) {
+    return 'Послезавтра';
+  }
+
+  if (diff > 2 && diff <= 7) {
+    return `Через ${diff} ${diff >= 5 ? 'дней' : 'дня'}`;
+  }
+
+  return '';
+}
+
+function renderHubCalendarEvents() {
+  if (!hubEventsBadge || !hubEventsList) {
+    return;
+  }
+
+  const upcoming = window.HubCalendar?.getUpcoming?.(1000) || [];
+  const count = upcoming.length;
+
+  hubEventsBadge.textContent = count ? `${count} ${hubEventsNoun(count)}` : '';
+  hubEventsBadge.hidden = count === 0;
+  hubEventsList.textContent = '';
+
+  if (!count) {
+    const empty = document.createElement('div');
+    empty.className = 'hub-events-empty';
+    empty.textContent = 'Пока нет событий — нажмите, чтобы открыть календарь';
+    hubEventsList.append(empty);
+    return;
+  }
+
+  const today = new Date();
+
+  upcoming.slice(0, HUB_EVENT_LIMIT).forEach((item) => {
+    const date = parseHubEventDate(item.date);
+    const diff = hubEventDayDiff(item.date, today);
+    const row = document.createElement('div');
+    row.className = 'hub-event';
+
+    if (diff === 0) {
+      row.classList.add('is-today');
+    }
+
+    const dateChip = document.createElement('div');
+    dateChip.className = 'hub-event-date';
+    const day = document.createElement('span');
+    day.className = 'hub-event-day';
+    day.textContent = String(date.getDate());
+    const month = document.createElement('span');
+    month.className = 'hub-event-month';
+    month.textContent = HUB_EVENT_MONTHS[date.getMonth()];
+    dateChip.append(day, month);
+
+    const info = document.createElement('div');
+    info.className = 'hub-event-info';
+    const title = document.createElement('div');
+    title.className = 'hub-event-title';
+    title.textContent = item.title;
+
+    const metaParts = [];
+    const relative = hubEventRelativeLabel(diff);
+
+    if (relative) {
+      metaParts.push(relative);
+    } else {
+      metaParts.push(new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(date));
+    }
+
+    if (date.getFullYear() !== today.getFullYear()) {
+      metaParts.push(String(date.getFullYear()));
+    }
+
+    if (item.isYearly) {
+      metaParts.push('ежегодно');
+    }
+
+    const meta = document.createElement('div');
+    meta.className = 'hub-event-meta';
+    meta.textContent = metaParts.join(' · ');
+    info.append(title, meta);
+    row.append(dateChip, info);
+    hubEventsList.append(row);
+  });
 }
 
 function renderHubSubscriptions() {

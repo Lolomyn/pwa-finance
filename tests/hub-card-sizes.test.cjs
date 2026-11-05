@@ -17,6 +17,10 @@ test('weather supports the shared card size and hide registry', () => {
   assert.match(hubSource, /RESIZABLE_HUB_CARD_IDS = \['widget-weather'/);
 });
 
+test('upcoming events widget supports the shared hide registry', () => {
+  assert.match(hubSource, /'widget-events': 'Виджет «Ближайшие события»'/);
+});
+
 test('widgets and applications have separate layout containers', () => {
   const html = readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const widgets = html.indexOf('class="hub-bento hub-widgets"');
@@ -101,7 +105,7 @@ function setup({ storedSizes, storage = new Map() } = {}) {
   const sheet = elements.get('hubCardActionSheet');
   sheet.hidden = true;
   for (const id of ['hubSettingsSheet', 'hubCalendarSheet', 'hubDaySheet']) elements.get(id).hidden = true;
-  const cards = ['widget-days', 'app-finance', 'app-notes', 'app-subscriptions'].map((cardId) => new Element({ cardId }));
+  const cards = ['widget-days', 'widget-events', 'app-finance', 'app-notes', 'app-subscriptions'].map((cardId) => new Element({ cardId }));
   Object.assign(document, {
     body: new Element(),
     getElementById: (id) => elements.get(id) || null,
@@ -239,6 +243,18 @@ test('applying sizes retains card-hidden and unrelated classes', () => {
   app.hub.setHubCardSize('app-finance', 'normal');
   assert.equal(card.classList.contains('card-hidden'), true);
   assert.equal(card.classList.contains('custom-class'), true);
+});
+
+test('upcoming events widget can be hidden and restored', () => {
+  const app = setup();
+  const card = app.card('widget-events');
+  app.hub.loadHiddenHubCards();
+  app.hub.openHubCardAction(card);
+  app.hub.hideCurrentHubCard();
+  assert.equal(card.classList.contains('card-hidden'), true);
+  assert.equal(app.elements.get('hubCardSizeOptions').hidden, true);
+  app.hub.restoreHubCard('widget-events');
+  assert.equal(card.classList.contains('card-hidden'), false);
 });
 
 test('hiding and restoring a compact card preserves its size, including after reload', () => {

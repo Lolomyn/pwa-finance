@@ -89,6 +89,56 @@
     return state.events.filter((event) => matchesDate(event, date));
   }
 
+  function startOfDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function eventOccurrence(event, today) {
+    const source = parseISO(event.date);
+
+    if (event.isYearly) {
+      let candidate = new Date(today.getFullYear(), source.getMonth(), source.getDate());
+
+      if (candidate < today) {
+        candidate = new Date(today.getFullYear() + 1, source.getMonth(), source.getDate());
+      }
+
+      return candidate;
+    }
+
+    const date = startOfDay(source);
+    return date >= today ? date : null;
+  }
+
+  function getUpcoming(limit = 3, from = new Date()) {
+    const today = startOfDay(from);
+    const count = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 3;
+
+    return state.events
+      .map((event) => ({ event, date: eventOccurrence(event, today) }))
+      .filter((entry) => entry.date)
+      .sort((a, b) => {
+        const diff = a.date - b.date;
+
+        if (diff !== 0) {
+          return diff;
+        }
+
+        return a.event.title.localeCompare(b.event.title, 'ru');
+      })
+      .slice(0, count)
+      .map(({ event, date }) => ({
+        id: event.id,
+        title: event.title,
+        date: toISO(date),
+        isYearly: event.isYearly
+      }));
+  }
+
+  function notifyChange() {
+    document.dispatchEvent(new CustomEvent('hub-calendar-change'));
+  }
+
   function productionInfo(date) {
     return window.RuWorkCalendar && typeof window.RuWorkCalendar.getDayInfo === 'function'
       ? window.RuWorkCalendar.getDayInfo(date)
@@ -554,6 +604,7 @@
     renderDayEvents();
     renderCalendar();
     decorateMiniCalendar();
+    notifyChange();
     haptic(10);
 
     const saved = await persist();
@@ -564,6 +615,7 @@
       renderDayEvents();
       renderCalendar();
       decorateMiniCalendar();
+      notifyChange();
       showError('Не удалось сохранить событие');
     }
   }
@@ -581,6 +633,7 @@
     renderDayEvents();
     renderCalendar();
     decorateMiniCalendar();
+    notifyChange();
     haptic(8);
 
     const saved = await persist();
@@ -591,6 +644,7 @@
       renderDayEvents();
       renderCalendar();
       decorateMiniCalendar();
+      notifyChange();
       showError('Не удалось удалить событие');
     }
   }
@@ -645,6 +699,15 @@
 
     widget?.addEventListener('click', openCalendar);
     widget?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openCalendar();
+      }
+    });
+
+    const eventsWidget = byId('hub-events-widget');
+    eventsWidget?.addEventListener('click', openCalendar);
+    eventsWidget?.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         openCalendar();
@@ -719,11 +782,13 @@
     state.ready = true;
     bindEvents();
     decorateMiniCalendar();
+    notifyChange();
   }
 
   window.HubCalendar = {
     init,
     open: openCalendar,
-    decorateMini: decorateMiniCalendar
+    decorateMini: decorateMiniCalendar,
+    getUpcoming
   };
 })();
